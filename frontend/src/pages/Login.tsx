@@ -1,59 +1,81 @@
 import { useState, type SubmitEvent } from 'react'
 import { Link } from 'react-router'
 import AuthLayout from '../layouts/AuthLayout'
+import { MOCK_USUARIOS } from '../mocks/usuarios'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+
+interface Errores {
+    correo?: string
+    contrasena?: string
+    credencialesInvalidas?: boolean
+}
 
 function Login() {
     const [correo, setCorreo] = useState('')
     const [contrasena, setContrasena] = useState('')
-    const [error, setError] = useState('')
+    const [errores, setErrores] = useState<Errores>({})
 
     function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
+        const nuevosErrores: Errores = {}
 
-        if (!correo || !contrasena) {
-            setError('Ingresá tu correo y tu contraseña.')
-            return
+        if (!correo) {
+            nuevosErrores.correo = 'Ingresá tu correo electrónico.'
+        } else if (!EMAIL_REGEX.test(correo)) {
+            nuevosErrores.correo = 'Ingresá un correo electrónico válido.'
         }
 
-        if (!EMAIL_REGEX.test(correo)) {
-            setError('Ingresá un correo electrónico válido.')
-            return
+        if (!contrasena) {
+            nuevosErrores.contrasena = 'Ingresá tu contraseña.'
         }
 
-        if (!PASSWORD_REGEX.test(contrasena)) {
-            setError('La contraseña debe tener al menos 8 caracteres, con una mayúscula, una minúscula y un número.')
-            return
+        if (!nuevosErrores.correo && !nuevosErrores.contrasena) {
+            const usuario = MOCK_USUARIOS.find((u) => u.correo === correo.toLowerCase())
+            if (!usuario || usuario.contrasena !== contrasena) {
+                nuevosErrores.credencialesInvalidas = true
+            }
         }
 
-        setError('')
+        setErrores(nuevosErrores)
+        if (Object.keys(nuevosErrores).length > 0) return
+
+        // Acá más adelante se conecta con el backend (RF-02)
         console.log({ correo, contrasena })
     }
+
+    const correoConError = Boolean(errores.correo || errores.credencialesInvalidas)
+    const contrasenaConError = Boolean(errores.contrasena || errores.credencialesInvalidas)
 
     return (
         <AuthLayout title="Iniciar sesión">
             <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-                {error && (
-                    <p className="text-sm text-primary bg-primary-light rounded-lg px-3 py-2">{error}</p>
-                )}
+                <div>
+                    <input
+                        type="email"
+                        placeholder="Correo electrónico"
+                        value={correo}
+                        onChange={(e) => setCorreo(e.target.value)}
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${correoConError ? 'border-primary' : 'border-gray-300'
+                            }`}
+                    />
+                    {errores.correo && <p className="text-xs text-primary mt-1">{errores.correo}</p>}
+                </div>
 
-                <input
-                    type="email"
-                    placeholder="Correo electrónico"
-                    value={correo}
-                    onChange={(e) => setCorreo(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-
-                <input
-                    type="password"
-                    placeholder="Contraseña"
-                    value={contrasena}
-                    onChange={(e) => setContrasena(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                <div>
+                    <input
+                        type="password"
+                        placeholder="Contraseña"
+                        value={contrasena}
+                        onChange={(e) => setContrasena(e.target.value)}
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${contrasenaConError ? 'border-primary' : 'border-gray-300'
+                            }`}
+                    />
+                    {errores.contrasena && <p className="text-xs text-primary mt-1">{errores.contrasena}</p>}
+                    {errores.credencialesInvalidas && (
+                        <p className="text-xs text-primary mt-1">Usuario o contraseña incorrectos.</p>
+                    )}
+                </div>
 
                 <p className="text-right text-sm">
                     <Link to="/recuperar-contrasena" className="text-primary">

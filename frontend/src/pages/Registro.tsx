@@ -1,11 +1,19 @@
 import { useState, type SubmitEvent } from 'react'
 import { Link } from 'react-router'
 import AuthLayout from '../layouts/AuthLayout'
+import { MOCK_USUARIOS } from '../mocks/usuarios'
 
 type Rol = 'interesado' | 'propietario' | 'inmobiliaria'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+
+interface Errores {
+    nombre?: string
+    apellido?: string
+    correo?: string
+    contrasena?: string
+}
 
 function Registro() {
     const [nombre, setNombre] = useState('')
@@ -13,69 +21,90 @@ function Registro() {
     const [correo, setCorreo] = useState('')
     const [contrasena, setContrasena] = useState('')
     const [rol, setRol] = useState<Rol>('interesado')
-    const [error, setError] = useState('')
+    const [errores, setErrores] = useState<Errores>({})
 
     function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
+        const nuevosErrores: Errores = {}
 
-        if (!nombre || !apellido || !correo || !contrasena) {
-            setError('Todos los campos son obligatorios.')
-            return
+        if (!nombre) nuevosErrores.nombre = 'Ingresá tu nombre.'
+        if (!apellido) nuevosErrores.apellido = 'Ingresá tu apellido.'
+
+        if (!correo) {
+            nuevosErrores.correo = 'Ingresá tu correo electrónico.'
+        } else if (!EMAIL_REGEX.test(correo)) {
+            nuevosErrores.correo = 'Ingresá un correo electrónico válido.'
+        } else if (MOCK_USUARIOS.some((u) => u.correo === correo.toLowerCase())) {
+            nuevosErrores.correo = 'Este correo ya está registrado.'
         }
 
-        if (!EMAIL_REGEX.test(correo)) {
-            setError('Ingresá un correo electrónico válido.')
-            return
+        if (!contrasena) {
+            nuevosErrores.contrasena = 'Ingresá una contraseña.'
+        } else if (!PASSWORD_REGEX.test(contrasena)) {
+            nuevosErrores.contrasena = 'La contraseña no cumple los requisitos.'
         }
 
-        if (!PASSWORD_REGEX.test(contrasena)) {
-            setError('La contraseña debe tener al menos 8 caracteres, con una mayúscula, una minúscula y un número.')
-            return
-        }
+        setErrores(nuevosErrores)
+        if (Object.keys(nuevosErrores).length > 0) return
 
-        setError('')
+        // Acá más adelante se conecta con el backend (RF-01)
         console.log({ nombre, apellido, correo, contrasena, rol })
     }
 
     return (
         <AuthLayout title="Creá tu cuenta" subtitle="Buscá, publicá o administrá propiedades">
             <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-                {error && (
-                    <p className="text-sm text-primary bg-primary-light rounded-lg px-3 py-2">{error}</p>
-                )}
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-3">
+                    <div className="w-full sm:w-1/2">
+                        <input
+                            type="text"
+                            placeholder="Nombre"
+                            value={nombre}
+                            onChange={(e) => setNombre(e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.nombre ? 'border-primary' : 'border-gray-300'
+                                }`}
+                        />
+                        {errores.nombre && <p className="text-xs text-primary mt-1">{errores.nombre}</p>}
+                    </div>
 
-                <div className="flex gap-3">
-                    <input
-                        type="text"
-                        placeholder="Nombre"
-                        value={nombre}
-                        onChange={(e) => setNombre(e.target.value)}
-                        className="w-1/2 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    <input
-                        type="text"
-                        placeholder="Apellido"
-                        value={apellido}
-                        onChange={(e) => setApellido(e.target.value)}
-                        className="w-1/2 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                    <div className="w-full sm:w-1/2">
+                        <input
+                            type="text"
+                            placeholder="Apellido"
+                            value={apellido}
+                            onChange={(e) => setApellido(e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.apellido ? 'border-primary' : 'border-gray-300'
+                                }`}
+                        />
+                        {errores.apellido && <p className="text-xs text-primary mt-1">{errores.apellido}</p>}
+                    </div>
                 </div>
 
-                <input
-                    type="email"
-                    placeholder="Correo electrónico"
-                    value={correo}
-                    onChange={(e) => setCorreo(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                <div>
+                    <input
+                        type="email"
+                        placeholder="Correo electrónico"
+                        value={correo}
+                        onChange={(e) => setCorreo(e.target.value)}
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.correo ? 'border-primary' : 'border-gray-300'
+                            }`}
+                    />
+                    {errores.correo && <p className="text-xs text-primary mt-1">{errores.correo}</p>}
+                </div>
 
-                <input
-                    type="password"
-                    placeholder="Contraseña"
-                    value={contrasena}
-                    onChange={(e) => setContrasena(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                <div>
+                    <input
+                        type="password"
+                        placeholder="Contraseña"
+                        value={contrasena}
+                        onChange={(e) => setContrasena(e.target.value)}
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.contrasena ? 'border-primary' : 'border-gray-300'
+                            }`}
+                    />
+                    <p className={`text-xs mt-1 ${errores.contrasena ? 'text-primary' : 'text-gray-500'}`}>
+                        Debe tener al menos 8 caracteres, con una mayúscula, una minúscula y un número.
+                    </p>
+                </div>
 
                 <select
                     value={rol}

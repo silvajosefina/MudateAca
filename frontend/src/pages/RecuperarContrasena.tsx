@@ -23,6 +23,7 @@ function RecuperarContrasena() {
         }
 
         setError('')
+        // Acá más adelante se conecta con el backend (RF-03)
         console.log({ correo })
         setEnviado(true)
     }
@@ -38,17 +39,17 @@ function RecuperarContrasena() {
                 </p>
             ) : (
                 <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-                    {error && (
-                        <p className="text-sm text-primary bg-primary-light rounded-lg px-3 py-2">{error}</p>
-                    )}
-
-                    <input
-                        type="email"
-                        placeholder="Correo electrónico"
-                        value={correo}
-                        onChange={(e) => setCorreo(e.target.value)}
-                        className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                    <div>
+                        <input
+                            type="email"
+                            placeholder="Correo electrónico"
+                            value={correo}
+                            onChange={(e) => setCorreo(e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${error ? 'border-primary' : 'border-gray-300'
+                                }`}
+                        />
+                        {error && <p className="text-xs text-primary mt-1">{error}</p>}
+                    </div>
 
                     <button
                         type="submit"
