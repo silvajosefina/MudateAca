@@ -1,19 +1,30 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #C81E3A;
-  --color-primary-dark: #9E1730;
-  --color-primary-light: #F4C6CE;
-  --color-neutral-dark: #2B2B2B;
-  --color-neutral-light: #FAFAFA;
+  --color-background: #F7F6F2;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #EFEDE6;
+  --color-border: #E2DFD5;
+  --color-foreground: #2B2A27;
+  --color-muted: #77746B;
+
+  --color-primary: #3E6249;
+  --color-primary-hover: #2F4D39;
+  --color-primary-subtle: #DCE8DE;
+
+  --color-danger: #9C3823;
+  --color-danger-subtle: #F5DFD8;
+
+  --color-warning: #8A5A14;
+  --color-warning-subtle: #F3E4C6;
 
   --font-heading: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;
 }
 
 body {
-  background-color: var(--color-neutral-light);
-  color: var(--color-neutral-dark);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
   font-family: var(--font-body);
 }
 
@@ -34,7 +45,7 @@ select.custom-select::picker(select) {
   border: 1px solid var(--color-primary);
   border-radius: 0.5rem;
   padding: 0.25rem;
-  background-color: white;
+  background-color: var(--color-surface);
 }
 
 select.custom-select option::checkmark {
@@ -52,5 +63,5 @@ select.custom-select option:checked {
 }
 
 select.custom-select option:hover {
-  background-color: var(--color-primary-light);
+  background-color: var(--color-primary-subtle);
 }

@@ -1,7 +1,8 @@
 import { useState, type SubmitEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import AuthLayout from '../layouts/AuthLayout'
 import { MOCK_USUARIOS } from '../mocks/usuarios'
+import { iniciarSesion } from '../mocks/sesion'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -12,9 +13,11 @@ interface Errores {
 }
 
 function Login() {
+    const navigate = useNavigate()
     const [correo, setCorreo] = useState('')
     const [contrasena, setContrasena] = useState('')
     const [errores, setErrores] = useState<Errores>({})
+    const [rolSinPanel, setRolSinPanel] = useState(false)
 
     function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
@@ -30,18 +33,24 @@ function Login() {
             nuevosErrores.contrasena = 'Ingresá tu contraseña.'
         }
 
+        const usuario = MOCK_USUARIOS.find((u) => u.correo === correo.toLowerCase())
+
         if (!nuevosErrores.correo && !nuevosErrores.contrasena) {
-            const usuario = MOCK_USUARIOS.find((u) => u.correo === correo.toLowerCase())
             if (!usuario || usuario.contrasena !== contrasena) {
                 nuevosErrores.credencialesInvalidas = true
             }
         }
 
         setErrores(nuevosErrores)
-        if (Object.keys(nuevosErrores).length > 0) return
+        if (Object.keys(nuevosErrores).length > 0 || !usuario) return
 
-        // Acá más adelante se conecta con el backend (RF-02)
-        console.log({ correo, contrasena })
+        iniciarSesion(usuario)
+
+        if (usuario.rol === 'propietario' || usuario.rol === 'inmobiliaria') {
+            navigate('/mis-publicaciones')
+        } else {
+            setRolSinPanel(true)
+        }
     }
 
     const correoConError = Boolean(errores.correo || errores.credencialesInvalidas)
@@ -56,10 +65,10 @@ function Login() {
                         placeholder="Correo electrónico"
                         value={correo}
                         onChange={(e) => setCorreo(e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${correoConError ? 'border-primary' : 'border-gray-300'
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${correoConError ? 'border-danger' : 'border-border'
                             }`}
                     />
-                    {errores.correo && <p className="text-xs text-primary mt-1">{errores.correo}</p>}
+                    {errores.correo && <p className="text-xs text-danger mt-1">{errores.correo}</p>}
                 </div>
 
                 <div>
@@ -68,14 +77,21 @@ function Login() {
                         placeholder="Contraseña"
                         value={contrasena}
                         onChange={(e) => setContrasena(e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${contrasenaConError ? 'border-primary' : 'border-gray-300'
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${contrasenaConError ? 'border-danger' : 'border-border'
                             }`}
                     />
-                    {errores.contrasena && <p className="text-xs text-primary mt-1">{errores.contrasena}</p>}
+                    {errores.contrasena && <p className="text-xs text-danger mt-1">{errores.contrasena}</p>}
                     {errores.credencialesInvalidas && (
-                        <p className="text-xs text-primary mt-1">Usuario o contraseña incorrectos.</p>
+                        <p className="text-xs text-danger mt-1">Usuario o contraseña incorrectos.</p>
                     )}
                 </div>
+
+                {rolSinPanel && (
+                    <p className="text-xs text-foreground bg-surface-hover border border-border rounded-lg px-3 py-2">
+                        Iniciaste sesión correctamente. El panel para tu tipo de cuenta todavía no está
+                        disponible en esta versión.
+                    </p>
+                )}
 
                 <p className="text-right text-sm">
                     <Link to="/recuperar-contrasena" className="text-primary">
@@ -85,12 +101,12 @@ function Login() {
 
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-dark text-white font-heading font-semibold rounded-lg py-2 transition-colors"
+                    className="bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 transition-colors"
                 >
                     Ingresar
                 </button>
 
-                <p className="text-sm text-center text-gray-500">
+                <p className="text-sm text-center text-muted">
                     ¿No tenés cuenta?{' '}
                     <Link to="/registro" className="text-primary font-semibold">
                         Registrate

@@ -23,7 +23,6 @@ function RecuperarContrasena() {
         }
 
         setError('')
-        // Acá más adelante se conecta con el backend (RF-03)
         console.log({ correo })
         setEnviado(true)
     }
@@ -34,7 +33,7 @@ function RecuperarContrasena() {
             subtitle="Te enviaremos un enlace para restablecerla"
         >
             {enviado ? (
-                <p className="text-center text-neutral-dark">
+                <p className="text-center text-foreground">
                     Si el correo está registrado, vas a recibir un enlace en breve.
                 </p>
             ) : (
@@ -45,22 +44,22 @@ function RecuperarContrasena() {
                             placeholder="Correo electrónico"
                             value={correo}
                             onChange={(e) => setCorreo(e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${error ? 'border-primary' : 'border-gray-300'
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${error ? 'border-danger' : 'border-border'
                                 }`}
                         />
-                        {error && <p className="text-xs text-primary mt-1">{error}</p>}
+                        {error && <p className="text-xs text-danger mt-1">{error}</p>}
                     </div>
 
                     <button
                         type="submit"
-                        className="bg-primary hover:bg-primary-dark text-white font-heading font-semibold rounded-lg py-2 transition-colors"
+                        className="bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 transition-colors"
                     >
                         Enviar enlace
                     </button>
                 </form>
             )}
 
-            <p className="text-sm text-center text-gray-500 mt-4">
+            <p className="text-sm text-center text-muted mt-4">
                 <Link to="/login" className="text-primary font-semibold">
                     Volver a iniciar sesión
                 </Link>
