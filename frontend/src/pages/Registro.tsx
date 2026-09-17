@@ -47,7 +47,6 @@ function Registro() {
         setErrores(nuevosErrores)
         if (Object.keys(nuevosErrores).length > 0) return
 
-        // Acá más adelante se conecta con el backend (RF-01)
         console.log({ nombre, apellido, correo, contrasena, rol })
     }
 
@@ -61,10 +60,10 @@ function Registro() {
                             placeholder="Nombre"
                             value={nombre}
                             onChange={(e) => setNombre(e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.nombre ? 'border-primary' : 'border-gray-300'
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.nombre ? 'border-danger' : 'border-border'
                                 }`}
                         />
-                        {errores.nombre && <p className="text-xs text-primary mt-1">{errores.nombre}</p>}
+                        {errores.nombre && <p className="text-xs text-danger mt-1">{errores.nombre}</p>}
                     </div>
 
                     <div className="w-full sm:w-1/2">
@@ -73,10 +72,10 @@ function Registro() {
                             placeholder="Apellido"
                             value={apellido}
                             onChange={(e) => setApellido(e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.apellido ? 'border-primary' : 'border-gray-300'
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.apellido ? 'border-danger' : 'border-border'
                                 }`}
                         />
-                        {errores.apellido && <p className="text-xs text-primary mt-1">{errores.apellido}</p>}
+                        {errores.apellido && <p className="text-xs text-danger mt-1">{errores.apellido}</p>}
                     </div>
                 </div>
 
@@ -86,10 +85,10 @@ function Registro() {
                         placeholder="Correo electrónico"
                         value={correo}
                         onChange={(e) => setCorreo(e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.correo ? 'border-primary' : 'border-gray-300'
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.correo ? 'border-danger' : 'border-border'
                             }`}
                     />
-                    {errores.correo && <p className="text-xs text-primary mt-1">{errores.correo}</p>}
+                    {errores.correo && <p className="text-xs text-danger mt-1">{errores.correo}</p>}
                 </div>
 
                 <div>
@@ -98,10 +97,10 @@ function Registro() {
                         placeholder="Contraseña"
                         value={contrasena}
                         onChange={(e) => setContrasena(e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.contrasena ? 'border-primary' : 'border-gray-300'
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.contrasena ? 'border-danger' : 'border-border'
                             }`}
                     />
-                    <p className={`text-xs mt-1 ${errores.contrasena ? 'text-primary' : 'text-gray-500'}`}>
+                    <p className={`text-xs mt-1 ${errores.contrasena ? 'text-danger' : 'text-muted'}`}>
                         Debe tener al menos 8 caracteres, con una mayúscula, una minúscula y un número.
                     </p>
                 </div>
@@ -109,7 +108,7 @@ function Registro() {
                 <select
                     value={rol}
                     onChange={(e) => setRol(e.target.value as Rol)}
-                    className="custom-select border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="custom-select border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                     <option value="interesado">Busco una vivienda</option>
                     <option value="propietario">Soy propietario</option>
@@ -118,12 +117,12 @@ function Registro() {
 
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-dark text-white font-heading font-semibold rounded-lg py-2 mt-2 transition-colors"
+                    className="bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 mt-2 transition-colors"
                 >
                     Registrarme
                 </button>
 
-                <p className="text-sm text-center text-gray-500">
+                <p className="text-sm text-center text-muted">
                     ¿Ya tenés cuenta?{' '}
                     <Link to="/login" className="text-primary font-semibold">
                         Iniciá sesión
