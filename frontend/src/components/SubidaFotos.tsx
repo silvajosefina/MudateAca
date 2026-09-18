@@ -40,7 +40,7 @@ function SubidaFotos({ fotos, onChange, minimo = 3, error }: SubidaFotosProps) {
                         <button
                             type="button"
                             onClick={() => handleQuitar(indice)}
-                            className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-black/80 transition-colors"
+                            className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
                             aria-label={`Quitar foto ${indice + 1}`}
                         >
                             <X className="w-3 h-3" aria-hidden="true" />

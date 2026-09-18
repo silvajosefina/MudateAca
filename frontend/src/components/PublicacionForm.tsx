@@ -1,9 +1,11 @@
-import { useState, type SubmitEvent } from 'react'
+import { useRef, useState, type SubmitEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Save, Send, ShieldCheck, X } from 'lucide-react'
 import SubidaFotos from './SubidaFotos'
+import ConfirmDialog from './ConfirmDialog'
 import { actualizarPublicacion, crearPublicacion } from '../mocks/publicaciones'
 import { obtenerSesion } from '../mocks/sesion'
+import { mostrarToast } from '../mocks/toast'
 import type { ModalidadAlquiler, Publicacion, PublicacionFormData, TipoInmueble } from '../types/publicacion'
 
 interface PublicacionFormProps {
@@ -18,16 +20,26 @@ interface Errores {
     ambientes?: string
     dormitorios?: string
     disponibleDesde?: string
+    disponibleHasta?: string
+    duracionMinima?: string
     fotos?: string
-    fechaIngreso?: string
-    fechaSalida?: string
 }
 
 const MENSAJE_ANIO_INVALIDO = 'El año de la fecha no puede tener más de 4 dígitos.'
+const OPCIONES_CANTIDAD = [1, 2, 3, 4, 5]
 
 function anioExcedeCuatroDigitos(valorFecha: string): boolean {
     const [anio] = valorFecha.split('-')
     return anio.length > 4
+}
+
+function formatearMiles(valor: number): string {
+    return valor ? valor.toLocaleString('es-AR') : ''
+}
+
+function quitarFormatoMiles(valorTexto: string): number {
+    const soloDigitos = valorTexto.replace(/\D/g, '')
+    return soloDigitos ? Number(soloDigitos) : 0
 }
 
 function valorInicial(publicacion?: Publicacion): PublicacionFormData {
@@ -40,6 +52,7 @@ function valorInicial(publicacion?: Publicacion): PublicacionFormData {
         ambientes: publicacion?.ambientes ?? 1,
         dormitorios: publicacion?.dormitorios ?? 1,
         disponibleDesde: publicacion?.disponibleDesde ?? '',
+        disponibleHasta: publicacion?.disponibleHasta ?? '',
         fotos: publicacion?.fotos ?? [],
         expensas: publicacion?.expensas,
         serviciosIncluidos: publicacion?.serviciosIncluidos ?? false,
@@ -48,8 +61,6 @@ function valorInicial(publicacion?: Publicacion): PublicacionFormData {
         aptoEstudiantes: publicacion?.aptoEstudiantes ?? false,
         requisitos: publicacion?.requisitos ?? '',
         duracionMinima: publicacion?.duracionMinima ?? '',
-        fechaIngreso: publicacion?.fechaIngreso ?? '',
-        fechaSalida: publicacion?.fechaSalida ?? '',
     }
 }
 
@@ -58,6 +69,8 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
     const sesion = obtenerSesion()
     const [datos, setDatos] = useState<PublicacionFormData>(valorInicial(publicacionExistente))
     const [errores, setErrores] = useState<Errores>({})
+    const [mostrarConfirmCancelar, setMostrarConfirmCancelar] = useState(false)
+    const valoresIniciales = useRef(valorInicial(publicacionExistente)).current
 
     if (!sesion) return null
 
@@ -67,7 +80,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
         setDatos((prev) => ({ ...prev, [campo]: valor }))
     }
 
-    function manejarCambioFecha(campo: 'disponibleDesde' | 'fechaIngreso' | 'fechaSalida', valor: string) {
+    function manejarCambioFecha(campo: 'disponibleDesde' | 'disponibleHasta', valor: string) {
         actualizarCampo(campo, valor)
         setErrores((prev) => {
             const siguiente = { ...prev }
@@ -78,6 +91,18 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
             }
             return siguiente
         })
+    }
+
+    function hayCambiosSinGuardar(): boolean {
+        return JSON.stringify(datos) !== JSON.stringify(valoresIniciales)
+    }
+
+    function handleCancelar() {
+        if (hayCambiosSinGuardar()) {
+            setMostrarConfirmCancelar(true)
+        } else {
+            navigate('/mis-publicaciones')
+        }
     }
 
     function handleSubmit(e: SubmitEvent) {
@@ -93,13 +118,19 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
         if (datos.dormitorios < 0) nuevosErrores.dormitorios = 'Ingresá la cantidad de dormitorios.'
         if (!datos.disponibleDesde) nuevosErrores.disponibleDesde = 'Indicá la disponibilidad.'
         else if (anioExcedeCuatroDigitos(datos.disponibleDesde)) nuevosErrores.disponibleDesde = MENSAJE_ANIO_INVALIDO
+
+        if (datos.disponibleHasta) {
+            if (anioExcedeCuatroDigitos(datos.disponibleHasta)) {
+                nuevosErrores.disponibleHasta = MENSAJE_ANIO_INVALIDO
+            } else if (datos.disponibleDesde && datos.disponibleHasta < datos.disponibleDesde) {
+                nuevosErrores.disponibleHasta = 'No puede ser anterior a la fecha "disponible desde".'
+            }
+        }
+
         if (datos.fotos.length < 3) nuevosErrores.fotos = `Subí como mínimo 3 fotografías (${datos.fotos.length}/3).`
 
-        if (datos.modalidad === 'temporario') {
-            if (!datos.fechaIngreso) nuevosErrores.fechaIngreso = 'Indicá la fecha aproximada de ingreso.'
-            else if (anioExcedeCuatroDigitos(datos.fechaIngreso)) nuevosErrores.fechaIngreso = MENSAJE_ANIO_INVALIDO
-            if (!datos.fechaSalida) nuevosErrores.fechaSalida = 'Indicá la fecha de salida.'
-            else if (anioExcedeCuatroDigitos(datos.fechaSalida)) nuevosErrores.fechaSalida = MENSAJE_ANIO_INVALIDO
+        if (datos.modalidad === 'temporario' && !datos.duracionMinima?.trim()) {
+            nuevosErrores.duracionMinima = 'Indicá la duración mínima de la estadía.'
         }
 
         setErrores(nuevosErrores)
@@ -107,8 +138,10 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
 
         if (modo === 'crear') {
             crearPublicacion(datos, sesion.id)
+            mostrarToast('Publicación creada correctamente.')
         } else if (publicacionExistente) {
             actualizarPublicacion(publicacionExistente.id, datos, sesion.id)
+            mostrarToast('Cambios guardados correctamente.')
         }
 
         navigate('/mis-publicaciones')
@@ -126,7 +159,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                 </p>
                 <Link
                     to="/verificacion"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg px-4 py-2 transition-colors"
+                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
                 >
                     <ShieldCheck className="w-4 h-4" aria-hidden="true" />
                     Ir a verificación
@@ -147,7 +180,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     <select
                         value={datos.tipoInmueble}
                         onChange={(e) => actualizarCampo('tipoInmueble', e.target.value as TipoInmueble)}
-                        className="custom-select w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="custom-select w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                     >
                         <option value="casa">Casa</option>
                         <option value="departamento">Departamento</option>
@@ -161,7 +194,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     <select
                         value={datos.modalidad}
                         onChange={(e) => actualizarCampo('modalidad', e.target.value as ModalidadAlquiler)}
-                        className="custom-select w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="custom-select w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                     >
                         <option value="residencial">Residencial</option>
                         <option value="temporario">Temporario</option>
@@ -185,10 +218,10 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                 <div>
                     <label className="block text-sm font-semibold text-foreground mb-1">Precio ($)</label>
                     <input
-                        type="number"
-                        min={0}
-                        value={datos.precio || ''}
-                        onChange={(e) => actualizarCampo('precio', Number(e.target.value))}
+                        type="text"
+                        inputMode="numeric"
+                        value={formatearMiles(datos.precio)}
+                        onChange={(e) => actualizarCampo('precio', quitarFormatoMiles(e.target.value))}
                         className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.precio ? 'border-danger' : 'border-border'
                             }`}
                     />
@@ -197,32 +230,41 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
 
                 <div>
                     <label className="block text-sm font-semibold text-foreground mb-1">Ambientes</label>
-                    <input
-                        type="number"
-                        min={1}
-                        value={datos.ambientes || ''}
+                    <select
+                        value={datos.ambientes}
                         onChange={(e) => actualizarCampo('ambientes', Number(e.target.value))}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.ambientes ? 'border-danger' : 'border-border'
+                        className={`custom-select w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer ${errores.ambientes ? 'border-danger' : 'border-border'
                             }`}
-                    />
+                    >
+                        {OPCIONES_CANTIDAD.map((cantidad) => (
+                            <option key={cantidad} value={cantidad}>
+                                {cantidad === 5 ? '5 o más' : cantidad}
+                            </option>
+                        ))}
+                    </select>
                     {errores.ambientes && <p className="text-xs text-danger mt-1">{errores.ambientes}</p>}
                 </div>
 
                 <div>
                     <label className="block text-sm font-semibold text-foreground mb-1">Dormitorios</label>
-                    <input
-                        type="number"
-                        min={0}
+                    <select
                         value={datos.dormitorios}
                         onChange={(e) => actualizarCampo('dormitorios', Number(e.target.value))}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.dormitorios ? 'border-danger' : 'border-border'
+                        className={`custom-select w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer ${errores.dormitorios ? 'border-danger' : 'border-border'
                             }`}
-                    />
+                    >
+                        <option value={0}>0 (monoambiente)</option>
+                        {OPCIONES_CANTIDAD.map((cantidad) => (
+                            <option key={cantidad} value={cantidad}>
+                                {cantidad === 5 ? '5 o más' : cantidad}
+                            </option>
+                        ))}
+                    </select>
                     {errores.dormitorios && <p className="text-xs text-danger mt-1">{errores.dormitorios}</p>}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label className="block text-sm font-semibold text-foreground mb-1">Ubicación aproximada</label>
                     <input
@@ -247,92 +289,83 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     />
                     {errores.disponibleDesde && <p className="text-xs text-danger mt-1">{errores.disponibleDesde}</p>}
                 </div>
+
+                <div>
+                    <label className="block text-sm font-semibold text-foreground mb-1">Disponible hasta (opcional)</label>
+                    <input
+                        type="date"
+                        value={datos.disponibleHasta}
+                        onChange={(e) => manejarCambioFecha('disponibleHasta', e.target.value)}
+                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.disponibleHasta ? 'border-danger' : 'border-border'
+                            }`}
+                    />
+                    {errores.disponibleHasta && <p className="text-xs text-danger mt-1">{errores.disponibleHasta}</p>}
+                </div>
             </div>
 
             {datos.modalidad === 'temporario' && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-surface-hover rounded-lg p-4">
-                    <div>
-                        <label className="block text-sm font-semibold text-foreground mb-1">Fecha de ingreso</label>
-                        <input
-                            type="date"
-                            value={datos.fechaIngreso}
-                            onChange={(e) => manejarCambioFecha('fechaIngreso', e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.fechaIngreso ? 'border-danger' : 'border-border'
-                                }`}
-                        />
-                        {errores.fechaIngreso && <p className="text-xs text-danger mt-1">{errores.fechaIngreso}</p>}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-semibold text-foreground mb-1">Fecha de salida</label>
-                        <input
-                            type="date"
-                            value={datos.fechaSalida}
-                            onChange={(e) => manejarCambioFecha('fechaSalida', e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.fechaSalida ? 'border-danger' : 'border-border'
-                                }`}
-                        />
-                        {errores.fechaSalida && <p className="text-xs text-danger mt-1">{errores.fechaSalida}</p>}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-semibold text-foreground mb-1">Duración mínima</label>
-                        <input
-                            type="text"
-                            placeholder="Ej: 7 noches"
-                            value={datos.duracionMinima}
-                            onChange={(e) => actualizarCampo('duracionMinima', e.target.value)}
-                            className="w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                    </div>
+                <div className="bg-surface-hover rounded-lg p-4">
+                    <label className="block text-sm font-semibold text-foreground mb-1">Duración mínima</label>
+                    <input
+                        type="text"
+                        placeholder="Ej: 7 noches"
+                        value={datos.duracionMinima}
+                        onChange={(e) => actualizarCampo('duracionMinima', e.target.value)}
+                        className={`w-full sm:w-1/3 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.duracionMinima ? 'border-danger' : 'border-border'
+                            }`}
+                    />
+                    {errores.duracionMinima && <p className="text-xs text-danger mt-1">{errores.duracionMinima}</p>}
                 </div>
             )}
 
             <div>
                 <label className="block text-sm font-semibold text-foreground mb-1">Expensas ($, opcional)</label>
                 <input
-                    type="number"
-                    min={0}
-                    value={datos.expensas ?? ''}
-                    onChange={(e) => actualizarCampo('expensas', e.target.value ? Number(e.target.value) : undefined)}
+                    type="text"
+                    inputMode="numeric"
+                    value={datos.expensas ? formatearMiles(datos.expensas) : ''}
+                    onChange={(e) => {
+                        const limpio = quitarFormatoMiles(e.target.value)
+                        actualizarCampo('expensas', limpio || undefined)
+                    }}
                     className="w-full sm:w-1/3 border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <label className="flex items-center gap-2 text-sm text-foreground">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                     <input
                         type="checkbox"
                         checked={datos.serviciosIncluidos}
                         onChange={(e) => actualizarCampo('serviciosIncluidos', e.target.checked)}
-                        className="accent-primary"
+                        className="accent-primary cursor-pointer"
                     />
                     Servicios incluidos
                 </label>
-                <label className="flex items-center gap-2 text-sm text-foreground">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                     <input
                         type="checkbox"
                         checked={datos.amueblado}
                         onChange={(e) => actualizarCampo('amueblado', e.target.checked)}
-                        className="accent-primary"
+                        className="accent-primary cursor-pointer"
                     />
                     Amueblado
                 </label>
-                <label className="flex items-center gap-2 text-sm text-foreground">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                     <input
                         type="checkbox"
                         checked={datos.aceptaMascotas}
                         onChange={(e) => actualizarCampo('aceptaMascotas', e.target.checked)}
-                        className="accent-primary"
+                        className="accent-primary cursor-pointer"
                     />
                     Acepta mascotas
                 </label>
-                <label className="flex items-center gap-2 text-sm text-foreground">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
                     <input
                         type="checkbox"
                         checked={datos.aptoEstudiantes}
                         onChange={(e) => actualizarCampo('aptoEstudiantes', e.target.checked)}
-                        className="accent-primary"
+                        className="accent-primary cursor-pointer"
                     />
                     Apto estudiantes
                 </label>
@@ -362,7 +395,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
             <div className="flex flex-col sm:flex-row gap-3 mt-2">
                 <button
                     type="submit"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 px-6 transition-colors"
+                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
                 >
                     {modo === 'crear' ? (
                         <Send className="w-4 h-4" aria-hidden="true" />
@@ -371,14 +404,26 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     )}
                     {modo === 'crear' ? 'Publicar' : 'Guardar cambios'}
                 </button>
-                <Link
-                    to="/mis-publicaciones"
-                    className="inline-flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-foreground hover:text-primary rounded-lg py-2 px-6 border border-border transition-colors"
+                <button
+                    type="button"
+                    onClick={handleCancelar}
+                    className="inline-flex items-center justify-center gap-1.5 text-center text-sm font-semibold text-foreground hover:text-primary rounded-lg py-2 px-6 border border-border transition-colors cursor-pointer"
                 >
                     <X className="w-4 h-4" aria-hidden="true" />
                     Cancelar
-                </Link>
+                </button>
             </div>
+
+            {mostrarConfirmCancelar && (
+                <ConfirmDialog
+                    titulo="Descartar cambios"
+                    mensaje="Ingresaste datos en el formulario. Si salís ahora, se van a perder."
+                    textoConfirmar="Descartar y salir"
+                    peligroso
+                    onConfirmar={() => navigate('/mis-publicaciones')}
+                    onCancelar={() => setMostrarConfirmCancelar(false)}
+                />
+            )}
         </form>
     )
 }

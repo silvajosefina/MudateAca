@@ -140,7 +140,7 @@ function VerificacionPropietario() {
 
                         <button
                             type="submit"
-                            className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 transition-colors"
+                            className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer"
                         >
                             <UploadCloud className="w-4 h-4" aria-hidden="true" />
                             Enviar documentación
