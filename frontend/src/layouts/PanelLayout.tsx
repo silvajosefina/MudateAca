@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { LayoutList, LogOut, Plus, ShieldCheck } from 'lucide-react'
+import { LayoutList, LogOut, ShieldCheck } from 'lucide-react'
 import { cerrarSesion, obtenerSesion } from '../mocks/sesion'
+import ToastViewport from '../components/ToastViewport'
 
 interface PanelLayoutProps {
     children: ReactNode
@@ -9,7 +10,6 @@ interface PanelLayoutProps {
 
 const ENLACES = [
     { to: '/mis-publicaciones', label: 'Mis publicaciones', Icono: LayoutList },
-    { to: '/publicaciones/nueva', label: 'Nueva publicación', Icono: Plus },
     { to: '/verificacion', label: 'Verificación', Icono: ShieldCheck },
 ]
 
@@ -43,7 +43,7 @@ function PanelLayout({ children }: PanelLayoutProps) {
                             <Link
                                 key={enlace.to}
                                 to={enlace.to}
-                                className={`inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 transition-colors ${location.pathname === enlace.to
+                                className={`inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 transition-colors cursor-pointer ${location.pathname === enlace.to
                                     ? 'bg-primary text-white'
                                     : 'text-foreground hover:bg-primary-subtle'
                                     }`}
@@ -55,7 +55,7 @@ function PanelLayout({ children }: PanelLayoutProps) {
                         <button
                             type="button"
                             onClick={handleCerrarSesion}
-                            className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 text-foreground hover:bg-primary-subtle transition-colors"
+                            className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 text-foreground hover:bg-primary-subtle transition-colors cursor-pointer"
                         >
                             <LogOut className="w-4 h-4" aria-hidden="true" />
                             Cerrar sesión
@@ -64,6 +64,7 @@ function PanelLayout({ children }: PanelLayoutProps) {
                 </div>
             </header>
             <main className="max-w-5xl mx-auto px-4 py-6 sm:py-8">{children}</main>
+            <ToastViewport />
         </div>
     )
 }

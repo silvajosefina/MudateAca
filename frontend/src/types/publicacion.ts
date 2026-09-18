@@ -22,6 +22,7 @@ export interface Publicacion {
     ambientes: number
     dormitorios: number
     disponibleDesde: string
+    disponibleHasta?: string
     fotos: string[]
     expensas?: number
     serviciosIncluidos: boolean
@@ -30,8 +31,6 @@ export interface Publicacion {
     aptoEstudiantes: boolean
     requisitos?: string
     duracionMinima?: string
-    fechaIngreso?: string
-    fechaSalida?: string
     estado: EstadoPublicacion
     creadaEn: string
     actualizadaEn: string

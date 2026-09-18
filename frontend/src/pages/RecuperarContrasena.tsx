@@ -52,7 +52,7 @@ function RecuperarContrasena() {
 
                     <button
                         type="submit"
-                        className="bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 transition-colors"
+                        className="bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer"
                     >
                         Enviar enlace
                     </button>

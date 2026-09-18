@@ -23,7 +23,30 @@ function PublicacionEditar() {
                     </p>
                     <Link
                         to="/mis-publicaciones"
-                        className="inline-block bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg px-4 py-2 transition-colors"
+                        className="inline-block bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
+                    >
+                        Volver a mis publicaciones
+                    </Link>
+                </div>
+            </PanelLayout>
+        )
+    }
+
+    if (publicacion.estado === 'alquilada') {
+        return (
+            <PanelLayout>
+                <div className="bg-surface rounded-2xl shadow-lg p-6 sm:p-8 text-center">
+                    <h2 className="text-lg font-heading font-semibold text-foreground mb-2">
+                        Publicación alquilada
+                    </h2>
+                    <p className="text-sm text-muted mb-4">
+                        Mientras esté alquilada, sus condiciones comerciales y características no se
+                        pueden editar. Podés reactivarla desde "Mis publicaciones" una vez finalizado el
+                        contrato.
+                    </p>
+                    <Link
+                        to="/mis-publicaciones"
+                        className="inline-block bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
                     >
                         Volver a mis publicaciones
                     </Link>
