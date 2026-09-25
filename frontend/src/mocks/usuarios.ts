@@ -39,3 +39,7 @@ export const MOCK_USUARIOS: Usuario[] = [
         motivoRechazo: 'La documentación cargada no coincide con el domicilio declarado.',
     },
 ]
+
+export function obtenerUsuarioPorId(id: string): Usuario | undefined {
+    return MOCK_USUARIOS.find((u) => u.id === id)
+}

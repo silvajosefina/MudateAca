@@ -3,10 +3,15 @@ import { Link, useNavigate } from 'react-router'
 import { Save, Send, ShieldCheck, X } from 'lucide-react'
 import SubidaFotos from './SubidaFotos'
 import ConfirmDialog from './ConfirmDialog'
+import Mapa from './Mapa'
 import { actualizarPublicacion, crearPublicacion } from '../mocks/publicaciones'
 import { obtenerSesion } from '../mocks/sesion'
 import { mostrarToast } from '../mocks/toast'
+import { formatearMiles, quitarFormatoMiles } from '../utils/formato'
 import type { ModalidadAlquiler, Publicacion, PublicacionFormData, TipoInmueble } from '../types/publicacion'
+
+const LAT_DEFECTO = -35.9666
+const LNG_DEFECTO = -62.7333
 
 interface PublicacionFormProps {
     modo: 'crear' | 'editar'
@@ -33,15 +38,6 @@ function anioExcedeCuatroDigitos(valorFecha: string): boolean {
     return anio.length > 4
 }
 
-function formatearMiles(valor: number): string {
-    return valor ? valor.toLocaleString('es-AR') : ''
-}
-
-function quitarFormatoMiles(valorTexto: string): number {
-    const soloDigitos = valorTexto.replace(/\D/g, '')
-    return soloDigitos ? Number(soloDigitos) : 0
-}
-
 function valorInicial(publicacion?: Publicacion): PublicacionFormData {
     return {
         tipoInmueble: publicacion?.tipoInmueble ?? 'departamento',
@@ -49,6 +45,8 @@ function valorInicial(publicacion?: Publicacion): PublicacionFormData {
         descripcion: publicacion?.descripcion ?? '',
         precio: publicacion?.precio ?? 0,
         ubicacion: publicacion?.ubicacion ?? '',
+        lat: publicacion?.lat ?? LAT_DEFECTO,
+        lng: publicacion?.lng ?? LNG_DEFECTO,
         ambientes: publicacion?.ambientes ?? 1,
         dormitorios: publicacion?.dormitorios ?? 1,
         disponibleDesde: publicacion?.disponibleDesde ?? '',
@@ -159,7 +157,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                 </p>
                 <Link
                     to="/verificacion"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
                 >
                     <ShieldCheck className="w-4 h-4" aria-hidden="true" />
                     Ir a verificación
@@ -303,6 +301,20 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                 </div>
             </div>
 
+            <div>
+                <label className="block text-sm font-semibold text-foreground mb-1">
+                    Ubicación en el mapa (opcional)
+                </label>
+                <p className="text-xs text-muted mb-2">
+                    Hacé clic o arrastrá el marcador para ajustar la ubicación exacta.
+                </p>
+                <Mapa
+                    lat={datos.lat ?? LAT_DEFECTO}
+                    lng={datos.lng ?? LNG_DEFECTO}
+                    onCambiarPosicion={(lat, lng) => setDatos((prev) => ({ ...prev, lat, lng }))}
+                />
+            </div>
+
             {datos.modalidad === 'temporario' && (
                 <div className="bg-surface-hover rounded-lg p-4">
                     <label className="block text-sm font-semibold text-foreground mb-1">Duración mínima</label>
@@ -395,7 +407,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
             <div className="flex flex-col sm:flex-row gap-3 mt-2">
                 <button
                     type="submit"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
                 >
                     {modo === 'crear' ? (
                         <Send className="w-4 h-4" aria-hidden="true" />

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { LayoutList, LogOut, ShieldCheck } from 'lucide-react'
+import { LayoutList, LogOut, Search, ShieldCheck } from 'lucide-react'
 import { cerrarSesion, obtenerSesion } from '../mocks/sesion'
 import ToastViewport from '../components/ToastViewport'
 
@@ -11,6 +11,7 @@ interface PanelLayoutProps {
 const ENLACES = [
     { to: '/mis-publicaciones', label: 'Mis publicaciones', Icono: LayoutList },
     { to: '/verificacion', label: 'Verificación', Icono: ShieldCheck },
+    { to: '/explorar', label: 'Explorar', Icono: Search },
 ]
 
 function PanelLayout({ children }: PanelLayoutProps) {
@@ -44,7 +45,7 @@ function PanelLayout({ children }: PanelLayoutProps) {
                                 key={enlace.to}
                                 to={enlace.to}
                                 className={`inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 transition-colors cursor-pointer ${location.pathname === enlace.to
-                                    ? 'bg-primary text-white'
+                                    ? 'bg-primary text-foreground'
                                     : 'text-foreground hover:bg-primary-subtle'
                                     }`}
                             >

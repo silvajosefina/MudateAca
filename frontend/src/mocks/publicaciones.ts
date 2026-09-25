@@ -4,17 +4,8 @@ function generarId(): string {
     return `pub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-function fotoPlaceholder(etiqueta: string, color: string): string {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="${color}"/><text x="50%" y="50%" font-family="sans-serif" font-size="28" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${etiqueta}</text></svg>`
-    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
-}
-
-function fotosPlaceholder(colorBase: string): string[] {
-    return [
-        fotoPlaceholder('Foto 1', colorBase),
-        fotoPlaceholder('Foto 2', colorBase),
-        fotoPlaceholder('Foto 3', colorBase),
-    ]
+function urlFotoUnsplash(id: string): string {
+    return `https://images.unsplash.com/photo-${id}?w=800&h=600&q=80&auto=format&fit=crop`
 }
 
 const PUBLICACIONES_INICIALES: Publicacion[] = [
@@ -26,10 +17,16 @@ const PUBLICACIONES_INICIALES: Publicacion[] = [
         descripcion: 'Departamento luminoso de 2 ambientes, a 3 cuadras de la plaza principal.',
         precio: 180000,
         ubicacion: 'Centro, Trenque Lauquen',
+        lat: -35.9666,
+        lng: -62.7333,
         ambientes: 2,
         dormitorios: 1,
         disponibleDesde: '2026-10-01',
-        fotos: fotosPlaceholder('#3E6249'),
+        fotos: [
+            urlFotoUnsplash('1738168279272-c08d6dd22002'),
+            urlFotoUnsplash('1666282167632-c613fbeb163c'),
+            urlFotoUnsplash('1682184805271-11671b7ecf4c'),
+        ],
         serviciosIncluidos: false,
         amueblado: false,
         aceptaMascotas: true,
@@ -47,10 +44,16 @@ const PUBLICACIONES_INICIALES: Publicacion[] = [
         precio: 260000,
         expensas: 0,
         ubicacion: 'Barrio Norte, Trenque Lauquen',
+        lat: -35.959,
+        lng: -62.731,
         ambientes: 4,
         dormitorios: 3,
         disponibleDesde: '2026-09-20',
-        fotos: fotosPlaceholder('#8A5A14'),
+        fotos: [
+            urlFotoUnsplash('1628624747186-a941c476b7ef'),
+            urlFotoUnsplash('1605276374104-dee2a0ed3cd6'),
+            urlFotoUnsplash('1721815693498-cc28507c0ba2'),
+        ],
         serviciosIncluidos: false,
         amueblado: false,
         aceptaMascotas: true,
@@ -67,12 +70,18 @@ const PUBLICACIONES_INICIALES: Publicacion[] = [
         descripcion: 'Departamento de 1 ambiente equipado, ideal para estadías cortas.',
         precio: 35000,
         ubicacion: 'Zona Terminal, Trenque Lauquen',
+        lat: -35.97,
+        lng: -62.728,
         ambientes: 1,
         dormitorios: 1,
         disponibleDesde: '2026-09-15',
         disponibleHasta: '2026-12-15',
         duracionMinima: '7 noches',
-        fotos: fotosPlaceholder('#8B5E4A'),
+        fotos: [
+            urlFotoUnsplash('1552558636-f6a8f071c2b3'),
+            urlFotoUnsplash('1612152605347-f93296cb657d'),
+            urlFotoUnsplash('1484154218962-a197022b5858'),
+        ],
         serviciosIncluidos: true,
         amueblado: true,
         aceptaMascotas: false,
@@ -101,6 +110,12 @@ export function obtenerPublicacionesDeUsuario(propietarioId: string): Publicacio
 
 export function obtenerPublicacionPorId(id: string): Publicacion | undefined {
     return leerAlmacenamiento().find((p) => p.id === id)
+}
+
+export function obtenerPublicacionesActivas(): Publicacion[] {
+    return leerAlmacenamiento()
+        .filter((p) => p.estado === 'activa')
+        .sort((a, b) => b.actualizadaEn.localeCompare(a.actualizadaEn))
 }
 
 function moderarAutomaticamente(

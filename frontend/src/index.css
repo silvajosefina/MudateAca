@@ -1,22 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #F7F6F2;
+  --color-background: #FAFAFA;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #EFEDE6;
-  --color-border: #E2DFD5;
-  --color-foreground: #2B2A27;
-  --color-muted: #77746B;
+  --color-surface-hover: #F3F4F6;
+  --color-border: #E5E7EB;
+  --color-foreground: #1F2328;
+  --color-muted: #6B7280;
 
-  --color-primary: #3E6249;
-  --color-primary-hover: #2F4D39;
-  --color-primary-subtle: #DCE8DE;
+  --color-primary: #F78B2D;
+  --color-primary-hover: #E67A1E;
+  --color-primary-subtle: #FDEAD6;
 
-  --color-danger: #9C3823;
-  --color-danger-subtle: #F5DFD8;
+  --color-accent: #7AA802;
+  --color-accent-hover: #628501;
+  --color-accent-subtle: #EEF5D0;
 
-  --color-warning: #8A5A14;
-  --color-warning-subtle: #F3E4C6;
+  --color-danger: #DC2626;
+  --color-danger-subtle: #FEE2E2;
+
+  --color-warning: #E4B600;
+  --color-warning-subtle: #FBF0CC;
+
+  --color-highlight: #C7DB00;
+  --color-highlight-subtle: #F5FAD1;
 
   --font-heading: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;

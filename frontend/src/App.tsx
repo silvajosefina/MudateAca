@@ -6,6 +6,8 @@ import VerificacionPropietario from './pages/VerificacionPropietario'
 import MisPublicaciones from './pages/MisPublicaciones'
 import PublicacionNueva from './pages/PublicacionNueva'
 import PublicacionEditar from './pages/PublicacionEditar'
+import Explorar from './pages/Explorar'
+import PublicacionDetalle from './pages/PublicacionDetalle'
 import RutaPrivada from './components/RutaPrivada'
 
 const ROLES_ANUNCIANTE = ['propietario', 'inmobiliaria'] as const
@@ -17,6 +19,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/registro" element={<Registro />} />
       <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
+      <Route path="/explorar" element={<Explorar />} />
+      <Route path="/explorar/:id" element={<PublicacionDetalle />} />
 
       <Route
         path="/verificacion"

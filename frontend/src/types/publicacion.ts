@@ -19,6 +19,8 @@ export interface Publicacion {
     descripcion: string
     precio: number
     ubicacion: string
+    lat?: number
+    lng?: number
     ambientes: number
     dormitorios: number
     disponibleDesde: string

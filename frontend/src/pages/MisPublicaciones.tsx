@@ -11,6 +11,7 @@ import {
 } from '../mocks/publicaciones'
 import { obtenerSesion } from '../mocks/sesion'
 import { mostrarToast } from '../mocks/toast'
+import { formatearPrecio } from '../utils/formato'
 import type { EstadoPublicacion, Publicacion } from '../types/publicacion'
 
 type Pestana = 'todas' | 'activa' | 'pausada' | 'observada' | 'alquilada' | 'archivada' | 'eliminada'
@@ -28,17 +29,13 @@ const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
 
 const ETIQUETAS_ESTADO: Record<EstadoPublicacion, { texto: string; clase: string }> = {
     pendiente_moderacion: { texto: 'Pendiente de moderación', clase: 'bg-surface-hover text-muted' },
-    activa: { texto: 'Activa', clase: 'bg-primary-subtle text-primary' },
+    activa: { texto: 'Activa', clase: 'bg-accent-subtle text-accent' },
     pausada: { texto: 'Pausada', clase: 'bg-warning-subtle text-warning' },
-    observada: { texto: 'Observada', clase: 'bg-warning text-white' },
+    observada: { texto: 'Observada', clase: 'bg-warning text-foreground' },
     reservada: { texto: 'Reservada', clase: 'bg-surface-hover text-foreground' },
-    alquilada: { texto: 'Alquilada', clase: 'bg-primary text-white' },
+    alquilada: { texto: 'Alquilada', clase: 'bg-accent text-foreground' },
     archivada: { texto: 'Archivada', clase: 'bg-surface-hover text-muted' },
     eliminada: { texto: 'Eliminada', clase: 'bg-danger-subtle text-danger' },
-}
-
-function formatearPrecio(valor: number) {
-    return valor.toLocaleString('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 })
 }
 
 function MisPublicaciones() {
@@ -92,7 +89,7 @@ function MisPublicaciones() {
                 <h2 className="text-lg sm:text-xl font-heading font-semibold text-foreground">Mis publicaciones</h2>
                 <Link
                     to="/publicaciones/nueva"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg px-4 py-2 text-center transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 text-center transition-colors cursor-pointer"
                 >
                     <Plus className="w-4 h-4" aria-hidden="true" />
                     Nueva publicación
@@ -107,7 +104,7 @@ function MisPublicaciones() {
                             type="button"
                             onClick={() => setPestana(p.valor)}
                             className={`text-sm font-semibold rounded-full px-3 py-1.5 transition-colors cursor-pointer ${pestana === p.valor
-                                ? 'bg-primary text-white'
+                                ? 'bg-primary text-foreground'
                                 : 'bg-surface text-foreground border border-border hover:bg-primary-subtle'
                                 }`}
                         >
@@ -122,7 +119,7 @@ function MisPublicaciones() {
                         onClick={() => setVista('lista')}
                         aria-label="Ver como lista"
                         aria-pressed={vista === 'lista'}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'lista' ? 'bg-primary text-white' : 'text-muted hover:bg-surface-hover'
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'lista' ? 'bg-primary text-foreground' : 'text-muted hover:bg-surface-hover'
                             }`}
                     >
                         <List className="w-4 h-4" aria-hidden="true" />
@@ -132,7 +129,7 @@ function MisPublicaciones() {
                         onClick={() => setVista('grilla')}
                         aria-label="Ver como grilla"
                         aria-pressed={vista === 'grilla'}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'grilla' ? 'bg-primary text-white' : 'text-muted hover:bg-surface-hover'
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'grilla' ? 'bg-primary text-foreground' : 'text-muted hover:bg-surface-hover'
                             }`}
                     >
                         <LayoutGrid className="w-4 h-4" aria-hidden="true" />

@@ -50,7 +50,7 @@ function ConfirmDialog({
                     <button
                         type="button"
                         onClick={onConfirmar}
-                        className={`inline-flex items-center justify-center gap-1.5 text-white font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer ${peligroso ? 'bg-danger hover:opacity-90' : 'bg-primary hover:bg-primary-hover'
+                        className={`inline-flex items-center justify-center gap-1.5 font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer ${peligroso ? 'bg-danger text-white hover:opacity-90' : 'bg-primary text-foreground hover:bg-primary-hover'
                             }`}
                     >
                         {textoConfirmar}

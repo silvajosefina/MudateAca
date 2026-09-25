@@ -48,6 +48,8 @@ function Login() {
 
         if (usuario.rol === 'propietario' || usuario.rol === 'inmobiliaria') {
             navigate('/mis-publicaciones')
+        } else if (usuario.rol === 'interesado') {
+            navigate('/explorar')
         } else {
             setRolSinPanel(true)
         }
@@ -101,7 +103,7 @@ function Login() {
 
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-hover text-white font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer"
+                    className="bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer"
                 >
                     Ingresar
                 </button>
@@ -110,6 +112,12 @@ function Login() {
                     ¿No tenés cuenta?{' '}
                     <Link to="/registro" className="text-primary font-semibold">
                         Registrate
+                    </Link>
+                </p>
+
+                <p className="text-sm text-center text-muted">
+                    <Link to="/explorar" className="text-primary font-semibold">
+                        Explorar publicaciones sin registrarte
                     </Link>
                 </p>
             </form>

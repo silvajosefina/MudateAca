@@ -22,7 +22,7 @@ function ToastViewport() {
             {esError ? (
                 <XCircle className="w-5 h-5 text-danger shrink-0" aria-hidden="true" />
             ) : (
-                <CheckCircle2 className="w-5 h-5 text-primary shrink-0" aria-hidden="true" />
+                <CheckCircle2 className="w-5 h-5 text-accent shrink-0" aria-hidden="true" />
             )}
             {toast.mensaje}
         </div>
