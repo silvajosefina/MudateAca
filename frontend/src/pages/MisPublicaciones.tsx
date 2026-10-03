@@ -4,6 +4,7 @@ import { KeyRound, LayoutGrid, List, Pause, Pencil, Play, Plus, Trash2 } from 'l
 import PanelLayout from '../layouts/PanelLayout'
 import PublicacionPreviewModal from '../components/PublicacionPreviewModal'
 import ConfirmDialog from '../components/ConfirmDialog'
+import Paginacion from '../components/Paginacion'
 import {
     cambiarEstadoPublicacion,
     eliminarPublicacion,
@@ -12,27 +13,32 @@ import {
 import { obtenerSesion } from '../mocks/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearPrecio } from '../utils/formato'
-import type { EstadoPublicacion, Publicacion } from '../types/publicacion'
+import { ETIQUETAS_TIPO_INMUEBLE, type EstadoPublicacion, type Publicacion } from '../types/publicacion'
 
-type Pestana = 'todas' | 'activa' | 'pausada' | 'observada' | 'alquilada' | 'archivada' | 'eliminada'
+type Pestana = 'todas' | 'en_revision' | 'activa' | 'pausada' | 'observada' | 'rechazada' | 'alquilada' | 'archivada' | 'eliminada'
 type Vista = 'lista' | 'grilla'
+
+const PUBLICACIONES_POR_PAGINA = 6
 
 const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
     { valor: 'todas', etiqueta: 'Todas' },
+    { valor: 'en_revision', etiqueta: 'En revisión' },
     { valor: 'activa', etiqueta: 'Activas' },
     { valor: 'pausada', etiqueta: 'Pausadas' },
     { valor: 'observada', etiqueta: 'Observadas' },
+    { valor: 'rechazada', etiqueta: 'Rechazadas' },
     { valor: 'alquilada', etiqueta: 'Alquiladas' },
     { valor: 'archivada', etiqueta: 'Archivadas' },
     { valor: 'eliminada', etiqueta: 'Eliminadas' },
 ]
 
 const ETIQUETAS_ESTADO: Record<EstadoPublicacion, { texto: string; clase: string }> = {
-    pendiente_moderacion: { texto: 'Pendiente de moderación', clase: 'bg-surface-hover text-muted' },
+    pendiente_moderacion: { texto: 'En revisión', clase: 'bg-warning-subtle text-warning' },
     activa: { texto: 'Activa', clase: 'bg-accent-subtle text-accent' },
     pausada: { texto: 'Pausada', clase: 'bg-warning-subtle text-warning' },
     observada: { texto: 'Observada', clase: 'bg-warning text-foreground' },
     reservada: { texto: 'Reservada', clase: 'bg-surface-hover text-foreground' },
+    rechazada: { texto: 'Rechazada', clase: 'bg-danger-subtle text-danger' },
     alquilada: { texto: 'Alquilada', clase: 'bg-accent text-foreground' },
     archivada: { texto: 'Archivada', clase: 'bg-surface-hover text-muted' },
     eliminada: { texto: 'Eliminada', clase: 'bg-danger-subtle text-danger' },
@@ -47,6 +53,7 @@ function MisPublicaciones() {
     )
     const [publicacionAVer, setPublicacionAVer] = useState<Publicacion | null>(null)
     const [publicacionAEliminar, setPublicacionAEliminar] = useState<Publicacion | null>(null)
+    const [paginaActual, setPaginaActual] = useState(1)
 
     if (!sesion) return null
 
@@ -80,8 +87,16 @@ function MisPublicaciones() {
         refrescar()
     }
 
-    const listado = pestana === 'todas' ? publicaciones : publicaciones.filter((p) => p.estado === pestana)
+    const estadoDeLaPestana: EstadoPublicacion | null = pestana === 'en_revision' ? 'pendiente_moderacion' : pestana === 'todas' ? null : pestana
+    const listado = estadoDeLaPestana === null ? publicaciones : publicaciones.filter((p) => p.estado === estadoDeLaPestana)
     const etiquetaPestana = PESTANAS.find((p) => p.valor === pestana)?.etiqueta ?? ''
+
+    const totalPaginas = Math.max(1, Math.ceil(listado.length / PUBLICACIONES_POR_PAGINA))
+    const paginaSegura = Math.min(paginaActual, totalPaginas)
+    const listadoPagina = listado.slice(
+        (paginaSegura - 1) * PUBLICACIONES_POR_PAGINA,
+        paginaSegura * PUBLICACIONES_POR_PAGINA,
+    )
 
     return (
         <PanelLayout>
@@ -102,7 +117,10 @@ function MisPublicaciones() {
                         <button
                             key={p.valor}
                             type="button"
-                            onClick={() => setPestana(p.valor)}
+                            onClick={() => {
+                                setPestana(p.valor)
+                                setPaginaActual(1)
+                            }}
                             className={`text-sm font-semibold rounded-full px-3 py-1.5 transition-colors cursor-pointer ${pestana === p.valor
                                 ? 'bg-primary text-foreground'
                                 : 'bg-surface text-foreground border border-border hover:bg-primary-subtle'
@@ -143,7 +161,7 @@ function MisPublicaciones() {
                 </div>
             ) : (
                 <div className={vista === 'grilla' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col gap-4'}>
-                    {listado.map((publicacion) => {
+                    {listadoPagina.map((publicacion) => {
                         const etiqueta = ETIQUETAS_ESTADO[publicacion.estado]
                         const eliminada = publicacion.estado === 'eliminada'
                         const alquilada = publicacion.estado === 'alquilada'
@@ -182,13 +200,18 @@ function MisPublicaciones() {
                                             <span className={`text-xs font-semibold rounded-full px-2.5 py-1 ${etiqueta.clase}`}>
                                                 {etiqueta.texto}
                                             </span>
-                                            <span className="text-xs text-muted capitalize">{publicacion.tipoInmueble}</span>
+                                            <span className="text-xs text-muted">{ETIQUETAS_TIPO_INMUEBLE[publicacion.tipoInmueble]}</span>
                                         </div>
                                         <p className="text-foreground font-heading font-semibold">
                                             {formatearPrecio(publicacion.precio)}
                                         </p>
-                                        <p className="text-sm text-muted line-clamp-2">{publicacion.descripcion}</p>
+                                        <p className="text-sm text-muted line-clamp-2 whitespace-pre-line">{publicacion.descripcion}</p>
                                         <p className="text-xs text-muted">{publicacion.ubicacion}</p>
+                                        {publicacion.estado === 'rechazada' && publicacion.motivoRechazoVerificacion && (
+                                            <p className="text-xs text-danger bg-danger-subtle border border-danger/20 rounded-lg px-2 py-1 mt-1">
+                                                Motivo del rechazo: {publicacion.motivoRechazoVerificacion}
+                                            </p>
+                                        )}
                                     </div>
                                 </button>
 
@@ -255,6 +278,8 @@ function MisPublicaciones() {
                 </div>
             )}
 
+            <Paginacion paginaActual={paginaSegura} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
+
             {publicacionAVer && (
                 <PublicacionPreviewModal
                     publicacion={publicacionAVer}
@@ -268,6 +293,7 @@ function MisPublicaciones() {
                     mensaje="¿Eliminar esta publicación? Dejará de estar disponible públicamente."
                     textoConfirmar="Eliminar"
                     peligroso
+                    colorConfirmar="primary"
                     onConfirmar={confirmarEliminar}
                     onCancelar={() => setPublicacionAEliminar(null)}
                 />

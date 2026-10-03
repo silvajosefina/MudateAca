@@ -7,6 +7,8 @@ export function iniciarSesion(usuario: Usuario) {
         id: usuario.id,
         nombre: usuario.nombre,
         apellido: usuario.apellido,
+        nombreUsuario: usuario.nombreUsuario,
+        celular: usuario.celular,
         correo: usuario.correo,
         rol: usuario.rol,
         estadoVerificacion: usuario.estadoVerificacion,

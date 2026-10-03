@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
-import { BedDouble, DoorOpen, MapPin, RotateCcw, Search, SlidersHorizontal, User } from 'lucide-react'
+import { BookmarkPlus, Heart, Home, MapPin, RotateCcw, ShieldCheck, SlidersHorizontal } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
+import TarjetaPublicacion from '../components/TarjetaPublicacion'
+import Paginacion from '../components/Paginacion'
 import { obtenerPublicacionesActivas } from '../mocks/publicaciones'
-import { obtenerUsuarioPorId } from '../mocks/usuarios'
-import { formatearMiles, formatearPrecio, quitarFormatoMiles } from '../utils/formato'
+import { crearBusqueda } from '../mocks/busquedasActivas'
+import { obtenerSesion } from '../mocks/sesion'
+import { mostrarToast } from '../mocks/toast'
+import { formatearMiles, quitarFormatoMiles } from '../utils/formato'
 import type { ModalidadAlquiler, Publicacion, TipoInmueble } from '../types/publicacion'
 
 interface Filtros {
@@ -40,6 +43,7 @@ const FILTROS_INICIALES: Filtros = {
 }
 
 const OPCIONES_MINIMO = [0, 1, 2, 3, 4, 5]
+const RESULTADOS_POR_PAGINA = 9
 
 function coincideConFiltros(publicacion: Publicacion, filtros: Filtros): boolean {
     if (
@@ -76,11 +80,30 @@ function coincideConFiltros(publicacion: Publicacion, filtros: Filtros): boolean
 }
 
 function Explorar() {
+    const sesion = obtenerSesion()
     const [publicaciones] = useState<Publicacion[]>(() => obtenerPublicacionesActivas())
     const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES)
+    const [nombreBusqueda, setNombreBusqueda] = useState('')
+    const [paginaActual, setPaginaActual] = useState(1)
+    const [, forzarActualizacion] = useState(0)
 
     function actualizarFiltro<K extends keyof Filtros>(campo: K, valor: Filtros[K]) {
         setFiltros((prev) => ({ ...prev, [campo]: valor }))
+        setPaginaActual(1)
+    }
+
+    function handleGuardarBusqueda() {
+        if (!sesion) return
+        if (!hayFiltrosActivos) {
+            mostrarToast('Aplicá al menos un filtro antes de guardar la búsqueda.', 'error')
+            return
+        }
+        crearBusqueda(
+            { ...filtros, nombre: nombreBusqueda.trim() || 'Búsqueda sin nombre' },
+            sesion.id,
+        )
+        mostrarToast('Búsqueda guardada en "Mis búsquedas".')
+        setNombreBusqueda('')
     }
 
     const resultados = useMemo(
@@ -88,26 +111,90 @@ function Explorar() {
         [publicaciones, filtros],
     )
 
+    const hayFiltrosActivos = JSON.stringify(filtros) !== JSON.stringify(FILTROS_INICIALES)
+
+    const totalPaginas = Math.max(1, Math.ceil(resultados.length / RESULTADOS_POR_PAGINA))
+    const paginaSegura = Math.min(paginaActual, totalPaginas)
+    const resultadosPagina = resultados.slice(
+        (paginaSegura - 1) * RESULTADOS_POR_PAGINA,
+        paginaSegura * RESULTADOS_POR_PAGINA,
+    )
+
     return (
         <PublicoLayout>
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-highlight px-6 py-8 sm:px-10 sm:py-10 mb-6 text-foreground">
-                <Search className="absolute -right-4 -bottom-6 w-32 h-32 text-foreground/10" aria-hidden="true" />
-                <h1 className="text-2xl sm:text-3xl font-heading font-bold">Encontrá tu próximo hogar</h1>
-                <p className="text-sm sm:text-base text-foreground/75 mt-1.5 max-w-md">
-                    Explorá publicaciones activas de propietarios e inmobiliarias y filtrá por lo que
-                    más te importa.
-                </p>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-highlight px-6 py-10 sm:px-10 sm:py-14 text-foreground">
+                <div className="grid grid-cols-1 sm:grid-cols-[1.3fr_1fr] gap-8 items-center">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-foreground/70 mb-2">
+                            Alquileres en Trenque Lauquen
+                        </p>
+                        <h1 className="text-3xl sm:text-4xl font-heading font-bold leading-tight">
+                            Tu próximo hogar
+                            <br />
+                            está acá.
+                        </h1>
+                        <p className="text-sm sm:text-base text-foreground/80 mt-3 max-w-md">
+                            Explorá publicaciones activas de propietarios e inmobiliarias, sin avisos
+                            engañosos y con la información que te ayuda a decidir.
+                        </p>
+
+                        <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-sm">
+                            <span className="inline-flex items-center gap-1.5 font-semibold">
+                                <Home className="w-4 h-4" aria-hidden="true" />
+                                {publicaciones.length} publicaciones activas
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 font-semibold">
+                                <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+                                Publicaciones moderadas
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="relative hidden sm:flex items-center justify-center h-48">
+                        <div className="absolute w-40 h-40 rounded-full bg-foreground/10" aria-hidden="true" />
+                        <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-surface shadow-xl">
+                            <Home className="w-11 h-11 text-primary" aria-hidden="true" />
+                        </div>
+                        <div className="absolute top-2 right-6 inline-flex items-center justify-center w-11 h-11 rounded-full bg-surface shadow-lg">
+                            <MapPin className="w-5 h-5 text-accent" aria-hidden="true" />
+                        </div>
+                        <div className="absolute bottom-0 left-4 inline-flex items-center justify-center w-11 h-11 rounded-full bg-surface shadow-lg">
+                            <Heart className="w-5 h-5 text-primary" aria-hidden="true" />
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="bg-surface rounded-2xl shadow-lg p-4 sm:p-5 mb-6 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
-                        Filtros de búsqueda
-                    </h2>
+            <div className="relative z-10 -mt-6 sm:-mt-8 bg-surface rounded-2xl shadow-xl border border-border/60 p-4 sm:p-5 mb-6 flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex gap-1.5 rounded-lg bg-surface-hover p-1">
+                        {(
+                            [
+                                { valor: 'todas', etiqueta: 'Todas' },
+                                { valor: 'residencial', etiqueta: 'Residencial' },
+                                { valor: 'temporario', etiqueta: 'Temporario' },
+                            ] as const
+                        ).map((opcion) => (
+                            <button
+                                key={opcion.valor}
+                                type="button"
+                                onClick={() => actualizarFiltro('modalidad', opcion.valor)}
+                                aria-pressed={filtros.modalidad === opcion.valor}
+                                className={`text-sm font-semibold rounded-md px-3 py-1.5 transition-colors cursor-pointer ${filtros.modalidad === opcion.valor
+                                    ? 'bg-primary text-foreground shadow'
+                                    : 'text-muted hover:text-primary'
+                                    }`}
+                            >
+                                {opcion.etiqueta}
+                            </button>
+                        ))}
+                    </div>
                     <button
                         type="button"
-                        onClick={() => setFiltros(FILTROS_INICIALES)}
+                        onClick={() => {
+                            setFiltros(FILTROS_INICIALES)
+                            setPaginaActual(1)
+                        }}
                         className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary transition-colors cursor-pointer"
                     >
                         <RotateCcw className="w-4 h-4" aria-hidden="true" />
@@ -115,7 +202,12 @@ function Explorar() {
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground -mb-1">
+                    <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+                    Más filtros
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-semibold text-foreground mb-1">Ubicación o zona</label>
                         <input
@@ -125,19 +217,6 @@ function Explorar() {
                             onChange={(e) => actualizarFiltro('ubicacion', e.target.value)}
                             className="w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                         />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-semibold text-foreground mb-1">Modalidad</label>
-                        <select
-                            value={filtros.modalidad}
-                            onChange={(e) => actualizarFiltro('modalidad', e.target.value as Filtros['modalidad'])}
-                            className="custom-select w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                        >
-                            <option value="todas">Todas</option>
-                            <option value="residencial">Residencial</option>
-                            <option value="temporario">Temporario</option>
-                        </select>
                     </div>
 
                     <div>
@@ -274,72 +353,47 @@ function Explorar() {
                         Apto estudiantes
                     </label>
                 </div>
+
+                {sesion?.rol === 'interesado' && (
+                    <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t border-border">
+                        <input
+                            type="text"
+                            placeholder="Nombre para esta búsqueda (opcional)"
+                            value={nombreBusqueda}
+                            onChange={(e) => setNombreBusqueda(e.target.value)}
+                            className="flex-1 border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleGuardarBusqueda}
+                            className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                            <BookmarkPlus className="w-4 h-4" aria-hidden="true" />
+                            Guardar esta búsqueda
+                        </button>
+                    </div>
+                )}
             </div>
 
-            <p className="text-sm text-muted mb-4">
-                {resultados.length === 0
-                    ? 'No se encontraron publicaciones con esos filtros.'
-                    : `${resultados.length} publicación(es) encontrada(s).`}
-            </p>
+            <h2 className="text-sm font-semibold text-foreground mb-4">
+                {hayFiltrosActivos
+                    ? resultados.length === 0
+                        ? 'No se encontraron publicaciones con esos filtros.'
+                        : `${resultados.length} publicación(es) encontrada(s).`
+                    : 'Publicaciones disponibles'}
+            </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {resultados.map((publicacion) => {
-                    const publicador = obtenerUsuarioPorId(publicacion.propietarioId)
-
-                    return (
-                        <Link
-                            key={publicacion.id}
-                            to={`/explorar/${publicacion.id}`}
-                            className="bg-surface rounded-2xl shadow-lg overflow-hidden flex flex-col cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all"
-                        >
-                            <div className="h-40 bg-surface-hover flex items-center justify-center shrink-0">
-                                {publicacion.fotos[0] ? (
-                                    <img
-                                        src={publicacion.fotos[0]}
-                                        alt={publicacion.descripcion}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <span className="text-xs text-muted">Sin foto</span>
-                                )}
-                            </div>
-                            <div className="p-4 flex flex-col gap-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-xs font-semibold rounded-full px-2.5 py-1 bg-primary-subtle text-primary capitalize">
-                                        {publicacion.tipoInmueble}
-                                    </span>
-                                    <span className="text-xs text-muted capitalize">{publicacion.modalidad}</span>
-                                </div>
-                                <p className="text-foreground font-heading font-semibold">
-                                    {formatearPrecio(publicacion.precio)}
-                                </p>
-                                <p className="text-sm text-muted line-clamp-2">{publicacion.descripcion}</p>
-                                <p className="text-xs text-muted flex items-center gap-1">
-                                    <MapPin className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                                    {publicacion.ubicacion}
-                                </p>
-                                <div className="flex items-center gap-3 text-xs text-muted mt-1">
-                                    <span className="flex items-center gap-1">
-                                        <DoorOpen className="w-3.5 h-3.5" aria-hidden="true" />
-                                        {publicacion.ambientes} amb.
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <BedDouble className="w-3.5 h-3.5" aria-hidden="true" />
-                                        {publicacion.dormitorios} dorm.
-                                    </span>
-                                </div>
-                                {publicador && (
-                                    <p className="text-xs text-muted flex items-center gap-1 mt-1 pt-2 border-t border-border">
-                                        <User className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                                        {publicador.nombre} {publicador.apellido} ·{' '}
-                                        {publicador.rol === 'inmobiliaria' ? 'Inmobiliaria' : 'Propietario'}
-                                    </p>
-                                )}
-                            </div>
-                        </Link>
-                    )
-                })}
+                {resultadosPagina.map((publicacion) => (
+                    <TarjetaPublicacion
+                        key={publicacion.id}
+                        publicacion={publicacion}
+                        onFavoritoCambiado={() => forzarActualizacion((n) => n + 1)}
+                    />
+                ))}
             </div>
+
+            <Paginacion paginaActual={paginaSegura} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
         </PublicoLayout>
     )
 }

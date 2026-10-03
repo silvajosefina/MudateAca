@@ -28,7 +28,7 @@ function Mapa({ lat, lng, onCambiarPosicion, alturaClase = 'h-64' }: MapaProps) 
     const interactivo = Boolean(onCambiarPosicion)
 
     return (
-        <div className={`${alturaClase} w-full rounded-lg overflow-hidden border border-border`}>
+        <div className={`${alturaClase} w-full rounded-lg overflow-hidden border border-border isolate`}>
             <MapContainer
                 center={[lat, lng]}
                 zoom={15}

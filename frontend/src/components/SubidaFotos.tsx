@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { ImagePlus, X } from 'lucide-react'
 
 interface SubidaFotosProps {
@@ -7,6 +7,9 @@ interface SubidaFotosProps {
     minimo?: number
     error?: string
 }
+
+const TIPOS_ADMITIDOS = ['image/jpeg', 'image/jpg', 'image/webp', 'image/png']
+const MENSAJE_FORMATO_INVALIDO = 'Formato no admitido. Subí fotos en JPG, JPEG, WEBP o PNG.'
 
 function leerComoDataUrl(archivo: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -19,10 +22,21 @@ function leerComoDataUrl(archivo: File): Promise<string> {
 
 function SubidaFotos({ fotos, onChange, minimo = 3, error }: SubidaFotosProps) {
     const inputRef = useRef<HTMLInputElement>(null)
+    const [errorFormato, setErrorFormato] = useState('')
 
     async function handleArchivos(archivos: FileList | null) {
         if (!archivos || archivos.length === 0) return
-        const nuevas = await Promise.all(Array.from(archivos).map(leerComoDataUrl))
+
+        const seleccionados = Array.from(archivos)
+        const validos = seleccionados.filter((archivo) => TIPOS_ADMITIDOS.includes(archivo.type))
+
+        setErrorFormato(validos.length < seleccionados.length ? MENSAJE_FORMATO_INVALIDO : '')
+        if (validos.length === 0) {
+            if (inputRef.current) inputRef.current.value = ''
+            return
+        }
+
+        const nuevas = await Promise.all(validos.map(leerComoDataUrl))
         onChange([...fotos, ...nuevas])
         if (inputRef.current) inputRef.current.value = ''
     }
@@ -49,7 +63,8 @@ function SubidaFotos({ fotos, onChange, minimo = 3, error }: SubidaFotosProps) {
                 ))}
 
                 <label
-                    className={`w-24 h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 text-xs text-muted cursor-pointer hover:border-primary hover:text-primary transition-colors ${error ? 'border-danger text-danger' : 'border-border'
+                    title="Formatos admitidos: JPG, JPEG, WEBP o PNG"
+                    className={`w-24 h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 text-xs text-muted cursor-pointer hover:border-primary hover:text-primary transition-colors ${error || errorFormato ? 'border-danger text-danger' : 'border-border'
                         }`}
                 >
                     <ImagePlus className="w-5 h-5" aria-hidden="true" />
@@ -57,7 +72,7 @@ function SubidaFotos({ fotos, onChange, minimo = 3, error }: SubidaFotosProps) {
                     <input
                         ref={inputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/webp,image/png,.jpg,.jpeg,.webp,.png"
                         multiple
                         className="hidden"
                         onChange={(e) => handleArchivos(e.target.files)}
@@ -65,8 +80,8 @@ function SubidaFotos({ fotos, onChange, minimo = 3, error }: SubidaFotosProps) {
                 </label>
             </div>
 
-            <p className={`text-xs mt-2 ${error ? 'text-danger' : 'text-muted'}`}>
-                {error ?? `Subí como mínimo ${minimo} fotografías (${fotos.length}/${minimo}).`}
+            <p className={`text-xs mt-2 ${error || errorFormato ? 'text-danger' : 'text-muted'}`}>
+                {errorFormato || error || `Subí como mínimo ${minimo} fotografías (${fotos.length}/${minimo}). Formatos admitidos: JPG, JPEG, WEBP o PNG.`}
             </p>
         </div>
     )

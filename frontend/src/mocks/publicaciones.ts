@@ -1,4 +1,15 @@
 import type { EstadoPublicacion, Publicacion, PublicacionFormData } from '../types/publicacion'
+import { esFavorito } from './favoritos'
+import { crearNotificacion } from './notificaciones'
+import { obtenerSesion } from './sesion'
+import { mostrarToast } from './toast'
+
+const ETIQUETAS_ESTADO_NOTIFICACION: Partial<Record<EstadoPublicacion, string>> = {
+    alquilada: 'fue marcada como alquilada',
+    pausada: 'fue pausada',
+    activa: 'está nuevamente disponible',
+    archivada: 'ya no está disponible',
+}
 
 function generarId(): string {
     return `pub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -90,6 +101,58 @@ const PUBLICACIONES_INICIALES: Publicacion[] = [
         creadaEn: '2026-09-02T15:00:00.000Z',
         actualizadaEn: '2026-09-02T15:00:00.000Z',
     },
+    {
+        id: 'pub_seed_4',
+        propietarioId: 'u2',
+        tipoInmueble: 'habitacion',
+        modalidad: 'residencial',
+        descripcion: 'Habitación en casa compartida, ambiente tranquilo.',
+        precio: 90000,
+        ubicacion: 'Zona Norte, Trenque Lauquen',
+        lat: -35.955,
+        lng: -62.735,
+        ambientes: 1,
+        dormitorios: 1,
+        disponibleDesde: '2026-09-10',
+        fotos: [
+            urlFotoUnsplash('1502672260266-1c1ef2d93688'),
+            urlFotoUnsplash('1595526114035-0d45ed16cfbf'),
+            urlFotoUnsplash('1522708323590-d24dbb6b0267'),
+        ],
+        serviciosIncluidos: true,
+        amueblado: true,
+        aceptaMascotas: false,
+        aptoEstudiantes: true,
+        estado: 'observada',
+        creadaEn: '2026-09-08T11:00:00.000Z',
+        actualizadaEn: '2026-09-08T11:00:00.000Z',
+    },
+    {
+        id: 'pub_seed_5',
+        propietarioId: 'u2',
+        tipoInmueble: 'departamento',
+        modalidad: 'residencial',
+        descripcion: 'Departamento de 3 ambientes, alquilado y ya fuera de disponibilidad.',
+        precio: 210000,
+        ubicacion: 'Centro, Trenque Lauquen',
+        lat: -35.968,
+        lng: -62.73,
+        ambientes: 3,
+        dormitorios: 2,
+        disponibleDesde: '2026-07-01',
+        fotos: [
+            urlFotoUnsplash('1502672023488-70e25813eb80'),
+            urlFotoUnsplash('1560448204-e02f11c3d0e2'),
+            urlFotoUnsplash('1560449017-7e3d3c1cd9e6'),
+        ],
+        serviciosIncluidos: false,
+        amueblado: false,
+        aceptaMascotas: false,
+        aptoEstudiantes: false,
+        estado: 'archivada',
+        creadaEn: '2026-07-01T09:00:00.000Z',
+        actualizadaEn: '2026-08-05T09:00:00.000Z',
+    },
 ]
 
 let publicacionesEnMemoria: Publicacion[] = PUBLICACIONES_INICIALES
@@ -121,6 +184,7 @@ export function obtenerPublicacionesActivas(): Publicacion[] {
 function moderarAutomaticamente(
     datos: PublicacionFormData,
     propietarioId: string,
+    forzarRevision: boolean,
     idAIgnorar?: string,
 ): EstadoPublicacion {
     const camposCompletos =
@@ -146,17 +210,18 @@ function moderarAutomaticamente(
     )
     if (duplicada) return 'observada'
 
-    return 'activa'
+    return forzarRevision ? 'pendiente_moderacion' : 'activa'
 }
 
 export function crearPublicacion(datos: PublicacionFormData, propietarioId: string): Publicacion {
     const lista = leerAlmacenamiento()
     const ahora = new Date().toISOString()
+    // Toda publicación nueva pasa por revisión administrativa antes de quedar activa (RF-06).
     const nueva: Publicacion = {
         ...datos,
         id: generarId(),
         propietarioId,
-        estado: moderarAutomaticamente(datos, propietarioId),
+        estado: moderarAutomaticamente(datos, propietarioId, true),
         creadaEn: ahora,
         actualizadaEn: ahora,
     }
@@ -173,15 +238,53 @@ export function actualizarPublicacion(
     const indice = lista.findIndex((p) => p.id === id && p.propietarioId === propietarioId)
     if (indice === -1) return undefined
 
+    const anterior = lista[indice]
+    const forzarRevision = anterior.estado === 'pendiente_moderacion' || anterior.estado === 'rechazada'
+
     const actualizada: Publicacion = {
-        ...lista[indice],
+        ...anterior,
         ...datos,
-        estado: moderarAutomaticamente(datos, propietarioId, id),
+        estado: moderarAutomaticamente(datos, propietarioId, forzarRevision, id),
+        motivoRechazoVerificacion: forzarRevision ? undefined : anterior.motivoRechazoVerificacion,
         actualizadaEn: new Date().toISOString(),
     }
     lista[indice] = actualizada
     guardarAlmacenamiento(lista)
     return actualizada
+}
+
+export function obtenerPublicacionesEnRevision(): Publicacion[] {
+    return leerAlmacenamiento()
+        .filter((p) => p.estado === 'pendiente_moderacion')
+        .sort((a, b) => a.creadaEn.localeCompare(b.creadaEn))
+}
+
+export function aprobarVerificacionPublicacion(id: string): void {
+    const lista = leerAlmacenamiento()
+    const indice = lista.findIndex((p) => p.id === id)
+    if (indice === -1) return
+    lista[indice] = {
+        ...lista[indice],
+        estado: 'activa',
+        motivoRechazoVerificacion: undefined,
+        actualizadaEn: new Date().toISOString(),
+    }
+    guardarAlmacenamiento(lista)
+    crearNotificacion(lista[indice].propietarioId, 'Tu publicación fue verificada y ya está activa.', 'exito')
+}
+
+export function rechazarVerificacionPublicacion(id: string, motivo: string): void {
+    const lista = leerAlmacenamiento()
+    const indice = lista.findIndex((p) => p.id === id)
+    if (indice === -1) return
+    lista[indice] = {
+        ...lista[indice],
+        estado: 'rechazada',
+        motivoRechazoVerificacion: motivo,
+        actualizadaEn: new Date().toISOString(),
+    }
+    guardarAlmacenamiento(lista)
+    crearNotificacion(lista[indice].propietarioId, `Tu publicación fue rechazada. Motivo: ${motivo}`, 'error')
 }
 
 export function cambiarEstadoPublicacion(
@@ -194,6 +297,12 @@ export function cambiarEstadoPublicacion(
     if (indice === -1) return
     lista[indice] = { ...lista[indice], estado: nuevoEstado, actualizadaEn: new Date().toISOString() }
     guardarAlmacenamiento(lista)
+
+    const sesion = obtenerSesion()
+    const mensaje = ETIQUETAS_ESTADO_NOTIFICACION[nuevoEstado]
+    if (sesion && mensaje && esFavorito(sesion.id, id)) {
+        mostrarToast(`Una publicación que tenés en favoritos ${mensaje}.`)
+    }
 }
 
 export function eliminarPublicacion(id: string, propietarioId: string): void {

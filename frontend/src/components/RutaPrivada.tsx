@@ -16,7 +16,7 @@ function RutaPrivada({ children, rolesPermitidos }: RutaPrivadaProps) {
     }
 
     if (rolesPermitidos && !rolesPermitidos.includes(sesion.rol)) {
-        return <Navigate to="/login" replace />
+        return <Navigate to="/explorar" replace />
     }
 
     return <>{children}</>

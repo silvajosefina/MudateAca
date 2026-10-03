@@ -1,6 +1,7 @@
 import { useState, type SubmitEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import AuthLayout from '../layouts/AuthLayout'
+import InputContrasena from '../components/InputContrasena'
 import { MOCK_USUARIOS } from '../mocks/usuarios'
 import { iniciarSesion } from '../mocks/sesion'
 
@@ -50,6 +51,8 @@ function Login() {
             navigate('/mis-publicaciones')
         } else if (usuario.rol === 'interesado') {
             navigate('/explorar')
+        } else if (usuario.rol === 'administrador') {
+            navigate('/panel-administracion')
         } else {
             setRolSinPanel(true)
         }
@@ -74,13 +77,11 @@ function Login() {
                 </div>
 
                 <div>
-                    <input
-                        type="password"
-                        placeholder="Contraseña"
+                    <InputContrasena
                         value={contrasena}
-                        onChange={(e) => setContrasena(e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${contrasenaConError ? 'border-danger' : 'border-border'
-                            }`}
+                        onChange={setContrasena}
+                        autoComplete="current-password"
+                        conError={contrasenaConError}
                     />
                     {errores.contrasena && <p className="text-xs text-danger mt-1">{errores.contrasena}</p>}
                     {errores.credencialesInvalidas && (

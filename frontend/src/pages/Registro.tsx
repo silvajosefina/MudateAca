@@ -1,16 +1,21 @@
 import { useState, type SubmitEvent } from 'react'
 import { Link } from 'react-router'
 import AuthLayout from '../layouts/AuthLayout'
+import InputContrasena from '../components/InputContrasena'
 import { MOCK_USUARIOS } from '../mocks/usuarios'
 
 type Rol = 'interesado' | 'propietario' | 'inmobiliaria'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
+const USUARIO_REGEX = /^[a-zA-Z0-9._]{3,20}$/
+const CELULAR_REGEX = /^[0-9+\s-]{8,20}$/
 
 interface Errores {
     nombre?: string
     apellido?: string
+    nombreUsuario?: string
+    celular?: string
     correo?: string
     contrasena?: string
 }
@@ -18,6 +23,8 @@ interface Errores {
 function Registro() {
     const [nombre, setNombre] = useState('')
     const [apellido, setApellido] = useState('')
+    const [nombreUsuario, setNombreUsuario] = useState('')
+    const [celular, setCelular] = useState('')
     const [correo, setCorreo] = useState('')
     const [contrasena, setContrasena] = useState('')
     const [rol, setRol] = useState<Rol>('interesado')
@@ -29,6 +36,20 @@ function Registro() {
 
         if (!nombre) nuevosErrores.nombre = 'Ingresá tu nombre.'
         if (!apellido) nuevosErrores.apellido = 'Ingresá tu apellido.'
+
+        if (!nombreUsuario) {
+            nuevosErrores.nombreUsuario = 'Elegí un nombre de usuario.'
+        } else if (!USUARIO_REGEX.test(nombreUsuario)) {
+            nuevosErrores.nombreUsuario = 'Usá entre 3 y 20 letras, números, puntos o guiones bajos.'
+        } else if (MOCK_USUARIOS.some((u) => u.nombreUsuario.toLowerCase() === nombreUsuario.toLowerCase())) {
+            nuevosErrores.nombreUsuario = 'Ese nombre de usuario ya está en uso.'
+        }
+
+        if (!celular) {
+            nuevosErrores.celular = 'Ingresá tu número de celular.'
+        } else if (!CELULAR_REGEX.test(celular)) {
+            nuevosErrores.celular = 'Ingresá un número de celular válido.'
+        }
 
         if (!correo) {
             nuevosErrores.correo = 'Ingresá tu correo electrónico.'
@@ -47,7 +68,7 @@ function Registro() {
         setErrores(nuevosErrores)
         if (Object.keys(nuevosErrores).length > 0) return
 
-        console.log({ nombre, apellido, correo, contrasena, rol })
+        console.log({ nombre, apellido, nombreUsuario, celular, correo, contrasena, rol })
     }
 
     return (
@@ -79,6 +100,32 @@ function Registro() {
                     </div>
                 </div>
 
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-3">
+                    <div className="w-full sm:w-1/2">
+                        <input
+                            type="text"
+                            placeholder="Nombre de usuario"
+                            value={nombreUsuario}
+                            onChange={(e) => setNombreUsuario(e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.nombreUsuario ? 'border-danger' : 'border-border'
+                                }`}
+                        />
+                        {errores.nombreUsuario && <p className="text-xs text-danger mt-1">{errores.nombreUsuario}</p>}
+                    </div>
+
+                    <div className="w-full sm:w-1/2">
+                        <input
+                            type="tel"
+                            placeholder="Celular"
+                            value={celular}
+                            onChange={(e) => setCelular(e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.celular ? 'border-danger' : 'border-border'
+                                }`}
+                        />
+                        {errores.celular && <p className="text-xs text-danger mt-1">{errores.celular}</p>}
+                    </div>
+                </div>
+
                 <div>
                     <input
                         type="email"
@@ -92,13 +139,11 @@ function Registro() {
                 </div>
 
                 <div>
-                    <input
-                        type="password"
-                        placeholder="Contraseña"
+                    <InputContrasena
                         value={contrasena}
-                        onChange={(e) => setContrasena(e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.contrasena ? 'border-danger' : 'border-border'
-                            }`}
+                        onChange={setContrasena}
+                        autoComplete="new-password"
+                        conError={Boolean(errores.contrasena)}
                     />
                     <p className={`text-xs mt-1 ${errores.contrasena ? 'text-danger' : 'text-muted'}`}>
                         Debe tener al menos 8 caracteres, con una mayúscula, una minúscula y un número.

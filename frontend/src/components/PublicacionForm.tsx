@@ -1,5 +1,5 @@
-import { useRef, useState, type SubmitEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
+import { useNavigate } from 'react-router'
 import { Save, Send, ShieldCheck, X } from 'lucide-react'
 import SubidaFotos from './SubidaFotos'
 import ConfirmDialog from './ConfirmDialog'
@@ -8,10 +8,29 @@ import { actualizarPublicacion, crearPublicacion } from '../mocks/publicaciones'
 import { obtenerSesion } from '../mocks/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearMiles, quitarFormatoMiles } from '../utils/formato'
-import type { ModalidadAlquiler, Publicacion, PublicacionFormData, TipoInmueble } from '../types/publicacion'
+import type {
+    ModalidadAlquiler,
+    Publicacion,
+    PublicacionFormData,
+    TipoDocumentoVerificacionPublicacion,
+    TipoInmueble,
+} from '../types/publicacion'
 
 const LAT_DEFECTO = -35.9666
 const LNG_DEFECTO = -62.7333
+const EXTENSIONES_ADMITIDAS = ['application/pdf', 'image/jpeg', 'image/png']
+
+const OPCIONES_DOCUMENTO_PROPIETARIO: { valor: TipoDocumentoVerificacionPublicacion; etiqueta: string }[] = [
+    { valor: 'factura_servicio', etiqueta: 'Factura de un servicio asociada al domicilio' },
+    { valor: 'impuesto', etiqueta: 'Impuesto correspondiente al inmueble' },
+    { valor: 'documentacion_propiedad', etiqueta: 'Documentación de propiedad' },
+]
+
+const OPCIONES_DOCUMENTO_INMOBILIARIA: { valor: TipoDocumentoVerificacionPublicacion; etiqueta: string }[] = [
+    { valor: 'matricula_corredor', etiqueta: 'Matrícula de corredor/a inmobiliario/a' },
+    { valor: 'constancia_inscripcion', etiqueta: 'Constancia de inscripción o CUIT de la inmobiliaria' },
+    { valor: 'poder_representacion', etiqueta: 'Poder o autorización de representación del propietario' },
+]
 
 interface PublicacionFormProps {
     modo: 'crear' | 'editar'
@@ -28,6 +47,7 @@ interface Errores {
     disponibleHasta?: string
     duracionMinima?: string
     fotos?: string
+    archivoVerificacion?: string
 }
 
 const MENSAJE_ANIO_INVALIDO = 'El año de la fecha no puede tener más de 4 dígitos.'
@@ -59,6 +79,8 @@ function valorInicial(publicacion?: Publicacion): PublicacionFormData {
         aptoEstudiantes: publicacion?.aptoEstudiantes ?? false,
         requisitos: publicacion?.requisitos ?? '',
         duracionMinima: publicacion?.duracionMinima ?? '',
+        tipoDocumentoVerificacion: publicacion?.tipoDocumentoVerificacion,
+        nombreArchivoVerificacion: publicacion?.nombreArchivoVerificacion,
     }
 }
 
@@ -72,10 +94,30 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
 
     if (!sesion) return null
 
-    const puedePublicar = sesion.estadoVerificacion === 'verificado'
+    const esInmobiliaria = sesion.rol === 'inmobiliaria'
+    const opcionesDocumento = esInmobiliaria ? OPCIONES_DOCUMENTO_INMOBILIARIA : OPCIONES_DOCUMENTO_PROPIETARIO
+    const requiereDocumentacion =
+        modo === 'crear' || publicacionExistente?.estado === 'pendiente_moderacion' || publicacionExistente?.estado === 'rechazada'
 
     function actualizarCampo<K extends keyof PublicacionFormData>(campo: K, valor: PublicacionFormData[K]) {
         setDatos((prev) => ({ ...prev, [campo]: valor }))
+    }
+
+    function handleArchivoVerificacion(e: ChangeEvent<HTMLInputElement>) {
+        const seleccionado = e.target.files?.[0]
+        if (!seleccionado) return
+
+        if (!EXTENSIONES_ADMITIDAS.includes(seleccionado.type)) {
+            setErrores((prev) => ({ ...prev, archivoVerificacion: 'Formato no admitido. Subí un archivo PDF, JPG, JPEG o PNG.' }))
+            return
+        }
+
+        setErrores((prev) => {
+            const siguiente = { ...prev }
+            delete siguiente.archivoVerificacion
+            return siguiente
+        })
+        actualizarCampo('nombreArchivoVerificacion', seleccionado.name)
     }
 
     function manejarCambioFecha(campo: 'disponibleDesde' | 'disponibleHasta', valor: string) {
@@ -105,7 +147,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
 
     function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
-        if (!sesion || !puedePublicar) return
+        if (!sesion) return
 
         const nuevosErrores: Errores = {}
 
@@ -131,39 +173,34 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
             nuevosErrores.duracionMinima = 'Indicá la duración mínima de la estadía.'
         }
 
+        if (requiereDocumentacion && !datos.nombreArchivoVerificacion) {
+            nuevosErrores.archivoVerificacion = 'Adjuntá la documentación que acredite tu vínculo con la propiedad.'
+        }
+
         setErrores(nuevosErrores)
         if (Object.keys(nuevosErrores).length > 0) return
 
+        const datosAEnviar: PublicacionFormData = requiereDocumentacion
+            ? { ...datos, tipoDocumentoVerificacion: datos.tipoDocumentoVerificacion ?? opcionesDocumento[0].valor }
+            : datos
+
         if (modo === 'crear') {
-            crearPublicacion(datos, sesion.id)
-            mostrarToast('Publicación creada correctamente.')
+            const creada = crearPublicacion(datosAEnviar, sesion.id)
+            mostrarToast(
+                creada.estado === 'pendiente_moderacion'
+                    ? 'Publicación enviada. Tu documentación está en revisión.'
+                    : 'Publicación creada correctamente.',
+            )
         } else if (publicacionExistente) {
-            actualizarPublicacion(publicacionExistente.id, datos, sesion.id)
-            mostrarToast('Cambios guardados correctamente.')
+            const actualizada = actualizarPublicacion(publicacionExistente.id, datosAEnviar, sesion.id)
+            mostrarToast(
+                actualizada?.estado === 'pendiente_moderacion'
+                    ? 'Cambios guardados. Tu documentación vuelve a estar en revisión.'
+                    : 'Cambios guardados correctamente.',
+            )
         }
 
         navigate('/mis-publicaciones')
-    }
-
-    if (!puedePublicar) {
-        return (
-            <div className="bg-surface rounded-2xl shadow-lg p-6 sm:p-8 text-center">
-                <h2 className="text-lg font-heading font-semibold text-foreground mb-2">
-                    Verificá tu cuenta para publicar
-                </h2>
-                <p className="text-sm text-muted mb-4">
-                    Antes de crear o editar una publicación necesitás completar la verificación de tu
-                    identidad como propietario o inmobiliaria.
-                </p>
-                <Link
-                    to="/verificacion"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
-                >
-                    <ShieldCheck className="w-4 h-4" aria-hidden="true" />
-                    Ir a verificación
-                </Link>
-            </div>
-        )
     }
 
     return (
@@ -312,6 +349,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     lat={datos.lat ?? LAT_DEFECTO}
                     lng={datos.lng ?? LNG_DEFECTO}
                     onCambiarPosicion={(lat, lng) => setDatos((prev) => ({ ...prev, lat, lng }))}
+                    alturaClase="h-80"
                 />
             </div>
 
@@ -350,7 +388,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                         type="checkbox"
                         checked={datos.serviciosIncluidos}
                         onChange={(e) => actualizarCampo('serviciosIncluidos', e.target.checked)}
-                        className="accent-primary cursor-pointer"
+                        className="w-4 h-4 accent-primary cursor-pointer"
                     />
                     Servicios incluidos
                 </label>
@@ -359,7 +397,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                         type="checkbox"
                         checked={datos.amueblado}
                         onChange={(e) => actualizarCampo('amueblado', e.target.checked)}
-                        className="accent-primary cursor-pointer"
+                        className="w-4 h-4 accent-primary cursor-pointer"
                     />
                     Amueblado
                 </label>
@@ -368,7 +406,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                         type="checkbox"
                         checked={datos.aceptaMascotas}
                         onChange={(e) => actualizarCampo('aceptaMascotas', e.target.checked)}
-                        className="accent-primary cursor-pointer"
+                        className="w-4 h-4 accent-primary cursor-pointer"
                     />
                     Acepta mascotas
                 </label>
@@ -377,7 +415,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                         type="checkbox"
                         checked={datos.aptoEstudiantes}
                         onChange={(e) => actualizarCampo('aptoEstudiantes', e.target.checked)}
-                        className="accent-primary cursor-pointer"
+                        className="w-4 h-4 accent-primary cursor-pointer"
                     />
                     Apto estudiantes
                 </label>
@@ -403,6 +441,69 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     error={errores.fotos}
                 />
             </div>
+
+            {requiereDocumentacion && (
+                <div className="bg-surface-hover rounded-lg p-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
+                        <h3 className="text-sm font-heading font-semibold text-foreground">
+                            Verificación de la publicación
+                        </h3>
+                    </div>
+                    <p className="text-xs text-muted -mt-2">
+                        {esInmobiliaria
+                            ? 'Cada publicación de una inmobiliaria necesita documentación que acredite su habilitación para publicar este inmueble. Un administrador la revisará antes de que quede activa.'
+                            : 'Cada publicación de un propietario particular necesita documentación que acredite su vínculo con la propiedad. Un administrador la revisará antes de que quede activa.'}
+                    </p>
+
+                    {publicacionExistente?.estado === 'rechazada' && publicacionExistente.motivoRechazoVerificacion && (
+                        <p className="text-sm text-danger bg-danger-subtle border border-danger/20 rounded-lg px-3 py-2">
+                            Motivo del rechazo anterior: {publicacionExistente.motivoRechazoVerificacion}
+                        </p>
+                    )}
+
+                    <div>
+                        <label className="block text-sm font-semibold text-foreground mb-1">
+                            Tipo de documentación
+                        </label>
+                        <select
+                            value={datos.tipoDocumentoVerificacion ?? opcionesDocumento[0].valor}
+                            onChange={(e) =>
+                                actualizarCampo(
+                                    'tipoDocumentoVerificacion',
+                                    e.target.value as TipoDocumentoVerificacionPublicacion,
+                                )
+                            }
+                            className="custom-select w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                        >
+                            {opcionesDocumento.map((opcion) => (
+                                <option key={opcion.valor} value={opcion.valor}>
+                                    {opcion.etiqueta}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-foreground mb-1">Archivo</label>
+                        <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={handleArchivoVerificacion}
+                            className="block w-full text-sm text-foreground file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-primary-subtle file:text-primary file:font-semibold hover:file:bg-primary/20"
+                        />
+                        <p className="text-xs text-muted mt-1">Formatos admitidos: PDF, JPG, JPEG o PNG.</p>
+                        {datos.nombreArchivoVerificacion && (
+                            <p className="text-xs text-foreground mt-1">
+                                Seleccionado: {datos.nombreArchivoVerificacion}
+                            </p>
+                        )}
+                        {errores.archivoVerificacion && (
+                            <p className="text-xs text-danger mt-1">{errores.archivoVerificacion}</p>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3 mt-2">
                 <button
@@ -432,6 +533,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     mensaje="Ingresaste datos en el formulario. Si salís ahora, se van a perder."
                     textoConfirmar="Descartar y salir"
                     peligroso
+                    colorConfirmar="primary"
                     onConfirmar={() => navigate('/mis-publicaciones')}
                     onCancelar={() => setMostrarConfirmCancelar(false)}
                 />

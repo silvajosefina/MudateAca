@@ -1,8 +1,8 @@
 import { Link } from 'react-router'
-import { Pencil, X } from 'lucide-react'
+import { Eye, Pencil, X } from 'lucide-react'
 import CarruselFotos from './CarruselFotos'
 import { formatearPrecio } from '../utils/formato'
-import type { Publicacion } from '../types/publicacion'
+import { ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
 
 interface PublicacionPreviewModalProps {
     publicacion: Publicacion
@@ -35,8 +35,8 @@ function PublicacionPreviewModal({ publicacion, onClose }: PublicacionPreviewMod
                     <CarruselFotos fotos={publicacion.fotos} descripcion={publicacion.descripcion} />
 
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-semibold rounded-full px-2.5 py-1 bg-primary-subtle text-primary capitalize">
-                            {publicacion.tipoInmueble}
+                        <span className="text-xs font-semibold rounded-full px-2.5 py-1 bg-primary-subtle text-primary">
+                            {ETIQUETAS_TIPO_INMUEBLE[publicacion.tipoInmueble]}
                         </span>
                         <span className="text-xs text-muted capitalize">{publicacion.modalidad}</span>
                     </div>
@@ -44,7 +44,7 @@ function PublicacionPreviewModal({ publicacion, onClose }: PublicacionPreviewMod
                     <p className="text-xl font-heading font-semibold text-foreground">
                         {formatearPrecio(publicacion.precio)}
                     </p>
-                    <p className="text-sm text-muted">{publicacion.descripcion}</p>
+                    <p className="text-sm text-muted whitespace-pre-line">{publicacion.descripcion}</p>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-muted">
                         <p>{publicacion.ubicacion}</p>
@@ -53,8 +53,15 @@ function PublicacionPreviewModal({ publicacion, onClose }: PublicacionPreviewMod
                     </div>
                 </div>
 
-                {publicacion.estado !== 'alquilada' && (
-                    <div className="flex flex-col sm:flex-row gap-3 px-5 pb-5">
+                <div className="flex flex-col sm:flex-row gap-3 px-5 pb-5">
+                    <Link
+                        to={`/explorar/${publicacion.id}`}
+                        className="inline-flex items-center justify-center gap-1.5 border border-border text-foreground hover:border-primary hover:text-primary font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
+                    >
+                        <Eye className="w-4 h-4" aria-hidden="true" />
+                        Ver publicación completa
+                    </Link>
+                    {publicacion.estado !== 'alquilada' && (
                         <Link
                             to={`/publicaciones/${publicacion.id}/editar`}
                             className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
@@ -62,8 +69,8 @@ function PublicacionPreviewModal({ publicacion, onClose }: PublicacionPreviewMod
                             <Pencil className="w-4 h-4" aria-hidden="true" />
                             Editar
                         </Link>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     )

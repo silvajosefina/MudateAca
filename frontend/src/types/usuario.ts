@@ -5,6 +5,8 @@ export interface Usuario {
     id: string
     nombre: string
     apellido: string
+    nombreUsuario: string
+    celular: string
     correo: string
     contrasena: string
     rol: Rol

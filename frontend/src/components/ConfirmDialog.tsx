@@ -8,6 +8,7 @@ interface ConfirmDialogProps {
     onConfirmar: () => void
     onCancelar: () => void
     peligroso?: boolean
+    colorConfirmar?: 'danger' | 'primary'
 }
 
 function ConfirmDialog({
@@ -18,7 +19,9 @@ function ConfirmDialog({
     onConfirmar,
     onCancelar,
     peligroso = false,
+    colorConfirmar,
 }: ConfirmDialogProps) {
+    const color = colorConfirmar ?? (peligroso ? 'danger' : 'primary')
     return (
         <div
             className="fixed inset-0 z-[70] flex items-center justify-center bg-foreground/70 p-4"
@@ -50,7 +53,7 @@ function ConfirmDialog({
                     <button
                         type="button"
                         onClick={onConfirmar}
-                        className={`inline-flex items-center justify-center gap-1.5 font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer ${peligroso ? 'bg-danger text-white hover:opacity-90' : 'bg-primary text-foreground hover:bg-primary-hover'
+                        className={`inline-flex items-center justify-center gap-1.5 font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer ${color === 'danger' ? 'bg-danger text-white hover:opacity-90' : 'bg-primary text-foreground hover:bg-primary-hover'
                             }`}
                     >
                         {textoConfirmar}
