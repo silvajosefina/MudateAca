@@ -1,3 +1,7 @@
+import { obtenerPublicacionPorId } from './publicaciones'
+import { obtenerUsuarioPorId } from './usuarios'
+import { crearNotificacion } from './notificaciones'
+import { ETIQUETAS_ROL } from '../types/usuario'
 import type { EstadoReclamo, MotivoReclamo, Reclamo, TipoObjetivoReclamo } from '../types/reclamo'
 
 const STORAGE_KEY = 'mudateaca_reclamos'
@@ -69,6 +73,15 @@ function actualizarEstadoReclamo(id: string, estado: EstadoReclamo, notaAdmin?: 
             : r,
     )
     guardarAlmacenamiento(lista)
+
+    const reclamo = lista.find((r) => r.id === id)
+    if (!reclamo) return
+    const objetivo = obtenerNombreObjetivoReclamo(reclamo)
+    const mensaje =
+        estado === 'resuelto'
+            ? `Tu reclamo sobre "${objetivo}" fue resuelto.`
+            : `Tu reclamo sobre "${objetivo}" fue descartado.`
+    crearNotificacion(reclamo.reclamanteId, mensaje, estado === 'resuelto' ? 'exito' : 'error', '/mis-reclamos')
 }
 
 export function resolverReclamo(id: string, notaAdmin?: string): void {
@@ -77,4 +90,19 @@ export function resolverReclamo(id: string, notaAdmin?: string): void {
 
 export function descartarReclamo(id: string, notaAdmin?: string): void {
     actualizarEstadoReclamo(id, 'descartado', notaAdmin)
+}
+
+export function obtenerNombreObjetivoReclamo(reclamo: Reclamo): string {
+    if (reclamo.objetivoTipo === 'publicacion') {
+        const publicacion = obtenerPublicacionPorId(reclamo.objetivoId)
+        return publicacion ? publicacion.descripcion.slice(0, 50) : 'Publicación eliminada'
+    }
+    const usuario = obtenerUsuarioPorId(reclamo.objetivoId)
+    return usuario ? `${usuario.nombre} ${usuario.apellido}` : 'Usuario eliminado'
+}
+
+export function obtenerEtiquetaObjetivoReclamo(reclamo: Reclamo): string {
+    if (reclamo.objetivoTipo === 'publicacion') return 'Publicación'
+    const usuario = obtenerUsuarioPorId(reclamo.objetivoId)
+    return usuario ? ETIQUETAS_ROL[usuario.rol] : 'Usuario'
 }

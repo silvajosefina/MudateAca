@@ -359,7 +359,7 @@ export function aprobarVerificacionPublicacion(id: string): void {
         actualizadaEn: new Date().toISOString(),
     }
     guardarAlmacenamiento(lista)
-    crearNotificacion(lista[indice].propietarioId, 'Tu publicación fue verificada y ya está activa.', 'exito')
+    crearNotificacion(lista[indice].propietarioId, 'Tu publicación fue verificada y ya está activa.', 'exito', '/mis-publicaciones')
 }
 
 export function rechazarVerificacionPublicacion(id: string, motivo: string): void {
@@ -373,7 +373,7 @@ export function rechazarVerificacionPublicacion(id: string, motivo: string): voi
         actualizadaEn: new Date().toISOString(),
     }
     guardarAlmacenamiento(lista)
-    crearNotificacion(lista[indice].propietarioId, `Tu publicación fue rechazada. Motivo: ${motivo}`, 'error')
+    crearNotificacion(lista[indice].propietarioId, `Tu publicación fue rechazada. Motivo: ${motivo}`, 'error', '/mis-publicaciones')
 }
 
 export function solicitarModificacionesPublicacion(id: string, nota: string): void {
@@ -391,6 +391,7 @@ export function solicitarModificacionesPublicacion(id: string, nota: string): vo
         lista[indice].propietarioId,
         `Un administrador solicitó modificaciones en tu publicación. Nota: ${nota}`,
         'error',
+        `/publicaciones/${id}/editar`,
     )
 }
 
@@ -409,6 +410,7 @@ export function ocultarPublicacion(id: string, motivo: string): void {
         lista[indice].propietarioId,
         `Un administrador ocultó tu publicación. Motivo: ${motivo}`,
         'error',
+        '/mis-publicaciones',
     )
 }
 

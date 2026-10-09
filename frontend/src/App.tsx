@@ -12,7 +12,12 @@ import MisFavoritos from './pages/MisFavoritos'
 import Mensajes from './pages/Mensajes'
 import PanelDemanda from './pages/PanelDemanda'
 import MiCuenta from './pages/MiCuenta'
+import MisReclamos from './pages/MisReclamos'
+import HistorialNotificaciones from './pages/HistorialNotificaciones'
 import PanelAdministracion from './pages/PanelAdministracion'
+import AdminUsuarios from './pages/AdminUsuarios'
+import AdminPublicaciones from './pages/AdminPublicaciones'
+import AdminReclamos from './pages/AdminReclamos'
 import RutaPrivada from './components/RutaPrivada'
 import ToastViewport from './components/ToastViewport'
 import ScrollAlTope from './components/ScrollAlTope'
@@ -97,10 +102,50 @@ function App() {
           }
         />
         <Route
+          path="/mis-reclamos"
+          element={
+            <RutaPrivada>
+              <MisReclamos />
+            </RutaPrivada>
+          }
+        />
+        <Route
+          path="/notificaciones"
+          element={
+            <RutaPrivada>
+              <HistorialNotificaciones />
+            </RutaPrivada>
+          }
+        />
+        <Route
           path="/panel-administracion"
           element={
             <RutaPrivada rolesPermitidos={['administrador']}>
               <PanelAdministracion />
+            </RutaPrivada>
+          }
+        />
+        <Route
+          path="/panel-administracion/usuarios"
+          element={
+            <RutaPrivada rolesPermitidos={['administrador']}>
+              <AdminUsuarios />
+            </RutaPrivada>
+          }
+        />
+        <Route
+          path="/panel-administracion/publicaciones"
+          element={
+            <RutaPrivada rolesPermitidos={['administrador']}>
+              <AdminPublicaciones />
+            </RutaPrivada>
+          }
+        />
+        <Route
+          path="/panel-administracion/reclamos"
+          element={
+            <RutaPrivada rolesPermitidos={['administrador']}>
+              <AdminReclamos />
             </RutaPrivada>
           }
         />

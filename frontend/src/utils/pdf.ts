@@ -21,19 +21,14 @@ export interface ReporteDemandaDatos {
 
 type ColorRGB = [number, number, number]
 
-// Paleta "verde bosque" — debe coincidir siempre con los tokens de index.css.
-const COLOR_PRIMARY: ColorRGB = [31, 77, 59]
-const COLOR_PRIMARY_SUBTLE: ColorRGB = [220, 232, 224]
-const COLOR_ACCENT: ColorRGB = [184, 146, 63]
-const COLOR_ACCENT_SUBTLE: ColorRGB = [242, 230, 200]
-const COLOR_WARNING: ColorRGB = [192, 107, 69]
-const COLOR_WARNING_SUBTLE: ColorRGB = [243, 218, 199]
-const COLOR_HIGHLIGHT: ColorRGB = [201, 146, 44]
-const COLOR_FOREGROUND: ColorRGB = [28, 43, 34]
-const COLOR_MUTED: ColorRGB = [110, 97, 82]
-const COLOR_BORDER: ColorRGB = [225, 215, 194]
-const COLOR_SURFACE_HOVER: ColorRGB = [239, 231, 214]
-const COLOR_WHITE: ColorRGB = [255, 255, 255]
+// Paleta neutra (blanco/negro/escala de grises) para que el reporte se
+// imprima bien incluso en blanco y negro: ningún relleno sólido de color,
+// solo tonos de gris sobre fondo blanco.
+const COLOR_INK: ColorRGB = [20, 20, 20]
+const COLOR_MUTED: ColorRGB = [120, 120, 120]
+const COLOR_BORDER: ColorRGB = [200, 200, 200]
+const COLOR_TRACK: ColorRGB = [230, 230, 230]
+const COLOR_BAR: ColorRGB = [55, 55, 55]
 
 const ANCHO_PAGINA = 210
 const ALTO_PAGINA = 297
@@ -42,20 +37,23 @@ const ANCHO_CONTENIDO = ANCHO_PAGINA - MARGEN * 2
 const PIE_PAGINA_Y = ALTO_PAGINA - 12
 
 function dibujarEncabezado(doc: jsPDF, fecha: string, periodo: string): number {
-    doc.setFillColor(...COLOR_PRIMARY)
-    doc.rect(0, 0, ANCHO_PAGINA, 26, 'F')
-
-    doc.setTextColor(...COLOR_WHITE)
+    doc.setTextColor(...COLOR_INK)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(18)
     doc.text('Mudate Acá', MARGEN, 15)
 
+    doc.setTextColor(...COLOR_MUTED)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)
     doc.text(`Panel de demanda · Reporte de búsquedas activas · ${periodo}`, MARGEN, 21)
 
     doc.setFontSize(9)
     doc.text(fecha, ANCHO_PAGINA - MARGEN, 15, { align: 'right' })
+
+    doc.setDrawColor(...COLOR_INK)
+    doc.setLineWidth(0.4)
+    doc.line(MARGEN, 26, ANCHO_PAGINA - MARGEN, 26)
+    doc.setLineWidth(0.2)
 
     return 36
 }
@@ -77,7 +75,7 @@ function dibujarPiePagina(doc: jsPDF) {
 function dibujarTituloSeccion(doc: jsPDF, texto: string, y: number): number {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(12)
-    doc.setTextColor(...COLOR_FOREGROUND)
+    doc.setTextColor(...COLOR_INK)
     doc.text(texto, MARGEN, y)
     return y + 7
 }
@@ -101,7 +99,7 @@ function dibujarTiles(
 
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(12)
-        doc.setTextColor(...COLOR_FOREGROUND)
+        doc.setTextColor(...COLOR_INK)
         const valorTexto = doc.splitTextToSize(tile.valor, anchoTile - 6)
         doc.text(valorTexto, x + 4, y + 13)
 
@@ -134,12 +132,12 @@ function dibujarBarras(doc: jsPDF, datos: SerieReporte[], color: ColorRGB, y: nu
     datos.forEach((dato) => {
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8.5)
-        doc.setTextColor(...COLOR_FOREGROUND)
+        doc.setTextColor(...COLOR_INK)
         const etiqueta = doc.splitTextToSize(dato.etiqueta, anchoEtiqueta - 2)[0] as string
         doc.text(etiqueta, MARGEN, cursorY + 4)
 
         const xBarra = MARGEN + anchoEtiqueta
-        doc.setFillColor(...COLOR_SURFACE_HOVER)
+        doc.setFillColor(...COLOR_TRACK)
         doc.roundedRect(xBarra, cursorY, anchoBarra, 4, 2, 2, 'F')
 
         const anchoProporcional = Math.max(3, (dato.valor / maximo) * anchoBarra)
@@ -148,7 +146,7 @@ function dibujarBarras(doc: jsPDF, datos: SerieReporte[], color: ColorRGB, y: nu
 
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(8.5)
-        doc.setTextColor(...COLOR_FOREGROUND)
+        doc.setTextColor(...COLOR_INK)
         doc.text(String(dato.valor), ANCHO_PAGINA - MARGEN, cursorY + 4, { align: 'right' })
 
         cursorY += altoFila
@@ -180,7 +178,7 @@ function dibujarTendencia(doc: jsPDF, datos: SerieReporte[], y: number): number 
     doc.setDrawColor(...COLOR_BORDER)
     doc.line(MARGEN, y + altoGrafico, MARGEN + anchoGrafico, y + altoGrafico)
 
-    doc.setDrawColor(...COLOR_PRIMARY)
+    doc.setDrawColor(...COLOR_BAR)
     doc.setLineWidth(0.6)
     for (let i = 0; i < puntos.length - 1; i++) {
         doc.line(puntos[i].x, puntos[i].y, puntos[i + 1].x, puntos[i + 1].y)
@@ -188,12 +186,12 @@ function dibujarTendencia(doc: jsPDF, datos: SerieReporte[], y: number): number 
     doc.setLineWidth(0.2)
 
     puntos.forEach((punto, indice) => {
-        doc.setFillColor(...COLOR_PRIMARY)
+        doc.setFillColor(...COLOR_BAR)
         doc.circle(punto.x, punto.y, 1.6, 'F')
 
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(8)
-        doc.setTextColor(...COLOR_FOREGROUND)
+        doc.setTextColor(...COLOR_INK)
         const align = indice === 0 ? 'left' : indice === puntos.length - 1 ? 'right' : 'center'
         doc.text(String(punto.dato.valor), punto.x, punto.y - 3, { align })
 
@@ -213,21 +211,21 @@ export function generarReporteDemandaPDF(datos: ReporteDemandaDatos): void {
     y = dibujarTiles(
         doc,
         [
-            { valor: String(datos.busquedasActivas), etiqueta: 'Búsquedas activas en la plataforma', color: COLOR_PRIMARY, colorSubtle: COLOR_PRIMARY_SUBTLE },
-            { valor: datos.tipoMasBuscado, etiqueta: 'Tipo de inmueble más buscado', color: COLOR_ACCENT, colorSubtle: COLOR_ACCENT_SUBTLE },
-            { valor: datos.rangoMasSolicitado, etiqueta: 'Rango de precios más solicitado', color: COLOR_WARNING, colorSubtle: COLOR_WARNING_SUBTLE },
+            { valor: String(datos.busquedasActivas), etiqueta: 'Búsquedas activas en la plataforma', color: COLOR_BAR, colorSubtle: COLOR_TRACK },
+            { valor: datos.tipoMasBuscado, etiqueta: 'Tipo de inmueble más buscado', color: COLOR_BAR, colorSubtle: COLOR_TRACK },
+            { valor: datos.rangoMasSolicitado, etiqueta: 'Rango de precios más solicitado', color: COLOR_BAR, colorSubtle: COLOR_TRACK },
         ],
         y,
     )
 
     y = dibujarTituloSeccion(doc, 'Demanda por tipo de inmueble', y)
-    y = dibujarBarras(doc, datos.datosTipos, COLOR_PRIMARY, y) + 4
+    y = dibujarBarras(doc, datos.datosTipos, COLOR_BAR, y) + 4
 
     y = dibujarTituloSeccion(doc, 'Demanda por rango de precio', y)
-    y = dibujarBarras(doc, datos.datosPrecios, COLOR_ACCENT, y) + 4
+    y = dibujarBarras(doc, datos.datosPrecios, COLOR_BAR, y) + 4
 
     y = dibujarTituloSeccion(doc, 'Demanda por barrio/localidad', y)
-    y = dibujarBarras(doc, datos.datosZonas, COLOR_PRIMARY, y) + 4
+    y = dibujarBarras(doc, datos.datosZonas, COLOR_BAR, y) + 4
 
     if (y > 200) {
         doc.addPage()
@@ -243,10 +241,10 @@ export function generarReporteDemandaPDF(datos: ReporteDemandaDatos): void {
     }
 
     y = dibujarTituloSeccion(doc, 'Características más demandadas', y)
-    y = dibujarBarras(doc, datos.caracteristicas, COLOR_HIGHLIGHT, y) + 4
+    y = dibujarBarras(doc, datos.caracteristicas, COLOR_BAR, y) + 4
 
     y = dibujarTituloSeccion(doc, 'Coincidencias con tus publicaciones activas', y)
-    dibujarBarras(doc, datos.coincidencias, COLOR_ACCENT, y)
+    dibujarBarras(doc, datos.coincidencias, COLOR_BAR, y)
 
     dibujarPiePagina(doc)
 

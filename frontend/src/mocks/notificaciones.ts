@@ -7,6 +7,7 @@ export interface Notificacion {
     tipo: TipoNotificacion
     leida: boolean
     creadaEn: string
+    enlace?: string
 }
 
 const STORAGE_KEY = 'mudateaca_notificaciones'
@@ -36,7 +37,12 @@ function generarId(): string {
     return `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-export function crearNotificacion(usuarioId: string, mensaje: string, tipo: TipoNotificacion = 'exito'): Notificacion {
+export function crearNotificacion(
+    usuarioId: string,
+    mensaje: string,
+    tipo: TipoNotificacion = 'exito',
+    enlace?: string,
+): Notificacion {
     const nueva: Notificacion = {
         id: generarId(),
         usuarioId,
@@ -44,6 +50,7 @@ export function crearNotificacion(usuarioId: string, mensaje: string, tipo: Tipo
         tipo,
         leida: false,
         creadaEn: new Date().toISOString(),
+        enlace,
     }
     guardarAlmacenamiento([nueva, ...notificacionesEnMemoria])
     return nueva
@@ -63,4 +70,12 @@ export function marcarNotificacionesComoLeidas(usuarioId: string): void {
     guardarAlmacenamiento(
         notificacionesEnMemoria.map((n) => (n.usuarioId === usuarioId && !n.leida ? { ...n, leida: true } : n)),
     )
+}
+
+export function eliminarNotificacion(id: string): void {
+    guardarAlmacenamiento(notificacionesEnMemoria.filter((n) => n.id !== id))
+}
+
+export function eliminarTodasLasNotificaciones(usuarioId: string): void {
+    guardarAlmacenamiento(notificacionesEnMemoria.filter((n) => n.usuarioId !== usuarioId))
 }

@@ -19,6 +19,18 @@ export type EstadoPublicacion =
     | 'archivada'
     | 'eliminada'
 
+export const ETIQUETAS_ESTADO_PUBLICACION: Record<EstadoPublicacion, { texto: string; clase: string }> = {
+    pendiente_moderacion: { texto: 'En revisión', clase: 'bg-warning-subtle text-warning' },
+    activa: { texto: 'Activa', clase: 'bg-accent-subtle text-accent' },
+    pausada: { texto: 'Pausada', clase: 'bg-warning-subtle text-warning' },
+    observada: { texto: 'Observada', clase: 'bg-warning-subtle text-warning' },
+    reservada: { texto: 'Reservada', clase: 'bg-surface-hover text-foreground' },
+    rechazada: { texto: 'Rechazada', clase: 'bg-danger-subtle text-danger' },
+    alquilada: { texto: 'Alquilada', clase: 'bg-highlight text-on-accent' },
+    archivada: { texto: 'Archivada', clase: 'bg-surface-hover text-muted' },
+    eliminada: { texto: 'Eliminada', clase: 'bg-danger-subtle text-danger' },
+}
+
 export type TipoDocumentoVerificacionPublicacion =
     | 'factura_servicio'
     | 'impuesto'

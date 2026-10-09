@@ -13,7 +13,7 @@ interface PublicacionPreviewModalProps {
 function PublicacionPreviewModal({ publicacion, onClose, permitirEditar = true }: PublicacionPreviewModalProps) {
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-[75] flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4"
             onClick={onClose}
         >
             <div

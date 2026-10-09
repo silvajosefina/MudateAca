@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import {
     BarChart3,
+    FileText,
+    Flag,
     Heart,
     Home,
     LayoutList,
@@ -10,6 +12,7 @@ import {
     MessageCircle,
     SearchCheck,
     ShieldCheck,
+    Users,
     UserPlus,
     X,
 } from 'lucide-react'
@@ -34,7 +37,12 @@ const ENLACES_POR_ROL: Record<Rol, EnlaceNav[]> = {
         { to: '/mis-publicaciones', label: 'Mis publicaciones', Icono: LayoutList },
         { to: '/panel-demanda', label: 'Panel de demanda', Icono: BarChart3 },
     ],
-    administrador: [{ to: '/panel-administracion', label: 'Panel de administración', Icono: ShieldCheck }],
+    administrador: [
+        { to: '/panel-administracion', label: 'Panel', Icono: ShieldCheck },
+        { to: '/panel-administracion/usuarios', label: 'Usuarios', Icono: Users },
+        { to: '/panel-administracion/publicaciones', label: 'Publicaciones', Icono: FileText },
+        { to: '/panel-administracion/reclamos', label: 'Reclamos', Icono: Flag },
+    ],
     interesado: [
         { to: '/mis-busquedas', label: 'Mis búsquedas', Icono: SearchCheck },
         { to: '/favoritos', label: 'Favoritos', Icono: Heart },

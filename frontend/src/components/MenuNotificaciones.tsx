@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { Bell, CheckCircle2, XCircle } from 'lucide-react'
 import {
     obtenerNotificacionesDeUsuario,
@@ -67,21 +68,44 @@ function MenuNotificaciones({ usuarioId }: MenuNotificacionesProps) {
                         {notificaciones.length === 0 ? (
                             <p className="text-sm text-muted text-center px-4 py-6">No tenés notificaciones todavía.</p>
                         ) : (
-                            notificaciones.map((n) => (
-                                <div key={n.id} className="flex items-start gap-2 px-4 py-3 border-b border-border last:border-b-0">
-                                    {n.tipo === 'error' ? (
-                                        <XCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" aria-hidden="true" />
-                                    ) : (
-                                        <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" aria-hidden="true" />
-                                    )}
-                                    <div className="min-w-0">
-                                        <p className="text-sm text-foreground">{n.mensaje}</p>
-                                        <p className="text-xs text-muted mt-0.5">{formatearFecha(n.creadaEn)}</p>
+                            notificaciones.map((n) => {
+                                const contenido = (
+                                    <>
+                                        {n.tipo === 'error' ? (
+                                            <XCircle className="w-4 h-4 text-danger shrink-0 mt-0.5" aria-hidden="true" />
+                                        ) : (
+                                            <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" aria-hidden="true" />
+                                        )}
+                                        <div className="min-w-0">
+                                            <p className="text-sm text-foreground">{n.mensaje}</p>
+                                            <p className="text-xs text-muted mt-0.5">{formatearFecha(n.creadaEn)}</p>
+                                        </div>
+                                    </>
+                                )
+                                return n.enlace ? (
+                                    <Link
+                                        key={n.id}
+                                        to={n.enlace}
+                                        onClick={() => setAbierto(false)}
+                                        className="flex items-start gap-2 px-4 py-3 border-b border-border last:border-b-0 hover:bg-surface-hover transition-colors cursor-pointer"
+                                    >
+                                        {contenido}
+                                    </Link>
+                                ) : (
+                                    <div key={n.id} className="flex items-start gap-2 px-4 py-3 border-b border-border last:border-b-0">
+                                        {contenido}
                                     </div>
-                                </div>
-                            ))
+                                )
+                            })
                         )}
                     </div>
+                    <Link
+                        to="/notificaciones"
+                        onClick={() => setAbierto(false)}
+                        className="block text-center text-sm font-semibold text-primary hover:underline px-4 py-2.5 border-t border-border"
+                    >
+                        Ver todas
+                    </Link>
                 </div>
             )}
         </div>

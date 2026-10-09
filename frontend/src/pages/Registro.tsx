@@ -8,13 +8,11 @@ type Rol = 'interesado' | 'propietario' | 'inmobiliaria'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
-const USUARIO_REGEX = /^[a-zA-Z0-9._]{3,20}$/
 const CELULAR_REGEX = /^[0-9+\s-]{8,20}$/
 
 interface Errores {
     nombre?: string
     apellido?: string
-    nombreUsuario?: string
     celular?: string
     correo?: string
     contrasena?: string
@@ -23,7 +21,6 @@ interface Errores {
 function Registro() {
     const [nombre, setNombre] = useState('')
     const [apellido, setApellido] = useState('')
-    const [nombreUsuario, setNombreUsuario] = useState('')
     const [celular, setCelular] = useState('')
     const [correo, setCorreo] = useState('')
     const [contrasena, setContrasena] = useState('')
@@ -36,14 +33,6 @@ function Registro() {
 
         if (!nombre) nuevosErrores.nombre = 'Ingresá tu nombre.'
         if (!apellido) nuevosErrores.apellido = 'Ingresá tu apellido.'
-
-        if (!nombreUsuario) {
-            nuevosErrores.nombreUsuario = 'Elegí un nombre de usuario.'
-        } else if (!USUARIO_REGEX.test(nombreUsuario)) {
-            nuevosErrores.nombreUsuario = 'Usá entre 3 y 20 letras, números, puntos o guiones bajos.'
-        } else if (MOCK_USUARIOS.some((u) => u.nombreUsuario.toLowerCase() === nombreUsuario.toLowerCase())) {
-            nuevosErrores.nombreUsuario = 'Ese nombre de usuario ya está en uso.'
-        }
 
         if (!celular) {
             nuevosErrores.celular = 'Ingresá tu número de celular.'
@@ -68,7 +57,7 @@ function Registro() {
         setErrores(nuevosErrores)
         if (Object.keys(nuevosErrores).length > 0) return
 
-        console.log({ nombre, apellido, nombreUsuario, celular, correo, contrasena, rol })
+        console.log({ nombre, apellido, celular, correo, contrasena, rol })
     }
 
     return (
@@ -103,18 +92,6 @@ function Registro() {
                 <div className="flex flex-col sm:flex-row gap-4 sm:gap-3">
                     <div className="w-full sm:w-1/2">
                         <input
-                            type="text"
-                            placeholder="Nombre de usuario"
-                            value={nombreUsuario}
-                            onChange={(e) => setNombreUsuario(e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.nombreUsuario ? 'border-danger' : 'border-border'
-                                }`}
-                        />
-                        {errores.nombreUsuario && <p className="text-xs text-danger mt-1">{errores.nombreUsuario}</p>}
-                    </div>
-
-                    <div className="w-full sm:w-1/2">
-                        <input
                             type="tel"
                             placeholder="Celular"
                             value={celular}
@@ -124,18 +101,18 @@ function Registro() {
                         />
                         {errores.celular && <p className="text-xs text-danger mt-1">{errores.celular}</p>}
                     </div>
-                </div>
 
-                <div>
-                    <input
-                        type="email"
-                        placeholder="Correo electrónico"
-                        value={correo}
-                        onChange={(e) => setCorreo(e.target.value)}
-                        className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.correo ? 'border-danger' : 'border-border'
-                            }`}
-                    />
-                    {errores.correo && <p className="text-xs text-danger mt-1">{errores.correo}</p>}
+                    <div className="w-full sm:w-1/2">
+                        <input
+                            type="email"
+                            placeholder="Correo electrónico"
+                            value={correo}
+                            onChange={(e) => setCorreo(e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.correo ? 'border-danger' : 'border-border'
+                                }`}
+                        />
+                        {errores.correo && <p className="text-xs text-danger mt-1">{errores.correo}</p>}
+                    </div>
                 </div>
 
                 <div>

@@ -1,24 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { LogOut, User } from 'lucide-react'
-import type { SesionUsuario } from '../types/usuario'
+import { Bell, Flag, LogOut, User } from 'lucide-react'
+import { ETIQUETAS_ESTADO_VERIFICACION, ETIQUETAS_ROL, type SesionUsuario } from '../types/usuario'
 
 interface MenuUsuarioProps {
     sesion: SesionUsuario
     onCerrarSesion: () => void
-}
-
-const ETIQUETA_ROL: Record<SesionUsuario['rol'], string> = {
-    interesado: 'Interesado',
-    propietario: 'Propietario',
-    inmobiliaria: 'Inmobiliaria',
-    administrador: 'Administrador',
-}
-
-const ETIQUETA_VERIFICACION: Record<NonNullable<SesionUsuario['estadoVerificacion']>, { texto: string; clase: string }> = {
-    pendiente: { texto: 'Verificación pendiente', clase: 'bg-warning-subtle text-warning' },
-    verificado: { texto: 'Cuenta verificada', clase: 'bg-accent-subtle text-accent' },
-    rechazado: { texto: 'Verificación rechazada', clase: 'bg-danger-subtle text-danger' },
 }
 
 function MenuUsuario({ sesion, onCerrarSesion }: MenuUsuarioProps) {
@@ -44,7 +31,7 @@ function MenuUsuario({ sesion, onCerrarSesion }: MenuUsuarioProps) {
 
     const iniciales = `${sesion.nombre.charAt(0)}${sesion.apellido.charAt(0)}`.toUpperCase()
     const mostrarVerificacion = sesion.rol === 'propietario' || sesion.rol === 'inmobiliaria'
-    const verificacion = sesion.estadoVerificacion ? ETIQUETA_VERIFICACION[sesion.estadoVerificacion] : undefined
+    const verificacion = sesion.estadoVerificacion ? ETIQUETAS_ESTADO_VERIFICACION[sesion.estadoVerificacion] : undefined
 
     return (
         <div className="relative" ref={contenedorRef}>
@@ -68,7 +55,7 @@ function MenuUsuario({ sesion, onCerrarSesion }: MenuUsuarioProps) {
                         <p className="text-xs text-muted truncate">{sesion.correo}</p>
                         <div className="flex flex-wrap items-center gap-1.5 mt-2">
                             <span className="text-[11px] font-semibold rounded-full px-2 py-0.5 bg-primary-subtle text-primary">
-                                {ETIQUETA_ROL[sesion.rol]}
+                                {ETIQUETAS_ROL[sesion.rol]}
                             </span>
                             {mostrarVerificacion && verificacion && (
                                 <span className={`text-[11px] font-semibold rounded-full px-2 py-0.5 ${verificacion.clase}`}>
@@ -84,6 +71,22 @@ function MenuUsuario({ sesion, onCerrarSesion }: MenuUsuarioProps) {
                     >
                         <User className="w-4 h-4" aria-hidden="true" />
                         Editar usuario
+                    </Link>
+                    <Link
+                        to="/mis-reclamos"
+                        onClick={() => setAbierto(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
+                    >
+                        <Flag className="w-4 h-4" aria-hidden="true" />
+                        Mis reclamos
+                    </Link>
+                    <Link
+                        to="/notificaciones"
+                        onClick={() => setAbierto(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
+                    >
+                        <Bell className="w-4 h-4" aria-hidden="true" />
+                        Historial de notificaciones
                     </Link>
                     <button
                         type="button"

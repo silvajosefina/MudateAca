@@ -1,6 +1,6 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
 import { useSearchParams } from 'react-router'
-import { ChevronRight, Flag, MessageCircle, Send } from 'lucide-react'
+import { Check, CheckCheck, ChevronRight, Flag, MessageCircle, Send } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import ModalReclamo from '../components/ModalReclamo'
 import PublicacionPreviewModal from '../components/PublicacionPreviewModal'
@@ -204,8 +204,15 @@ function Mensajes() {
                                                     }`}
                                             >
                                                 <p>{mensaje.texto}</p>
-                                                <p className={`text-[10px] mt-1 ${esPropio ? 'text-surface/70' : 'text-muted'}`}>
+                                                <p className={`flex items-center gap-1 text-[10px] mt-1 ${esPropio ? 'text-surface/70' : 'text-muted'}`}>
                                                     {formatearHora(mensaje.enviadoEn)}
+                                                    {esPropio && (
+                                                        mensaje.leido ? (
+                                                            <CheckCheck className="w-3.5 h-3.5 text-accent" aria-label="Visto" />
+                                                        ) : (
+                                                            <Check className="w-3.5 h-3.5" aria-label="Enviado" />
+                                                        )
+                                                    )}
                                                 </p>
                                             </div>
                                         )

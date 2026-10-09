@@ -6,7 +6,6 @@ export const MOCK_USUARIOS: Usuario[] = [
         id: 'u1',
         nombre: 'Usuario',
         apellido: 'Interesado',
-        nombreUsuario: 'usuario.interesado',
         celular: '2392400001',
         correo: 'usuario@mudateaca.com',
         contrasena: 'Usuario1',
@@ -18,7 +17,6 @@ export const MOCK_USUARIOS: Usuario[] = [
         id: 'u2',
         nombre: 'Usuario',
         apellido: 'Propietario',
-        nombreUsuario: 'usuario.propietario',
         celular: '2392400002',
         correo: 'propietario@mudateaca.com',
         contrasena: 'Propietario1',
@@ -30,7 +28,6 @@ export const MOCK_USUARIOS: Usuario[] = [
         id: 'u3',
         nombre: 'Usuario',
         apellido: 'Inmobiliaria',
-        nombreUsuario: 'usuario.inmobiliaria',
         celular: '2392400003',
         correo: 'inmobiliaria@mudateaca.com',
         contrasena: 'Inmobiliaria1',
@@ -42,7 +39,6 @@ export const MOCK_USUARIOS: Usuario[] = [
         id: 'u4',
         nombre: 'Usuario',
         apellido: 'Rechazado',
-        nombreUsuario: 'usuario.rechazado',
         celular: '2392400004',
         correo: 'rechazado@mudateaca.com',
         contrasena: 'Rechazado1',
@@ -55,7 +51,6 @@ export const MOCK_USUARIOS: Usuario[] = [
         id: 'u5',
         nombre: 'Usuario',
         apellido: 'Administrador',
-        nombreUsuario: 'usuario.administrador',
         celular: '2392400005',
         correo: 'administrador@mudateaca.com',
         contrasena: 'Administrador1',
@@ -71,7 +66,7 @@ export function obtenerUsuarioPorId(id: string): Usuario | undefined {
 
 export function actualizarUsuario(
     id: string,
-    cambios: Pick<Usuario, 'nombre' | 'apellido' | 'correo' | 'nombreUsuario' | 'celular'>,
+    cambios: Pick<Usuario, 'nombre' | 'apellido' | 'correo' | 'celular'>,
 ): Usuario | undefined {
     const usuario = MOCK_USUARIOS.find((u) => u.id === id)
     if (!usuario) return undefined
@@ -97,7 +92,12 @@ export function actualizarEstadoVerificacionUsuario(
         estado === 'verificado'
             ? 'Tu cuenta de inmobiliaria fue verificada. Ya podés crear publicaciones.'
             : `Tu verificación de inmobiliaria fue rechazada. Motivo: ${motivoRechazo}`
-    crearNotificacion(usuario.id, mensaje, estado === 'verificado' ? 'exito' : 'error')
+    crearNotificacion(
+        usuario.id,
+        mensaje,
+        estado === 'verificado' ? 'exito' : 'error',
+        estado === 'verificado' ? '/publicaciones/nueva' : undefined,
+    )
 
     return usuario
 }
