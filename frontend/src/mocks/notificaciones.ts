@@ -9,7 +9,28 @@ export interface Notificacion {
     creadaEn: string
 }
 
-let notificacionesEnMemoria: Notificacion[] = []
+const STORAGE_KEY = 'mudateaca_notificaciones'
+
+function leerAlmacenamiento(): Notificacion[] {
+    try {
+        const datos = localStorage.getItem(STORAGE_KEY)
+        return datos ? (JSON.parse(datos) as Notificacion[]) : []
+    } catch {
+        return []
+    }
+}
+
+function guardarAlmacenamiento(lista: Notificacion[]) {
+    notificacionesEnMemoria = lista
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(lista))
+    } catch {
+        // Si el almacenamiento no está disponible, las notificaciones siguen
+        // funcionando en memoria durante la sesión actual.
+    }
+}
+
+let notificacionesEnMemoria: Notificacion[] = leerAlmacenamiento()
 
 function generarId(): string {
     return `notif_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -24,7 +45,7 @@ export function crearNotificacion(usuarioId: string, mensaje: string, tipo: Tipo
         leida: false,
         creadaEn: new Date().toISOString(),
     }
-    notificacionesEnMemoria = [nueva, ...notificacionesEnMemoria]
+    guardarAlmacenamiento([nueva, ...notificacionesEnMemoria])
     return nueva
 }
 
@@ -39,7 +60,7 @@ export function obtenerCantidadNoLeidas(usuarioId: string): number {
 }
 
 export function marcarNotificacionesComoLeidas(usuarioId: string): void {
-    notificacionesEnMemoria = notificacionesEnMemoria.map((n) =>
-        n.usuarioId === usuarioId && !n.leida ? { ...n, leida: true } : n,
+    guardarAlmacenamiento(
+        notificacionesEnMemoria.map((n) => (n.usuarioId === usuarioId && !n.leida ? { ...n, leida: true } : n)),
     )
 }

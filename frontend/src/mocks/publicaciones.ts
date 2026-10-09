@@ -9,6 +9,7 @@ const ETIQUETAS_ESTADO_NOTIFICACION: Partial<Record<EstadoPublicacion, string>> 
     pausada: 'fue pausada',
     activa: 'está nuevamente disponible',
     archivada: 'ya no está disponible',
+    reservada: 'fue reservada por otro interesado',
 }
 
 function generarId(): string {
@@ -153,8 +154,89 @@ const PUBLICACIONES_INICIALES: Publicacion[] = [
         creadaEn: '2026-07-01T09:00:00.000Z',
         actualizadaEn: '2026-08-05T09:00:00.000Z',
     },
+    {
+        id: 'pub_seed_6',
+        propietarioId: 'u2',
+        tipoInmueble: 'departamento',
+        modalidad: 'residencial',
+        descripcion: 'Departamento de 2 ambientes con balcón, muy luminoso y a estrenar.',
+        precio: 195000,
+        ubicacion: 'Barrio Belgrano, Trenque Lauquen',
+        lat: -35.962,
+        lng: -62.726,
+        ambientes: 2,
+        dormitorios: 1,
+        disponibleDesde: '2026-09-12',
+        fotos: [
+            urlFotoUnsplash('1502672260266-1c1ef2d93688'),
+            urlFotoUnsplash('1484154218962-a197022b5858'),
+            urlFotoUnsplash('1595526114035-0d45ed16cfbf'),
+        ],
+        serviciosIncluidos: false,
+        amueblado: false,
+        aceptaMascotas: false,
+        aptoEstudiantes: true,
+        estado: 'activa',
+        creadaEn: '2026-09-10T10:00:00.000Z',
+        actualizadaEn: '2026-09-10T10:00:00.000Z',
+    },
+    {
+        id: 'pub_seed_7',
+        propietarioId: 'u2',
+        tipoInmueble: 'departamento',
+        modalidad: 'residencial',
+        descripcion: 'Departamento de 3 ambientes con cochera, ideal para familia.',
+        precio: 230000,
+        ubicacion: 'Centro, Trenque Lauquen',
+        lat: -35.9645,
+        lng: -62.7318,
+        ambientes: 3,
+        dormitorios: 2,
+        disponibleDesde: '2026-09-18',
+        fotos: [
+            urlFotoUnsplash('1560448204-e02f11c3d0e2'),
+            urlFotoUnsplash('1612152605347-f93296cb657d'),
+            urlFotoUnsplash('1682184805271-11671b7ecf4c'),
+        ],
+        serviciosIncluidos: true,
+        amueblado: false,
+        aceptaMascotas: true,
+        aptoEstudiantes: false,
+        estado: 'activa',
+        creadaEn: '2026-09-14T14:00:00.000Z',
+        actualizadaEn: '2026-09-14T14:00:00.000Z',
+    },
+    {
+        id: 'pub_seed_8',
+        propietarioId: 'u2',
+        tipoInmueble: 'departamento',
+        modalidad: 'residencial',
+        descripcion: 'Monoambiente amplio, ideal para estudiantes, cerca de la terminal.',
+        precio: 110000,
+        ubicacion: 'Zona Terminal, Trenque Lauquen',
+        lat: -35.9705,
+        lng: -62.7275,
+        ambientes: 1,
+        dormitorios: 0,
+        disponibleDesde: '2026-09-22',
+        fotos: [
+            urlFotoUnsplash('1666282167632-c613fbeb163c'),
+            urlFotoUnsplash('1738168279272-c08d6dd22002'),
+            urlFotoUnsplash('1552558636-f6a8f071c2b3'),
+        ],
+        serviciosIncluidos: true,
+        amueblado: true,
+        aceptaMascotas: false,
+        aptoEstudiantes: true,
+        estado: 'activa',
+        creadaEn: '2026-09-16T09:00:00.000Z',
+        actualizadaEn: '2026-09-16T09:00:00.000Z',
+    },
 ]
 
+// Las publicaciones viven solo en memoria: cada recarga/reinicio del
+// servidor de desarrollo vuelve a partir únicamente de la data semilla.
+// Lo creado a mano durante la sesión (vía el formulario) no persiste.
 let publicacionesEnMemoria: Publicacion[] = PUBLICACIONES_INICIALES
 
 function leerAlmacenamiento(): Publicacion[] {
@@ -255,8 +337,14 @@ export function actualizarPublicacion(
 
 export function obtenerPublicacionesEnRevision(): Publicacion[] {
     return leerAlmacenamiento()
-        .filter((p) => p.estado === 'pendiente_moderacion')
+        .filter((p) => p.estado === 'pendiente_moderacion' || p.estado === 'observada')
         .sort((a, b) => a.creadaEn.localeCompare(b.creadaEn))
+}
+
+export function obtenerTodasLasPublicaciones(): Publicacion[] {
+    return leerAlmacenamiento()
+        .slice()
+        .sort((a, b) => b.actualizadaEn.localeCompare(a.actualizadaEn))
 }
 
 export function aprobarVerificacionPublicacion(id: string): void {
@@ -267,6 +355,7 @@ export function aprobarVerificacionPublicacion(id: string): void {
         ...lista[indice],
         estado: 'activa',
         motivoRechazoVerificacion: undefined,
+        notaModeracion: undefined,
         actualizadaEn: new Date().toISOString(),
     }
     guardarAlmacenamiento(lista)
@@ -285,6 +374,42 @@ export function rechazarVerificacionPublicacion(id: string, motivo: string): voi
     }
     guardarAlmacenamiento(lista)
     crearNotificacion(lista[indice].propietarioId, `Tu publicación fue rechazada. Motivo: ${motivo}`, 'error')
+}
+
+export function solicitarModificacionesPublicacion(id: string, nota: string): void {
+    const lista = leerAlmacenamiento()
+    const indice = lista.findIndex((p) => p.id === id)
+    if (indice === -1) return
+    lista[indice] = {
+        ...lista[indice],
+        estado: 'observada',
+        notaModeracion: nota,
+        actualizadaEn: new Date().toISOString(),
+    }
+    guardarAlmacenamiento(lista)
+    crearNotificacion(
+        lista[indice].propietarioId,
+        `Un administrador solicitó modificaciones en tu publicación. Nota: ${nota}`,
+        'error',
+    )
+}
+
+export function ocultarPublicacion(id: string, motivo: string): void {
+    const lista = leerAlmacenamiento()
+    const indice = lista.findIndex((p) => p.id === id)
+    if (indice === -1) return
+    lista[indice] = {
+        ...lista[indice],
+        estado: 'archivada',
+        notaModeracion: motivo,
+        actualizadaEn: new Date().toISOString(),
+    }
+    guardarAlmacenamiento(lista)
+    crearNotificacion(
+        lista[indice].propietarioId,
+        `Un administrador ocultó tu publicación. Motivo: ${motivo}`,
+        'error',
+    )
 }
 
 export function cambiarEstadoPublicacion(

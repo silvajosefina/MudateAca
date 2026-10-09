@@ -1,7 +1,10 @@
 import { useState, type SubmitEvent } from 'react'
 import { Link } from 'react-router'
 import {
+    ArrowRight,
     BedDouble,
+    ChevronDown,
+    ChevronUp,
     DoorOpen,
     MapPin,
     Pause,
@@ -14,6 +17,7 @@ import {
 } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import ConfirmDialog from '../components/ConfirmDialog'
+import Paginacion from '../components/Paginacion'
 import {
     actualizarBusqueda,
     cambiarEstadoBusqueda,
@@ -29,6 +33,8 @@ import type { BusquedaActiva, BusquedaFormData } from '../types/busqueda'
 import { ETIQUETAS_TIPO_INMUEBLE, type ModalidadAlquiler, type TipoInmueble } from '../types/publicacion'
 
 const OPCIONES_MINIMO = [0, 1, 2, 3, 4, 5]
+const RESULTADOS_POR_PAGINA = 5
+const COINCIDENCIAS_VISIBLES = 2
 
 function valorInicial(busqueda?: BusquedaActiva): BusquedaFormData {
     return {
@@ -79,6 +85,42 @@ function resumenCriterios(busqueda: BusquedaActiva): string {
     return partes.length > 0 ? partes.join(' · ') : 'Sin filtros específicos'
 }
 
+function criteriosDeFiltro(datos: BusquedaFormData) {
+    return {
+        modalidad: datos.modalidad,
+        tipoInmueble: datos.tipoInmueble,
+        precioMin: datos.precioMin,
+        precioMax: datos.precioMax,
+        ambientesMin: datos.ambientesMin,
+        dormitoriosMin: datos.dormitoriosMin,
+        ubicacion: datos.ubicacion,
+        amueblado: datos.amueblado,
+        serviciosIncluidos: datos.serviciosIncluidos,
+        aceptaMascotas: datos.aceptaMascotas,
+        aptoEstudiantes: datos.aptoEstudiantes,
+        fechaDeseadaDesde: datos.fechaDeseadaDesde,
+        fechaDeseadaHasta: datos.fechaDeseadaHasta,
+    }
+}
+
+function construirQueryExplorar(busqueda: BusquedaActiva): string {
+    const params = new URLSearchParams()
+    if (busqueda.ubicacion.trim()) params.set('ubicacion', busqueda.ubicacion.trim())
+    if (busqueda.modalidad !== 'todas') params.set('modalidad', busqueda.modalidad)
+    if (busqueda.tipoInmueble !== 'todos') params.set('tipoInmueble', busqueda.tipoInmueble)
+    if (busqueda.precioMin) params.set('precioMin', String(busqueda.precioMin))
+    if (busqueda.precioMax) params.set('precioMax', String(busqueda.precioMax))
+    if (busqueda.ambientesMin) params.set('ambientesMin', String(busqueda.ambientesMin))
+    if (busqueda.dormitoriosMin) params.set('dormitoriosMin', String(busqueda.dormitoriosMin))
+    if (busqueda.amueblado) params.set('amueblado', '1')
+    if (busqueda.serviciosIncluidos) params.set('serviciosIncluidos', '1')
+    if (busqueda.aceptaMascotas) params.set('aceptaMascotas', '1')
+    if (busqueda.aptoEstudiantes) params.set('aptoEstudiantes', '1')
+    if (busqueda.fechaDeseadaDesde) params.set('fechaDeseadaDesde', busqueda.fechaDeseadaDesde)
+    if (busqueda.fechaDeseadaHasta) params.set('fechaDeseadaHasta', busqueda.fechaDeseadaHasta)
+    return params.toString()
+}
+
 function MisBusquedas() {
     const sesion = obtenerSesion()
     const [busquedas, setBusquedas] = useState<BusquedaActiva[]>(() =>
@@ -90,6 +132,8 @@ function MisBusquedas() {
     const [expandida, setExpandida] = useState<string | null>(null)
     const [aEliminar, setAEliminar] = useState<BusquedaActiva | null>(null)
     const [errorCriterios, setErrorCriterios] = useState(false)
+    const [errorDuplicado, setErrorDuplicado] = useState(false)
+    const [paginaActual, setPaginaActual] = useState(1)
 
     if (!sesion) return null
 
@@ -105,6 +149,7 @@ function MisBusquedas() {
         setEditando(null)
         setDatos(valorInicial())
         setErrorCriterios(false)
+        setErrorDuplicado(false)
         setMostrarFormulario(true)
     }
 
@@ -112,7 +157,15 @@ function MisBusquedas() {
         setEditando(busqueda)
         setDatos(valorInicial(busqueda))
         setErrorCriterios(false)
+        setErrorDuplicado(false)
         setMostrarFormulario(true)
+    }
+
+    function hayDuplicado(datosAGuardar: BusquedaFormData, idAExcluir?: string): boolean {
+        const criteriosNuevos = JSON.stringify(criteriosDeFiltro(datosAGuardar))
+        return busquedas.some(
+            (b) => b.id !== idAExcluir && JSON.stringify(criteriosDeFiltro(b)) === criteriosNuevos,
+        )
     }
 
     function handleGuardar(e: SubmitEvent) {
@@ -123,6 +176,12 @@ function MisBusquedas() {
             return
         }
         setErrorCriterios(false)
+
+        if (hayDuplicado(datos, editando?.id)) {
+            setErrorDuplicado(true)
+            return
+        }
+        setErrorDuplicado(false)
 
         const nombreFinal = { ...datos, nombre: datos.nombre.trim() || 'Búsqueda sin nombre' }
         if (editando) {
@@ -156,6 +215,13 @@ function MisBusquedas() {
         refrescar()
     }
 
+    const totalPaginas = Math.max(1, Math.ceil(busquedas.length / RESULTADOS_POR_PAGINA))
+    const paginaSegura = Math.min(paginaActual, totalPaginas)
+    const busquedasPagina = busquedas.slice(
+        (paginaSegura - 1) * RESULTADOS_POR_PAGINA,
+        paginaSegura * RESULTADOS_POR_PAGINA,
+    )
+
     return (
         <PublicoLayout>
             <div className="flex items-center justify-between mb-6">
@@ -166,7 +232,7 @@ function MisBusquedas() {
                 <button
                     type="button"
                     onClick={handleNueva}
-                    className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
                 >
                     <Plus className="w-4 h-4" aria-hidden="true" />
                     Nueva búsqueda
@@ -180,7 +246,7 @@ function MisBusquedas() {
                 </div>
             ) : (
                 <div className="flex flex-col gap-4">
-                    {busquedas.map((busqueda) => {
+                    {busquedasPagina.map((busqueda) => {
                         const coincidencias = obtenerCoincidenciasDeBusqueda(busqueda)
                         const expandido = expandida === busqueda.id
 
@@ -204,9 +270,15 @@ function MisBusquedas() {
                                         <button
                                             type="button"
                                             onClick={() => setExpandida(expandido ? null : busqueda.id)}
-                                            className="text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary transition-colors cursor-pointer whitespace-nowrap"
+                                            aria-expanded={expandido}
+                                            className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary transition-colors cursor-pointer whitespace-nowrap"
                                         >
                                             {coincidencias.length} coincidencia(s)
+                                            {expandido ? (
+                                                <ChevronUp className="w-4 h-4" aria-hidden="true" />
+                                            ) : (
+                                                <ChevronDown className="w-4 h-4" aria-hidden="true" />
+                                            )}
                                         </button>
                                         <button
                                             type="button"
@@ -253,7 +325,7 @@ function MisBusquedas() {
                                                 Todavía no hay publicaciones compatibles con esta búsqueda.
                                             </p>
                                         ) : (
-                                            coincidencias.map(({ publicacion, porcentaje }) => (
+                                            coincidencias.slice(0, COINCIDENCIAS_VISIBLES).map(({ publicacion, porcentaje }) => (
                                                 <Link
                                                     key={publicacion.id}
                                                     to={`/explorar/${publicacion.id}`}
@@ -293,6 +365,15 @@ function MisBusquedas() {
                                                 </Link>
                                             ))
                                         )}
+                                        {coincidencias.length > COINCIDENCIAS_VISIBLES && (
+                                            <Link
+                                                to={`/explorar?${construirQueryExplorar(busqueda)}`}
+                                                className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary transition-colors cursor-pointer self-start"
+                                            >
+                                                Ver todas en Explorar
+                                                <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                                            </Link>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -301,9 +382,11 @@ function MisBusquedas() {
                 </div>
             )}
 
+            <Paginacion paginaActual={paginaSegura} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
+
             {mostrarFormulario && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4"
                     onClick={() => setMostrarFormulario(false)}
                 >
                     <form
@@ -493,10 +576,16 @@ function MisBusquedas() {
                             </p>
                         )}
 
+                        {errorDuplicado && (
+                            <p className="text-sm text-danger bg-danger-subtle border border-danger/20 rounded-lg px-3 py-2">
+                                Ya tenés una búsqueda guardada con exactamente estos mismos filtros.
+                            </p>
+                        )}
+
                         <div className="flex flex-col sm:flex-row gap-3 mt-2">
                             <button
                                 type="submit"
-                                className="bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
+                                className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
                             >
                                 {editando ? 'Guardar cambios' : 'Crear búsqueda'}
                             </button>
@@ -518,6 +607,7 @@ function MisBusquedas() {
                     mensaje={`¿Eliminar la búsqueda "${aEliminar.nombre}"? Ya no se generarán coincidencias para ella.`}
                     textoConfirmar="Eliminar"
                     peligroso
+                    colorConfirmar="accent"
                     onConfirmar={confirmarEliminar}
                     onCancelar={() => setAEliminar(null)}
                 />

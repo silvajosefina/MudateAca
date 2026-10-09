@@ -1,10 +1,25 @@
 import { useMemo, useState } from 'react'
-import { BookmarkPlus, Heart, Home, MapPin, RotateCcw, ShieldCheck, SlidersHorizontal } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router'
+import {
+    ArrowRight,
+    BookmarkPlus,
+    Heart,
+    Home,
+    LayoutGrid,
+    List,
+    MapPin,
+    RotateCcw,
+    ShieldCheck,
+    SlidersHorizontal,
+    X,
+} from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import TarjetaPublicacion from '../components/TarjetaPublicacion'
 import Paginacion from '../components/Paginacion'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { obtenerPublicacionesActivas } from '../mocks/publicaciones'
 import { crearBusqueda } from '../mocks/busquedasActivas'
+import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
 import { obtenerSesion } from '../mocks/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearMiles, quitarFormatoMiles } from '../utils/formato'
@@ -44,6 +59,30 @@ const FILTROS_INICIALES: Filtros = {
 
 const OPCIONES_MINIMO = [0, 1, 2, 3, 4, 5]
 const RESULTADOS_POR_PAGINA = 9
+const DEBOUNCE_BUSQUEDA_MS = 300
+
+function filtrosDesdeQuery(params: URLSearchParams): Filtros {
+    const modalidad = params.get('modalidad')
+    const tipoInmueble = params.get('tipoInmueble')
+    return {
+        ubicacion: params.get('ubicacion') ?? '',
+        modalidad: modalidad === 'residencial' || modalidad === 'temporario' ? modalidad : 'todas',
+        tipoInmueble:
+            tipoInmueble === 'casa' || tipoInmueble === 'departamento' || tipoInmueble === 'habitacion' || tipoInmueble === 'residencia'
+                ? tipoInmueble
+                : 'todos',
+        precioMin: Number(params.get('precioMin')) || 0,
+        precioMax: Number(params.get('precioMax')) || 0,
+        ambientesMin: Number(params.get('ambientesMin')) || 0,
+        dormitoriosMin: Number(params.get('dormitoriosMin')) || 0,
+        amueblado: params.get('amueblado') === '1',
+        serviciosIncluidos: params.get('serviciosIncluidos') === '1',
+        aceptaMascotas: params.get('aceptaMascotas') === '1',
+        aptoEstudiantes: params.get('aptoEstudiantes') === '1',
+        fechaDeseadaDesde: params.get('fechaDeseadaDesde') ?? '',
+        fechaDeseadaHasta: params.get('fechaDeseadaHasta') ?? '',
+    }
+}
 
 function coincideConFiltros(publicacion: Publicacion, filtros: Filtros): boolean {
     if (
@@ -81,15 +120,25 @@ function coincideConFiltros(publicacion: Publicacion, filtros: Filtros): boolean
 
 function Explorar() {
     const sesion = obtenerSesion()
+    const [searchParams] = useSearchParams()
     const [publicaciones] = useState<Publicacion[]>(() => obtenerPublicacionesActivas())
-    const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES)
+    const [filtros, setFiltros] = useState<Filtros>(() =>
+        searchParams.toString() ? filtrosDesdeQuery(searchParams) : FILTROS_INICIALES,
+    )
     const [nombreBusqueda, setNombreBusqueda] = useState('')
     const [paginaActual, setPaginaActual] = useState(1)
     const [, forzarActualizacion] = useState(0)
+    const [bannerCerrado, setBannerCerrado] = useState(false)
+    const [vista, setVista] = useState(() => obtenerVistaListado())
 
     function actualizarFiltro<K extends keyof Filtros>(campo: K, valor: Filtros[K]) {
         setFiltros((prev) => ({ ...prev, [campo]: valor }))
         setPaginaActual(1)
+    }
+
+    function cambiarVista(nuevaVista: 'grilla' | 'lista') {
+        setVista(nuevaVista)
+        guardarVistaListado(nuevaVista)
     }
 
     function handleGuardarBusqueda() {
@@ -106,9 +155,26 @@ function Explorar() {
         setNombreBusqueda('')
     }
 
+    const ubicacionDebounced = useDebouncedValue(filtros.ubicacion, DEBOUNCE_BUSQUEDA_MS)
+    const precioMinDebounced = useDebouncedValue(filtros.precioMin, DEBOUNCE_BUSQUEDA_MS)
+    const precioMaxDebounced = useDebouncedValue(filtros.precioMax, DEBOUNCE_BUSQUEDA_MS)
+
+    // Los campos de texto (ubicación, precios) se debouncean antes de recalcular los
+    // resultados, para no refiltrar el listado en cada tecla presionada. El resto de
+    // los filtros (selects, checkboxes) se aplican al instante: no provienen de tipeo.
+    const filtrosParaBuscar: Filtros = useMemo(
+        () => ({
+            ...filtros,
+            ubicacion: ubicacionDebounced,
+            precioMin: precioMinDebounced,
+            precioMax: precioMaxDebounced,
+        }),
+        [filtros, ubicacionDebounced, precioMinDebounced, precioMaxDebounced],
+    )
+
     const resultados = useMemo(
-        () => publicaciones.filter((p) => coincideConFiltros(p, filtros)),
-        [publicaciones, filtros],
+        () => publicaciones.filter((p) => coincideConFiltros(p, filtrosParaBuscar)),
+        [publicaciones, filtrosParaBuscar],
     )
 
     const hayFiltrosActivos = JSON.stringify(filtros) !== JSON.stringify(FILTROS_INICIALES)
@@ -122,10 +188,19 @@ function Explorar() {
 
     return (
         <PublicoLayout>
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-highlight px-6 py-10 sm:px-10 sm:py-14 text-foreground">
-                <div className="grid grid-cols-1 sm:grid-cols-[1.3fr_1fr] gap-8 items-center">
+            {!bannerCerrado && (
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-banner-hero-from)] to-[var(--color-banner-hero-to)] px-6 py-10 sm:px-10 sm:py-14 text-[var(--color-banner-text)]">
+                    <button
+                        type="button"
+                        onClick={() => setBannerCerrado(true)}
+                        aria-label="Cerrar banner"
+                        className="absolute top-4 right-4 inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface/15 text-[var(--color-banner-text)] hover:bg-surface/25 transition-colors cursor-pointer z-10"
+                    >
+                        <X className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-[1.3fr_1fr] gap-8 items-center">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-foreground/70 mb-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--color-banner-text)]/70 mb-2">
                             Alquileres en Trenque Lauquen
                         </p>
                         <h1 className="text-3xl sm:text-4xl font-heading font-bold leading-tight">
@@ -133,7 +208,7 @@ function Explorar() {
                             <br />
                             está acá.
                         </h1>
-                        <p className="text-sm sm:text-base text-foreground/80 mt-3 max-w-md">
+                        <p className="text-sm sm:text-base text-[var(--color-banner-text)]/80 mt-3 max-w-md">
                             Explorá publicaciones activas de propietarios e inmobiliarias, sin avisos
                             engañosos y con la información que te ayuda a decidir.
                         </p>
@@ -151,7 +226,7 @@ function Explorar() {
                     </div>
 
                     <div className="relative hidden sm:flex items-center justify-center h-48">
-                        <div className="absolute w-40 h-40 rounded-full bg-foreground/10" aria-hidden="true" />
+                        <div className="absolute w-40 h-40 rounded-full bg-surface/15" aria-hidden="true" />
                         <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-surface shadow-xl">
                             <Home className="w-11 h-11 text-primary" aria-hidden="true" />
                         </div>
@@ -163,9 +238,10 @@ function Explorar() {
                         </div>
                     </div>
                 </div>
-            </div>
+                </div>
+            )}
 
-            <div className="relative z-10 -mt-6 sm:-mt-8 bg-surface rounded-2xl shadow-xl border border-border/60 p-4 sm:p-5 mb-6 flex flex-col gap-4">
+            <div className="relative z-10 -mt-6 sm:-mt-8 bg-surface rounded-2xl shadow-xl p-4 sm:p-5 mb-6 flex flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex gap-1.5 rounded-lg bg-surface-hover p-1">
                         {(
@@ -181,7 +257,7 @@ function Explorar() {
                                 onClick={() => actualizarFiltro('modalidad', opcion.valor)}
                                 aria-pressed={filtros.modalidad === opcion.valor}
                                 className={`text-sm font-semibold rounded-md px-3 py-1.5 transition-colors cursor-pointer ${filtros.modalidad === opcion.valor
-                                    ? 'bg-primary text-foreground shadow'
+                                    ? 'bg-primary text-surface shadow'
                                     : 'text-muted hover:text-primary'
                                     }`}
                             >
@@ -366,7 +442,7 @@ function Explorar() {
                         <button
                             type="button"
                             onClick={handleGuardarBusqueda}
-                            className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer whitespace-nowrap"
+                            className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer whitespace-nowrap"
                         >
                             <BookmarkPlus className="w-4 h-4" aria-hidden="true" />
                             Guardar esta búsqueda
@@ -375,25 +451,72 @@ function Explorar() {
                 )}
             </div>
 
-            <h2 className="text-sm font-semibold text-foreground mb-4">
-                {hayFiltrosActivos
-                    ? resultados.length === 0
-                        ? 'No se encontraron publicaciones con esos filtros.'
-                        : `${resultados.length} publicación(es) encontrada(s).`
-                    : 'Publicaciones disponibles'}
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h2 className="text-sm font-semibold text-foreground">
+                    {hayFiltrosActivos
+                        ? resultados.length === 0
+                            ? 'No se encontraron publicaciones con esos filtros.'
+                            : `${resultados.length} publicación(es) encontrada(s).`
+                        : 'Publicaciones disponibles'}
+                </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex gap-1 rounded-lg border border-border p-1 bg-surface shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => cambiarVista('grilla')}
+                        aria-label="Ver como grilla"
+                        aria-pressed={vista === 'grilla'}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'grilla' ? 'bg-primary text-surface' : 'text-muted hover:bg-surface-hover'
+                            }`}
+                    >
+                        <LayoutGrid className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => cambiarVista('lista')}
+                        aria-label="Ver como lista"
+                        aria-pressed={vista === 'lista'}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'lista' ? 'bg-primary text-surface' : 'text-muted hover:bg-surface-hover'
+                            }`}
+                    >
+                        <List className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                </div>
+            </div>
+
+            <div className={vista === 'grilla' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col gap-4'}>
                 {resultadosPagina.map((publicacion) => (
                     <TarjetaPublicacion
                         key={publicacion.id}
                         publicacion={publicacion}
+                        vista={vista}
                         onFavoritoCambiado={() => forzarActualizacion((n) => n + 1)}
                     />
                 ))}
             </div>
 
             <Paginacion paginaActual={paginaSegura} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
+
+            {sesion?.rol !== 'interesado' && (
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-banner-cta-from)] to-[var(--color-banner-cta-to)] px-6 py-8 sm:px-10 sm:py-10 mt-8 flex flex-wrap items-center justify-between gap-6">
+                    <div className="max-w-md">
+                        <h2 className="text-xl sm:text-2xl font-heading font-bold text-[var(--color-banner-text)] mb-2">
+                            Publicá tu primera propiedad gratis
+                        </h2>
+                        <p className="text-sm text-[var(--color-banner-text)]/75">
+                            Sumate a los propietarios e inmobiliarias que ya gestionan sus alquileres en Mudate
+                            Acá, sin costo de publicación los primeros 30 días.
+                        </p>
+                    </div>
+                    <Link
+                        to={sesion ? '/publicaciones/nueva' : '/registro'}
+                        className="inline-flex items-center gap-1.5 bg-lima hover:bg-lima-hover text-on-accent font-heading font-semibold rounded-lg px-5 py-2.5 transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                        {sesion ? 'Publicar ahora' : 'Empezar ahora'}
+                        <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                    </Link>
+                </div>
+            )}
         </PublicoLayout>
     )
 }

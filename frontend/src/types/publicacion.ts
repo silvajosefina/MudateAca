@@ -52,7 +52,9 @@ export interface Publicacion {
     estado: EstadoPublicacion
     tipoDocumentoVerificacion?: TipoDocumentoVerificacionPublicacion
     nombreArchivoVerificacion?: string
+    urlArchivoVerificacion?: string
     motivoRechazoVerificacion?: string
+    notaModeracion?: string
     creadaEn: string
     actualizadaEn: string
 }

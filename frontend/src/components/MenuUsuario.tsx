@@ -54,7 +54,7 @@ function MenuUsuario({ sesion, onCerrarSesion }: MenuUsuarioProps) {
                 aria-haspopup="true"
                 aria-expanded={abierto}
                 aria-label="Cuenta"
-                className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary text-foreground font-heading font-semibold text-sm hover:bg-primary-hover transition-colors cursor-pointer"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary text-surface font-heading font-semibold text-sm hover:bg-primary-hover transition-colors cursor-pointer"
             >
                 {iniciales}
             </button>

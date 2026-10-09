@@ -1,29 +1,60 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #FAFAFA;
+  --color-background: #FFFFFF;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #F3F4F6;
-  --color-border: #E5E7EB;
-  --color-foreground: #1F2328;
-  --color-muted: #6B7280;
+  --color-surface-hover: #EFE7D6;
+  --color-border: #E1D7C2;
+  --color-foreground: #1C2B22;
+  --color-muted: #6E6152;
 
-  --color-primary: #F78B2D;
-  --color-primary-hover: #E67A1E;
-  --color-primary-subtle: #FDEAD6;
+  --color-primary: #1F4D3B;
+  --color-primary-hover: #163A2C;
+  --color-primary-subtle: #DCE8E0;
 
-  --color-accent: #7AA802;
-  --color-accent-hover: #628501;
-  --color-accent-subtle: #EEF5D0;
+  --color-accent: #B8923F;
+  --color-accent-hover: #9C7A32;
+  --color-accent-subtle: #F2E6C8;
 
-  --color-danger: #DC2626;
-  --color-danger-subtle: #FEE2E2;
+  --color-danger: #A6311F;
+  --color-danger-subtle: #F3DCD7;
 
-  --color-warning: #E4B600;
-  --color-warning-subtle: #FBF0CC;
+  --color-warning: #C06B45;
+  --color-warning-subtle: #F3DAC7;
 
-  --color-highlight: #C7DB00;
-  --color-highlight-subtle: #F5FAD1;
+  --color-highlight: #C9922C;
+  --color-highlight-subtle: #F3E2B8;
+
+  --color-lima: #B9F23E;
+  --color-lima-hover: #A3DB2E;
+  --color-lima-subtle: #EBFAD1;
+
+  --color-brand: #1F4D3B;
+
+  /* Degradés de los banners grandes de Explorar (hero y CTA). Son
+     superficies propias, no botones: no dependen de --color-primary para
+     poder ajustarse de forma independiente. Cada banner tiene su propio
+     par from/to. */
+  --color-banner-hero-from: #1F4D3B;
+  --color-banner-hero-to: #C9922C;
+  --color-banner-cta-from: #1F4D3B;
+  --color-banner-cta-to: #163A2C;
+  --color-banner-text: #FBF8F2;
+
+  /* Tinta fija para texto/íconos sobre superficies siempre-claras (botones
+     lima, badges en accent sólido). */
+  --color-on-accent: #1C2B22;
+
+  /* Backdrop de modales. */
+  --color-overlay: #11201A;
+
+  /* Fondo del header y el footer. */
+  --color-header-footer-bg: #FFFFFF;
+
+  /* Para una única acción "sumamente importante" fuera del banner de
+     Explorar: el botón "Nueva publicación" del panel de propietario. */
+  --color-action-strong: #1F4D3B;
+  --color-action-strong-hover: #163A2C;
 
   --font-heading: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;
@@ -33,6 +64,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-body);
+  transition: background-color .15s ease, color .15s ease;
 }
 
 h1,
@@ -71,4 +103,10 @@ select.custom-select option:checked {
 
 select.custom-select option:hover {
   background-color: var(--color-primary-subtle);
+}
+
+/* Sombra con tinte de marca, reservada para tarjetas de publicación y
+   paneles principales (ver CLAUDE.md / integración de paleta "verde bosque"). */
+.shadow-card {
+  box-shadow: 0 10px 28px -10px rgba(28, 43, 34, 0.22);
 }

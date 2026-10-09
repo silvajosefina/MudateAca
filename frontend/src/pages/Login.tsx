@@ -11,6 +11,7 @@ interface Errores {
     correo?: string
     contrasena?: string
     credencialesInvalidas?: boolean
+    cuentaSuspendida?: string
 }
 
 function Login() {
@@ -39,6 +40,9 @@ function Login() {
         if (!nuevosErrores.correo && !nuevosErrores.contrasena) {
             if (!usuario || usuario.contrasena !== contrasena) {
                 nuevosErrores.credencialesInvalidas = true
+            } else if (usuario.estadoCuenta === 'suspendido') {
+                nuevosErrores.cuentaSuspendida =
+                    usuario.motivoSuspension ?? 'Contactate con la administración para más información.'
             }
         }
 
@@ -58,8 +62,8 @@ function Login() {
         }
     }
 
-    const correoConError = Boolean(errores.correo || errores.credencialesInvalidas)
-    const contrasenaConError = Boolean(errores.contrasena || errores.credencialesInvalidas)
+    const correoConError = Boolean(errores.correo || errores.credencialesInvalidas || errores.cuentaSuspendida)
+    const contrasenaConError = Boolean(errores.contrasena || errores.credencialesInvalidas || errores.cuentaSuspendida)
 
     return (
         <AuthLayout title="Iniciar sesión">
@@ -87,6 +91,11 @@ function Login() {
                     {errores.credencialesInvalidas && (
                         <p className="text-xs text-danger mt-1">Usuario o contraseña incorrectos.</p>
                     )}
+                    {errores.cuentaSuspendida && (
+                        <p className="text-xs text-danger mt-1">
+                            Tu cuenta está suspendida. Motivo: {errores.cuentaSuspendida}
+                        </p>
+                    )}
                 </div>
 
                 {rolSinPanel && (
@@ -104,7 +113,7 @@ function Login() {
 
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer"
+                    className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer"
                 >
                     Ingresar
                 </button>

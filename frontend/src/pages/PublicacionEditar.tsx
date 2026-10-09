@@ -23,7 +23,7 @@ function PublicacionEditar() {
                     </p>
                     <Link
                         to="/mis-publicaciones"
-                        className="inline-block bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
+                        className="inline-block bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
                     >
                         Volver a mis publicaciones
                     </Link>
@@ -46,7 +46,7 @@ function PublicacionEditar() {
                     </p>
                     <Link
                         to="/mis-publicaciones"
-                        className="inline-block bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
+                        className="inline-block bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
                     >
                         Volver a mis publicaciones
                     </Link>

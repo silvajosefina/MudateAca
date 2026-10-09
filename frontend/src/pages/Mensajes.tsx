@@ -1,7 +1,9 @@
 import { useEffect, useState, type SubmitEvent } from 'react'
-import { Link, useSearchParams } from 'react-router'
-import { ChevronRight, MessageCircle, Send } from 'lucide-react'
+import { useSearchParams } from 'react-router'
+import { ChevronRight, Flag, MessageCircle, Send } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
+import ModalReclamo from '../components/ModalReclamo'
+import PublicacionPreviewModal from '../components/PublicacionPreviewModal'
 import {
     obtenerConversacionesDeUsuario,
     obtenerMensajes,
@@ -29,6 +31,8 @@ function Mensajes() {
     const [conversacionId, setConversacionId] = useState<string | null>(searchParams.get('conversacion'))
     const [, setPollTick] = useState(0)
     const [texto, setTexto] = useState('')
+    const [reclamoAbierto, setReclamoAbierto] = useState(false)
+    const [publicacionModalAbierta, setPublicacionModalAbierta] = useState(false)
 
     const mensajes = conversacionId ? obtenerMensajes(conversacionId) : []
     const usuarioId = sesion?.id
@@ -146,14 +150,24 @@ function Mensajes() {
                                             return contacto ? `${contacto.nombre} ${contacto.apellido}` : 'Usuario'
                                         })()}
                                     </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setReclamoAbierto(true)}
+                                        aria-label="Reportar usuario"
+                                        title="Reportar usuario"
+                                        className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer shrink-0"
+                                    >
+                                        <Flag className="w-3.5 h-3.5" aria-hidden="true" />
+                                    </button>
                                     {(() => {
                                         const publicacion = obtenerPublicacionPorId(conversacionActiva.publicacionId)
                                         if (!publicacion) return null
                                         return (
-                                            <Link
-                                                to={`/explorar/${publicacion.id}`}
+                                            <button
+                                                type="button"
+                                                onClick={() => setPublicacionModalAbierta(true)}
                                                 className="flex items-center gap-2 min-w-0 flex-1 rounded-lg px-2 py-1 -my-1 hover:bg-surface-hover transition-colors cursor-pointer group"
-                                                title="Ver la publicación"
+                                                title="Ver detalles de la publicación"
                                             >
                                                 <span className="text-muted">·</span>
                                                 <div className="w-8 h-8 rounded-md overflow-hidden bg-surface-hover shrink-0">
@@ -173,7 +187,7 @@ function Mensajes() {
                                                     className="w-4 h-4 text-muted group-hover:text-primary transition-colors shrink-0 ml-auto"
                                                     aria-hidden="true"
                                                 />
-                                            </Link>
+                                            </button>
                                         )
                                     })()}
                                 </div>
@@ -185,12 +199,12 @@ function Mensajes() {
                                             <div
                                                 key={mensaje.id}
                                                 className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${esPropio
-                                                    ? 'self-end bg-primary text-foreground'
+                                                    ? 'self-end bg-primary text-surface'
                                                     : 'self-start bg-surface-hover text-foreground'
                                                     }`}
                                             >
                                                 <p>{mensaje.texto}</p>
-                                                <p className={`text-[10px] mt-1 ${esPropio ? 'text-foreground/60' : 'text-muted'}`}>
+                                                <p className={`text-[10px] mt-1 ${esPropio ? 'text-surface/70' : 'text-muted'}`}>
                                                     {formatearHora(mensaje.enviadoEn)}
                                                 </p>
                                             </div>
@@ -209,7 +223,7 @@ function Mensajes() {
                                     <button
                                         type="submit"
                                         aria-label="Enviar mensaje"
-                                        className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
+                                        className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
                                     >
                                         <Send className="w-4 h-4" aria-hidden="true" />
                                     </button>
@@ -219,6 +233,31 @@ function Mensajes() {
                     </div>
                 </div>
             )}
+
+            {reclamoAbierto && conversacionActiva && (() => {
+                const contacto = otraParte(conversacionActiva)
+                if (!contacto) return null
+                return (
+                    <ModalReclamo
+                        objetivoTipo="usuario"
+                        objetivoId={contacto.id}
+                        nombreObjetivo={`${contacto.nombre} ${contacto.apellido}`}
+                        onClose={() => setReclamoAbierto(false)}
+                    />
+                )
+            })()}
+
+            {publicacionModalAbierta && conversacionActiva && (() => {
+                const publicacion = obtenerPublicacionPorId(conversacionActiva.publicacionId)
+                if (!publicacion) return null
+                return (
+                    <PublicacionPreviewModal
+                        publicacion={publicacion}
+                        permitirEditar={sesion.id === publicacion.propietarioId}
+                        onClose={() => setPublicacionModalAbierta(false)}
+                    />
+                )
+            })()}
         </PublicoLayout>
     )
 }

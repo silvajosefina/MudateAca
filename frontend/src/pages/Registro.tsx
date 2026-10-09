@@ -162,7 +162,7 @@ function Registro() {
 
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 mt-2 transition-colors cursor-pointer"
+                    className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 mt-2 transition-colors cursor-pointer"
                 >
                     Registrarme
                 </button>

@@ -2,21 +2,32 @@ import { useState } from 'react'
 import { Heart } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import TarjetaPublicacion from '../components/TarjetaPublicacion'
+import Paginacion from '../components/Paginacion'
 import { obtenerFavoritosDeUsuario } from '../mocks/favoritos'
 import { obtenerSesion } from '../mocks/sesion'
 import type { Publicacion } from '../types/publicacion'
+
+const RESULTADOS_POR_PAGINA = 9
 
 function MisFavoritos() {
     const sesion = obtenerSesion()
     const [favoritos, setFavoritos] = useState<Publicacion[]>(() =>
         sesion ? obtenerFavoritosDeUsuario(sesion.id) : [],
     )
+    const [paginaActual, setPaginaActual] = useState(1)
 
     if (!sesion) return null
 
     function refrescar() {
         setFavoritos(obtenerFavoritosDeUsuario(sesion!.id))
     }
+
+    const totalPaginas = Math.max(1, Math.ceil(favoritos.length / RESULTADOS_POR_PAGINA))
+    const paginaSegura = Math.min(paginaActual, totalPaginas)
+    const favoritosPagina = favoritos.slice(
+        (paginaSegura - 1) * RESULTADOS_POR_PAGINA,
+        paginaSegura * RESULTADOS_POR_PAGINA,
+    )
 
     return (
         <PublicoLayout>
@@ -32,7 +43,7 @@ function MisFavoritos() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {favoritos.map((publicacion) => (
+                    {favoritosPagina.map((publicacion) => (
                         <TarjetaPublicacion
                             key={publicacion.id}
                             publicacion={publicacion}
@@ -41,6 +52,8 @@ function MisFavoritos() {
                     ))}
                 </div>
             )}
+
+            <Paginacion paginaActual={paginaSegura} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
         </PublicoLayout>
     )
 }

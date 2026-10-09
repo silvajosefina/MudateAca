@@ -13,6 +13,8 @@ export function iniciarSesion(usuario: Usuario) {
         rol: usuario.rol,
         estadoVerificacion: usuario.estadoVerificacion,
         motivoRechazo: usuario.motivoRechazo,
+        estadoCuenta: usuario.estadoCuenta,
+        motivoSuspension: usuario.motivoSuspension,
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sesion))
 }

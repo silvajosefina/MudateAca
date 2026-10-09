@@ -1,10 +1,13 @@
 import { useState, type SubmitEvent } from 'react'
-import { User } from 'lucide-react'
+import { Flag, User } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import PanelLayout from '../layouts/PanelLayout'
 import { obtenerSesion, actualizarUsuarioSesion } from '../mocks/sesion'
-import { actualizarUsuario, MOCK_USUARIOS } from '../mocks/usuarios'
+import { actualizarUsuario, MOCK_USUARIOS, obtenerUsuarioPorId } from '../mocks/usuarios'
+import { obtenerPublicacionPorId } from '../mocks/publicaciones'
+import { obtenerReclamosPorUsuario } from '../mocks/reclamos'
 import { mostrarToast } from '../mocks/toast'
+import type { EstadoReclamo, MotivoReclamo, Reclamo } from '../types/reclamo'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const USUARIO_REGEX = /^[a-zA-Z0-9._]{3,20}$/
@@ -16,6 +19,32 @@ interface Errores {
     nombreUsuario?: string
     celular?: string
     correo?: string
+}
+
+const ETIQUETAS_MOTIVO_RECLAMO: Record<MotivoReclamo, string> = {
+    enganosa: 'La publicación es engañosa',
+    duplicada: 'Publicación duplicada',
+    no_existe: 'La propiedad no existe',
+    datos_falsos: 'Datos falsos',
+    conducta_inapropiada: 'Conducta inapropiada',
+    no_se_presento: 'No se presentó a una visita/encuentro acordado',
+    posible_estafa: 'Posible estafa',
+    otro: 'Otro motivo',
+}
+
+const ETIQUETAS_ESTADO_RECLAMO: Record<EstadoReclamo, { texto: string; clase: string }> = {
+    pendiente: { texto: 'Pendiente', clase: 'bg-warning-subtle text-warning' },
+    resuelto: { texto: 'Resuelto', clase: 'bg-accent-subtle text-accent' },
+    descartado: { texto: 'Descartado', clase: 'bg-surface-hover text-muted' },
+}
+
+function nombreObjetivoReclamo(reclamo: Reclamo): string {
+    if (reclamo.objetivoTipo === 'publicacion') {
+        const publicacion = obtenerPublicacionPorId(reclamo.objetivoId)
+        return publicacion ? publicacion.descripcion.slice(0, 50) : 'Publicación eliminada'
+    }
+    const usuario = obtenerUsuarioPorId(reclamo.objetivoId)
+    return usuario ? `${usuario.nombre} ${usuario.apellido}` : 'Usuario eliminado'
 }
 
 function MiCuenta() {
@@ -30,6 +59,7 @@ function MiCuenta() {
     if (!sesion) return null
 
     const Layout = sesion.rol === 'interesado' ? PublicoLayout : PanelLayout
+    const misReclamos = obtenerReclamosPorUsuario(sesion.id)
 
     function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
@@ -155,11 +185,49 @@ function MiCuenta() {
 
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 mt-2 transition-colors cursor-pointer"
+                    className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 mt-2 transition-colors cursor-pointer"
                 >
                     Guardar cambios
                 </button>
             </form>
+
+            <h2 className="flex items-center gap-2 text-lg sm:text-xl font-heading font-semibold text-foreground mt-8 mb-4">
+                <Flag className="w-5 h-5 text-primary" aria-hidden="true" />
+                Mis reclamos
+            </h2>
+
+            <div className="bg-surface rounded-2xl shadow-lg p-6 max-w-md">
+                {misReclamos.length === 0 ? (
+                    <p className="text-sm text-muted">No presentaste ningún reclamo todavía.</p>
+                ) : (
+                    <div className="flex flex-col gap-3">
+                        {misReclamos.map((reclamo) => {
+                            const etiquetaEstado = ETIQUETAS_ESTADO_RECLAMO[reclamo.estado]
+                            return (
+                                <div key={reclamo.id} className="rounded-lg border border-border p-3 flex flex-col gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`text-xs font-semibold rounded-full px-2.5 py-1 ${etiquetaEstado.clase}`}>
+                                            {etiquetaEstado.texto}
+                                        </span>
+                                        <span className="text-xs text-muted">
+                                            {reclamo.objetivoTipo === 'publicacion' ? 'Publicación' : 'Usuario'}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm font-semibold text-foreground">
+                                        {ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]} · {nombreObjetivoReclamo(reclamo)}
+                                    </p>
+                                    <p className="text-sm text-muted">{reclamo.descripcion}</p>
+                                    {reclamo.notaAdmin && (
+                                        <p className="text-xs text-foreground bg-surface-hover rounded-lg px-3 py-2">
+                                            Respuesta de administración: {reclamo.notaAdmin}
+                                        </p>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
+            </div>
         </Layout>
     )
 }

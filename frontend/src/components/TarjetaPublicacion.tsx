@@ -11,9 +11,11 @@ import { ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
 interface TarjetaPublicacionProps {
     publicacion: Publicacion
     onFavoritoCambiado?: () => void
+    vista?: 'grilla' | 'lista'
 }
 
-function TarjetaPublicacion({ publicacion, onFavoritoCambiado }: TarjetaPublicacionProps) {
+function TarjetaPublicacion({ publicacion, onFavoritoCambiado, vista = 'grilla' }: TarjetaPublicacionProps) {
+    const enLista = vista === 'lista'
     const sesion = obtenerSesion()
     const publicador = obtenerUsuarioPorId(publicacion.propietarioId)
     const puedeGuardarFavorito = sesion?.rol === 'interesado'
@@ -36,9 +38,13 @@ function TarjetaPublicacion({ publicacion, onFavoritoCambiado }: TarjetaPublicac
     return (
         <Link
             to={`/explorar/${publicacion.id}`}
-            className="bg-surface rounded-2xl shadow-lg overflow-hidden flex flex-col cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all"
+            className={`bg-surface rounded-2xl shadow-card overflow-hidden flex cursor-pointer hover:-translate-y-1 transition-all ${enLista ? 'flex-col sm:flex-row' : 'flex-col'
+                }`}
         >
-            <div className="relative h-40 bg-surface-hover flex items-center justify-center shrink-0">
+            <div
+                className={`relative bg-surface-hover flex items-center justify-center shrink-0 ${enLista ? 'h-40 sm:h-auto sm:w-56' : 'h-40'
+                    }`}
+            >
                 {publicacion.fotos[0] ? (
                     <img
                         src={publicacion.fotos[0]}
@@ -57,13 +63,13 @@ function TarjetaPublicacion({ publicacion, onFavoritoCambiado }: TarjetaPublicac
                         className="absolute top-2 right-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/90 shadow hover:bg-white transition-colors cursor-pointer"
                     >
                         <Heart
-                            className={`w-4 h-4 ${favorita ? 'fill-primary text-primary' : 'text-foreground'}`}
+                            className={`w-4 h-4 ${favorita ? 'fill-primary text-primary' : 'text-[#1F4D3B]'}`}
                             aria-hidden="true"
                         />
                     </button>
                 )}
             </div>
-            <div className="p-4 flex flex-col gap-1">
+            <div className="p-4 flex flex-col gap-1 min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold rounded-full px-2.5 py-1 bg-primary-subtle text-primary">
                         {ETIQUETAS_TIPO_INMUEBLE[publicacion.tipoInmueble]}

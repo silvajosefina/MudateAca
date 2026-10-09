@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { KeyRound, LayoutGrid, List, Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { Bookmark, KeyRound, LayoutGrid, List, Pause, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import PanelLayout from '../layouts/PanelLayout'
 import PublicacionPreviewModal from '../components/PublicacionPreviewModal'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -10,13 +10,13 @@ import {
     eliminarPublicacion,
     obtenerPublicacionesDeUsuario,
 } from '../mocks/publicaciones'
+import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
 import { obtenerSesion } from '../mocks/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearPrecio } from '../utils/formato'
 import { ETIQUETAS_TIPO_INMUEBLE, type EstadoPublicacion, type Publicacion } from '../types/publicacion'
 
 type Pestana = 'todas' | 'en_revision' | 'activa' | 'pausada' | 'observada' | 'rechazada' | 'alquilada' | 'archivada' | 'eliminada'
-type Vista = 'lista' | 'grilla'
 
 const PUBLICACIONES_POR_PAGINA = 6
 
@@ -36,10 +36,10 @@ const ETIQUETAS_ESTADO: Record<EstadoPublicacion, { texto: string; clase: string
     pendiente_moderacion: { texto: 'En revisión', clase: 'bg-warning-subtle text-warning' },
     activa: { texto: 'Activa', clase: 'bg-accent-subtle text-accent' },
     pausada: { texto: 'Pausada', clase: 'bg-warning-subtle text-warning' },
-    observada: { texto: 'Observada', clase: 'bg-warning text-foreground' },
+    observada: { texto: 'Observada', clase: 'bg-warning-subtle text-warning' },
     reservada: { texto: 'Reservada', clase: 'bg-surface-hover text-foreground' },
     rechazada: { texto: 'Rechazada', clase: 'bg-danger-subtle text-danger' },
-    alquilada: { texto: 'Alquilada', clase: 'bg-accent text-foreground' },
+    alquilada: { texto: 'Alquilada', clase: 'bg-highlight text-on-accent' },
     archivada: { texto: 'Archivada', clase: 'bg-surface-hover text-muted' },
     eliminada: { texto: 'Eliminada', clase: 'bg-danger-subtle text-danger' },
 }
@@ -47,7 +47,7 @@ const ETIQUETAS_ESTADO: Record<EstadoPublicacion, { texto: string; clase: string
 function MisPublicaciones() {
     const sesion = obtenerSesion()
     const [pestana, setPestana] = useState<Pestana>('todas')
-    const [vista, setVista] = useState<Vista>('lista')
+    const [vista, setVista] = useState(() => obtenerVistaListado())
     const [publicaciones, setPublicaciones] = useState<Publicacion[]>(() =>
         sesion ? obtenerPublicacionesDeUsuario(sesion.id) : [],
     )
@@ -79,6 +79,12 @@ function MisPublicaciones() {
         refrescar()
     }
 
+    function handleMarcarReservada(publicacion: Publicacion) {
+        cambiarEstadoPublicacion(publicacion.id, sesion!.id, 'reservada')
+        mostrarToast('Publicación marcada como reservada.')
+        refrescar()
+    }
+
     function confirmarEliminar() {
         if (!publicacionAEliminar) return
         eliminarPublicacion(publicacionAEliminar.id, sesion!.id)
@@ -104,7 +110,7 @@ function MisPublicaciones() {
                 <h2 className="text-lg sm:text-xl font-heading font-semibold text-foreground">Mis publicaciones</h2>
                 <Link
                     to="/publicaciones/nueva"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 text-center transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 bg-[var(--color-action-strong)] hover:bg-[var(--color-action-strong-hover)] text-surface font-heading font-semibold rounded-lg px-4 py-2 text-center transition-colors cursor-pointer"
                 >
                     <Plus className="w-4 h-4" aria-hidden="true" />
                     Nueva publicación
@@ -122,7 +128,7 @@ function MisPublicaciones() {
                                 setPaginaActual(1)
                             }}
                             className={`text-sm font-semibold rounded-full px-3 py-1.5 transition-colors cursor-pointer ${pestana === p.valor
-                                ? 'bg-primary text-foreground'
+                                ? 'bg-primary text-surface'
                                 : 'bg-surface text-foreground border border-border hover:bg-primary-subtle'
                                 }`}
                         >
@@ -134,20 +140,26 @@ function MisPublicaciones() {
                 <div className="flex gap-1 rounded-lg border border-border p-1 bg-surface shrink-0">
                     <button
                         type="button"
-                        onClick={() => setVista('lista')}
+                        onClick={() => {
+                            setVista('lista')
+                            guardarVistaListado('lista')
+                        }}
                         aria-label="Ver como lista"
                         aria-pressed={vista === 'lista'}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'lista' ? 'bg-primary text-foreground' : 'text-muted hover:bg-surface-hover'
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'lista' ? 'bg-primary text-surface' : 'text-muted hover:bg-surface-hover'
                             }`}
                     >
                         <List className="w-4 h-4" aria-hidden="true" />
                     </button>
                     <button
                         type="button"
-                        onClick={() => setVista('grilla')}
+                        onClick={() => {
+                            setVista('grilla')
+                            guardarVistaListado('grilla')
+                        }}
                         aria-label="Ver como grilla"
                         aria-pressed={vista === 'grilla'}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'grilla' ? 'bg-primary text-foreground' : 'text-muted hover:bg-surface-hover'
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors cursor-pointer ${vista === 'grilla' ? 'bg-primary text-surface' : 'text-muted hover:bg-surface-hover'
                             }`}
                     >
                         <LayoutGrid className="w-4 h-4" aria-hidden="true" />
@@ -165,6 +177,7 @@ function MisPublicaciones() {
                         const etiqueta = ETIQUETAS_ESTADO[publicacion.estado]
                         const eliminada = publicacion.estado === 'eliminada'
                         const alquilada = publicacion.estado === 'alquilada'
+                        const reservada = publicacion.estado === 'reservada'
                         const enGrilla = vista === 'grilla'
 
                         return (
@@ -175,10 +188,9 @@ function MisPublicaciones() {
                             >
                                 <button
                                     type="button"
-                                    disabled={eliminada}
                                     onClick={() => setPublicacionAVer(publicacion)}
-                                    className={`flex gap-4 text-left flex-1 min-w-0 ${enGrilla ? 'flex-col' : 'flex-col sm:flex-row'
-                                        } ${eliminada ? 'cursor-default' : 'cursor-pointer'}`}
+                                    className={`flex gap-4 text-left flex-1 min-w-0 cursor-pointer ${enGrilla ? 'flex-col' : 'flex-col sm:flex-row'
+                                        }`}
                                 >
                                     <div
                                         className={`rounded-lg overflow-hidden bg-surface-hover flex items-center justify-center shrink-0 ${enGrilla ? 'w-full h-40' : 'w-full sm:w-32 h-32'
@@ -212,6 +224,11 @@ function MisPublicaciones() {
                                                 Motivo del rechazo: {publicacion.motivoRechazoVerificacion}
                                             </p>
                                         )}
+                                        {publicacion.estado === 'observada' && publicacion.notaModeracion && (
+                                            <p className="text-xs text-warning bg-warning-subtle border border-warning/20 rounded-lg px-2 py-1 mt-1">
+                                                Nota del administrador: {publicacion.notaModeracion}
+                                            </p>
+                                        )}
                                     </div>
                                 </button>
 
@@ -219,7 +236,7 @@ function MisPublicaciones() {
                                     className={`flex gap-2 flex-wrap shrink-0 ${enGrilla ? 'w-full' : 'sm:flex-col sm:w-48'
                                         }`}
                                 >
-                                    {!eliminada && !alquilada && (
+                                    {!eliminada && !alquilada && !reservada && (
                                         <Link
                                             to={`/publicaciones/${publicacion.id}/editar`}
                                             className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-sm text-center font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
@@ -241,6 +258,14 @@ function MisPublicaciones() {
                                             </button>
                                             <button
                                                 type="button"
+                                                onClick={() => handleMarcarReservada(publicacion)}
+                                                className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
+                                            >
+                                                <Bookmark className="w-4 h-4 shrink-0" aria-hidden="true" />
+                                                Marcar reservada
+                                            </button>
+                                            <button
+                                                type="button"
                                                 onClick={() => handleMarcarAlquilada(publicacion)}
                                                 className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
                                             >
@@ -250,7 +275,7 @@ function MisPublicaciones() {
                                         </>
                                     )}
 
-                                    {(publicacion.estado === 'pausada' || alquilada) && (
+                                    {(publicacion.estado === 'pausada' || alquilada || reservada) && (
                                         <button
                                             type="button"
                                             onClick={() => handleReactivar(publicacion)}

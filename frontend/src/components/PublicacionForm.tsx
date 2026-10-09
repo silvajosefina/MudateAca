@@ -81,6 +81,7 @@ function valorInicial(publicacion?: Publicacion): PublicacionFormData {
         duracionMinima: publicacion?.duracionMinima ?? '',
         tipoDocumentoVerificacion: publicacion?.tipoDocumentoVerificacion,
         nombreArchivoVerificacion: publicacion?.nombreArchivoVerificacion,
+        urlArchivoVerificacion: publicacion?.urlArchivoVerificacion,
     }
 }
 
@@ -117,7 +118,11 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
             delete siguiente.archivoVerificacion
             return siguiente
         })
+        if (datos.urlArchivoVerificacion) {
+            URL.revokeObjectURL(datos.urlArchivoVerificacion)
+        }
         actualizarCampo('nombreArchivoVerificacion', seleccionado.name)
+        actualizarCampo('urlArchivoVerificacion', URL.createObjectURL(seleccionado))
     }
 
     function manejarCambioFecha(campo: 'disponibleDesde' | 'disponibleHasta', valor: string) {
@@ -508,7 +513,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
             <div className="flex flex-col sm:flex-row gap-3 mt-2">
                 <button
                     type="submit"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
                 >
                     {modo === 'crear' ? (
                         <Send className="w-4 h-4" aria-hidden="true" />

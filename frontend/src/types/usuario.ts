@@ -1,5 +1,6 @@
 export type Rol = 'interesado' | 'propietario' | 'inmobiliaria' | 'administrador'
 export type EstadoVerificacion = 'pendiente' | 'verificado' | 'rechazado'
+export type EstadoCuenta = 'activo' | 'pendiente' | 'suspendido'
 
 export interface Usuario {
     id: string
@@ -12,6 +13,8 @@ export interface Usuario {
     rol: Rol
     estadoVerificacion: EstadoVerificacion
     motivoRechazo?: string
+    estadoCuenta: EstadoCuenta
+    motivoSuspension?: string
 }
 
 export type SesionUsuario = Omit<Usuario, 'contrasena'>

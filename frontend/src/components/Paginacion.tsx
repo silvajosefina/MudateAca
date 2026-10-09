@@ -47,7 +47,7 @@ function Paginacion({ paginaActual, totalPaginas, onCambiarPagina }: PaginacionP
                         onClick={() => onCambiarPagina(pagina)}
                         aria-current={pagina === paginaActual ? 'page' : undefined}
                         className={`inline-flex items-center justify-center w-9 h-9 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${pagina === paginaActual
-                            ? 'bg-primary text-foreground'
+                            ? 'bg-primary text-surface'
                             : 'border border-border text-foreground hover:border-primary hover:text-primary'
                             }`}
                     >

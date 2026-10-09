@@ -5,10 +5,10 @@ function Footer() {
     const anio = new Date().getFullYear()
 
     return (
-        <footer className="border-t border-border bg-surface mt-auto">
+        <footer className="border-t border-border bg-[var(--color-header-footer-bg)] mt-auto">
             <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <Link to="/explorar" className="inline-flex items-center gap-1.5 text-base font-heading font-bold text-primary">
+                    <Link to="/explorar" className="inline-flex items-center gap-1.5 text-base font-heading font-bold text-brand">
                         <Home className="w-4 h-4" aria-hidden="true" />
                         Mudate Acá
                     </Link>

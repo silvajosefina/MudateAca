@@ -39,7 +39,7 @@ function CarruselFotos({ fotos, descripcion, claseAltura = 'aspect-video' }: Car
                         type="button"
                         onClick={fotoAnterior}
                         aria-label="Foto anterior"
-                        className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/90 text-foreground shadow hover:bg-white transition-colors cursor-pointer"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/90 text-[#1F4D3B] shadow hover:bg-white transition-colors cursor-pointer"
                     >
                         <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                     </button>
@@ -47,7 +47,7 @@ function CarruselFotos({ fotos, descripcion, claseAltura = 'aspect-video' }: Car
                         type="button"
                         onClick={fotoSiguiente}
                         aria-label="Foto siguiente"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/90 text-foreground shadow hover:bg-white transition-colors cursor-pointer"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/90 text-[#1F4D3B] shadow hover:bg-white transition-colors cursor-pointer"
                     >
                         <ChevronRight className="w-5 h-5" aria-hidden="true" />
                     </button>

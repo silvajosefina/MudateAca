@@ -7,11 +7,13 @@ export interface SerieReporte {
 
 export interface ReporteDemandaDatos {
     fecha: string
+    periodo: string
     busquedasActivas: number
     tipoMasBuscado: string
     rangoMasSolicitado: string
     datosTipos: SerieReporte[]
     datosPrecios: SerieReporte[]
+    datosZonas: SerieReporte[]
     tendencia: SerieReporte[]
     caracteristicas: SerieReporte[]
     coincidencias: SerieReporte[]
@@ -19,17 +21,18 @@ export interface ReporteDemandaDatos {
 
 type ColorRGB = [number, number, number]
 
-const COLOR_PRIMARY: ColorRGB = [247, 139, 45]
-const COLOR_PRIMARY_SUBTLE: ColorRGB = [253, 234, 214]
-const COLOR_ACCENT: ColorRGB = [122, 168, 2]
-const COLOR_ACCENT_SUBTLE: ColorRGB = [238, 245, 208]
-const COLOR_WARNING: ColorRGB = [196, 146, 0]
-const COLOR_WARNING_SUBTLE: ColorRGB = [251, 240, 204]
-const COLOR_HIGHLIGHT: ColorRGB = [163, 180, 0]
-const COLOR_FOREGROUND: ColorRGB = [31, 35, 40]
-const COLOR_MUTED: ColorRGB = [107, 114, 128]
-const COLOR_BORDER: ColorRGB = [229, 231, 235]
-const COLOR_SURFACE_HOVER: ColorRGB = [243, 244, 246]
+// Paleta "verde bosque" — debe coincidir siempre con los tokens de index.css.
+const COLOR_PRIMARY: ColorRGB = [31, 77, 59]
+const COLOR_PRIMARY_SUBTLE: ColorRGB = [220, 232, 224]
+const COLOR_ACCENT: ColorRGB = [184, 146, 63]
+const COLOR_ACCENT_SUBTLE: ColorRGB = [242, 230, 200]
+const COLOR_WARNING: ColorRGB = [192, 107, 69]
+const COLOR_WARNING_SUBTLE: ColorRGB = [243, 218, 199]
+const COLOR_HIGHLIGHT: ColorRGB = [201, 146, 44]
+const COLOR_FOREGROUND: ColorRGB = [28, 43, 34]
+const COLOR_MUTED: ColorRGB = [110, 97, 82]
+const COLOR_BORDER: ColorRGB = [225, 215, 194]
+const COLOR_SURFACE_HOVER: ColorRGB = [239, 231, 214]
 const COLOR_WHITE: ColorRGB = [255, 255, 255]
 
 const ANCHO_PAGINA = 210
@@ -38,7 +41,7 @@ const MARGEN = 16
 const ANCHO_CONTENIDO = ANCHO_PAGINA - MARGEN * 2
 const PIE_PAGINA_Y = ALTO_PAGINA - 12
 
-function dibujarEncabezado(doc: jsPDF, fecha: string): number {
+function dibujarEncabezado(doc: jsPDF, fecha: string, periodo: string): number {
     doc.setFillColor(...COLOR_PRIMARY)
     doc.rect(0, 0, ANCHO_PAGINA, 26, 'F')
 
@@ -49,7 +52,7 @@ function dibujarEncabezado(doc: jsPDF, fecha: string): number {
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)
-    doc.text('Panel de demanda · Reporte de búsquedas activas', MARGEN, 21)
+    doc.text(`Panel de demanda · Reporte de búsquedas activas · ${periodo}`, MARGEN, 21)
 
     doc.setFontSize(9)
     doc.text(fecha, ANCHO_PAGINA - MARGEN, 15, { align: 'right' })
@@ -205,7 +208,7 @@ function dibujarTendencia(doc: jsPDF, datos: SerieReporte[], y: number): number 
 
 export function generarReporteDemandaPDF(datos: ReporteDemandaDatos): void {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-    let y = dibujarEncabezado(doc, datos.fecha)
+    let y = dibujarEncabezado(doc, datos.fecha, datos.periodo)
 
     y = dibujarTiles(
         doc,
@@ -222,6 +225,14 @@ export function generarReporteDemandaPDF(datos: ReporteDemandaDatos): void {
 
     y = dibujarTituloSeccion(doc, 'Demanda por rango de precio', y)
     y = dibujarBarras(doc, datos.datosPrecios, COLOR_ACCENT, y) + 4
+
+    y = dibujarTituloSeccion(doc, 'Demanda por barrio/localidad', y)
+    y = dibujarBarras(doc, datos.datosZonas, COLOR_PRIMARY, y) + 4
+
+    if (y > 200) {
+        doc.addPage()
+        y = 20
+    }
 
     y = dibujarTituloSeccion(doc, 'Búsquedas nuevas por semana', y)
     y = dibujarTendencia(doc, datos.tendencia, y) + 4

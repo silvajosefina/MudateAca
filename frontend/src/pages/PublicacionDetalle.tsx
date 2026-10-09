@@ -6,6 +6,7 @@ import {
     Cat,
     Check,
     DoorOpen,
+    Flag,
     GraduationCap,
     Heart,
     LogIn,
@@ -21,6 +22,7 @@ import {
 import PublicoLayout from '../layouts/PublicoLayout'
 import GaleriaMosaico from '../components/GaleriaMosaico'
 import ModalGaleria from '../components/ModalGaleria'
+import ModalReclamo from '../components/ModalReclamo'
 import Mapa from '../components/Mapa'
 import { obtenerPublicacionPorId } from '../mocks/publicaciones'
 import { obtenerUsuarioPorId } from '../mocks/usuarios'
@@ -46,12 +48,13 @@ function PublicacionDetalle() {
     const publicacion = id ? obtenerPublicacionPorId(id) : undefined
     const [, forzarActualizacion] = useState(0)
     const [galeriaAbierta, setGaleriaAbierta] = useState<number | null>(null)
+    const [reclamoAbierto, setReclamoAbierto] = useState<'publicacion' | 'usuario' | null>(null)
     const esDueño = Boolean(sesion && publicacion && sesion.id === publicacion.propietarioId)
 
-    if (!publicacion || (publicacion.estado !== 'activa' && (!esDueño || publicacion.estado === 'eliminada'))) {
+    if (!publicacion || (publicacion.estado !== 'activa' && !esDueño)) {
         return (
             <PublicoLayout>
-                <div className="bg-surface rounded-2xl shadow-lg p-6 sm:p-8 text-center">
+                <div className="bg-surface rounded-2xl shadow-card p-6 sm:p-8 text-center">
                     <h2 className="text-lg font-heading font-semibold text-foreground mb-2">
                         Publicación no disponible
                     </h2>
@@ -60,7 +63,7 @@ function PublicacionDetalle() {
                     </p>
                     <Link
                         to="/explorar"
-                        className="inline-block bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
+                        className="inline-block bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg px-4 py-2 transition-colors cursor-pointer"
                     >
                         Volver a explorar
                     </Link>
@@ -107,7 +110,7 @@ function PublicacionDetalle() {
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
                 <div className="flex flex-col gap-6 min-w-0">
-                    <div className="bg-surface rounded-2xl shadow-lg p-3 sm:p-4">
+                    <div className="bg-surface rounded-2xl shadow-card p-3 sm:p-4">
                         <GaleriaMosaico
                             fotos={publicacion.fotos}
                             descripcion={publicacion.descripcion}
@@ -115,7 +118,7 @@ function PublicacionDetalle() {
                         />
                     </div>
 
-                    <div className="bg-surface rounded-2xl shadow-lg p-6 sm:p-8 flex flex-col gap-5">
+                    <div className="bg-surface rounded-2xl shadow-card p-6 sm:p-8 flex flex-col gap-5">
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-xs font-semibold rounded-full px-2.5 py-1 bg-primary-subtle text-primary">
                                 {ETIQUETAS_TIPO_INMUEBLE[publicacion.tipoInmueble]}
@@ -180,7 +183,7 @@ function PublicacionDetalle() {
                     </div>
                 </div>
 
-                <aside className="lg:sticky lg:top-20 bg-surface rounded-2xl shadow-lg p-6 flex flex-col gap-4">
+                <aside className="lg:sticky lg:top-20 bg-surface rounded-2xl shadow-card p-6 flex flex-col gap-4">
                     <div>
                         <h1 className="text-2xl font-heading font-semibold text-foreground">
                             {formatearPrecio(publicacion.precio)}
@@ -204,20 +207,22 @@ function PublicacionDetalle() {
                                     <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
                                     Esta es tu publicación
                                 </div>
-                                <Link
-                                    to={`/publicaciones/${publicacion.id}/editar`}
-                                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors cursor-pointer"
-                                >
-                                    <Pencil className="w-4 h-4" aria-hidden="true" />
-                                    Editar publicación
-                                </Link>
+                                {publicacion.estado !== 'eliminada' && (
+                                    <Link
+                                        to={`/publicaciones/${publicacion.id}/editar`}
+                                        className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors cursor-pointer"
+                                    >
+                                        <Pencil className="w-4 h-4" aria-hidden="true" />
+                                        Editar publicación
+                                    </Link>
+                                )}
                             </>
                         ) : sesion?.rol === 'interesado' ? (
                             <>
                                 <button
                                     type="button"
                                     onClick={handleContactar}
-                                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors cursor-pointer"
+                                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors cursor-pointer"
                                 >
                                     <MessageCircle className="w-4 h-4" aria-hidden="true" />
                                     Contactar
@@ -235,12 +240,23 @@ function PublicacionDetalle() {
                         ) : !sesion ? (
                             <Link
                                 to="/login"
-                                className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors cursor-pointer"
+                                className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors cursor-pointer"
                             >
                                 <LogIn className="w-4 h-4" aria-hidden="true" />
                                 Iniciá sesión para contactar
                             </Link>
                         ) : null}
+
+                        {sesion && !esDueño && (
+                            <button
+                                type="button"
+                                onClick={() => setReclamoAbierto('publicacion')}
+                                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-muted hover:text-danger transition-colors cursor-pointer"
+                            >
+                                <Flag className="w-3.5 h-3.5" aria-hidden="true" />
+                                Reportar publicación
+                            </button>
+                        )}
                     </div>
 
                     {publicador && (
@@ -248,12 +264,23 @@ function PublicacionDetalle() {
                             <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary-subtle text-primary shrink-0">
                                 <User className="w-4 h-4" aria-hidden="true" />
                             </span>
-                            <p className="text-sm text-foreground min-w-0">
+                            <p className="text-sm text-foreground min-w-0 flex-1">
                                 <span className="font-semibold block truncate">{publicador.nombre} {publicador.apellido}</span>
                                 <span className="text-muted text-xs">
                                     {publicador.rol === 'inmobiliaria' ? 'Inmobiliaria' : 'Propietario'}
                                 </span>
                             </p>
+                            {sesion && !esDueño && (
+                                <button
+                                    type="button"
+                                    onClick={() => setReclamoAbierto('usuario')}
+                                    aria-label="Reportar usuario"
+                                    title="Reportar usuario"
+                                    className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer shrink-0"
+                                >
+                                    <Flag className="w-3.5 h-3.5" aria-hidden="true" />
+                                </button>
+                            )}
                         </div>
                     )}
                 </aside>
@@ -265,6 +292,23 @@ function PublicacionDetalle() {
                     descripcion={publicacion.descripcion}
                     indiceInicial={galeriaAbierta}
                     onClose={() => setGaleriaAbierta(null)}
+                />
+            )}
+
+            {reclamoAbierto === 'publicacion' && (
+                <ModalReclamo
+                    objetivoTipo="publicacion"
+                    objetivoId={publicacion.id}
+                    nombreObjetivo={publicacion.descripcion.slice(0, 40) + (publicacion.descripcion.length > 40 ? '…' : '')}
+                    onClose={() => setReclamoAbierto(null)}
+                />
+            )}
+            {reclamoAbierto === 'usuario' && publicador && (
+                <ModalReclamo
+                    objetivoTipo="usuario"
+                    objetivoId={publicador.id}
+                    nombreObjetivo={`${publicador.nombre} ${publicador.apellido}`}
+                    onClose={() => setReclamoAbierto(null)}
                 />
             )}
         </PublicoLayout>

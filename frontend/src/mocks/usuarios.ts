@@ -1,4 +1,4 @@
-import type { EstadoVerificacion, Usuario } from '../types/usuario'
+import type { EstadoCuenta, EstadoVerificacion, Usuario } from '../types/usuario'
 import { crearNotificacion } from './notificaciones'
 
 export const MOCK_USUARIOS: Usuario[] = [
@@ -12,6 +12,7 @@ export const MOCK_USUARIOS: Usuario[] = [
         contrasena: 'Usuario1',
         rol: 'interesado',
         estadoVerificacion: 'pendiente',
+        estadoCuenta: 'activo',
     },
     {
         id: 'u2',
@@ -23,6 +24,7 @@ export const MOCK_USUARIOS: Usuario[] = [
         contrasena: 'Propietario1',
         rol: 'propietario',
         estadoVerificacion: 'verificado',
+        estadoCuenta: 'activo',
     },
     {
         id: 'u3',
@@ -34,6 +36,7 @@ export const MOCK_USUARIOS: Usuario[] = [
         contrasena: 'Inmobiliaria1',
         rol: 'inmobiliaria',
         estadoVerificacion: 'pendiente',
+        estadoCuenta: 'activo',
     },
     {
         id: 'u4',
@@ -46,6 +49,7 @@ export const MOCK_USUARIOS: Usuario[] = [
         rol: 'propietario',
         estadoVerificacion: 'rechazado',
         motivoRechazo: 'La documentación cargada no coincide con el domicilio declarado.',
+        estadoCuenta: 'activo',
     },
     {
         id: 'u5',
@@ -57,6 +61,7 @@ export const MOCK_USUARIOS: Usuario[] = [
         contrasena: 'Administrador1',
         rol: 'administrador',
         estadoVerificacion: 'verificado',
+        estadoCuenta: 'activo',
     },
 ]
 
@@ -94,5 +99,35 @@ export function actualizarEstadoVerificacionUsuario(
             : `Tu verificación de inmobiliaria fue rechazada. Motivo: ${motivoRechazo}`
     crearNotificacion(usuario.id, mensaje, estado === 'verificado' ? 'exito' : 'error')
 
+    return usuario
+}
+
+export function obtenerTodosLosUsuarios(): Usuario[] {
+    return MOCK_USUARIOS
+}
+
+export function suspenderUsuario(id: string, motivo: string): Usuario | undefined {
+    const usuario = MOCK_USUARIOS.find((u) => u.id === id)
+    if (!usuario) return undefined
+    usuario.estadoCuenta = 'suspendido'
+    usuario.motivoSuspension = motivo
+    crearNotificacion(usuario.id, `Tu cuenta fue suspendida. Motivo: ${motivo}`, 'error')
+    return usuario
+}
+
+export function reactivarUsuario(id: string): Usuario | undefined {
+    const usuario = MOCK_USUARIOS.find((u) => u.id === id)
+    if (!usuario) return undefined
+    usuario.estadoCuenta = 'activo'
+    usuario.motivoSuspension = undefined
+    crearNotificacion(usuario.id, 'Tu cuenta fue reactivada. Ya podés iniciar sesión con normalidad.', 'exito')
+    return usuario
+}
+
+export function cambiarEstadoCuentaUsuario(id: string, estado: EstadoCuenta): Usuario | undefined {
+    const usuario = MOCK_USUARIOS.find((u) => u.id === id)
+    if (!usuario) return undefined
+    usuario.estadoCuenta = estado
+    if (estado !== 'suspendido') usuario.motivoSuspension = undefined
     return usuario
 }

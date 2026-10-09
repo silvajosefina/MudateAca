@@ -10,8 +10,15 @@ interface GraficoTendenciaProps {
 }
 
 const ANCHO = 560
-const ALTO = 160
-const PADDING = 24
+const ALTO_TRAZADO = 112
+const PADDING_LATERAL = 24
+const PADDING_SUPERIOR = 24
+// Separado del padding superior a propósito: la etiqueta del eje X necesita su
+// propia franja de aire debajo de la línea base para no quedar pegada/cortada
+// contra el borde inferior de la tarjeta.
+const PADDING_INFERIOR = 36
+const ALTO = PADDING_SUPERIOR + ALTO_TRAZADO + PADDING_INFERIOR
+const Y_LINEA_BASE = PADDING_SUPERIOR + ALTO_TRAZADO
 
 function GraficoTendencia({ puntos }: GraficoTendenciaProps) {
     const [indiceActivo, setIndiceActivo] = useState<number | null>(null)
@@ -19,21 +26,21 @@ function GraficoTendencia({ puntos }: GraficoTendenciaProps) {
     if (puntos.length === 0) return null
 
     const maximo = Math.max(1, ...puntos.map((p) => p.valor))
-    const pasoX = puntos.length > 1 ? (ANCHO - PADDING * 2) / (puntos.length - 1) : 0
+    const pasoX = puntos.length > 1 ? (ANCHO - PADDING_LATERAL * 2) / (puntos.length - 1) : 0
 
     const coordenadas = puntos.map((punto, indice) => {
-        const x = PADDING + indice * pasoX
-        const y = ALTO - PADDING - (punto.valor / maximo) * (ALTO - PADDING * 2)
+        const x = PADDING_LATERAL + indice * pasoX
+        const y = Y_LINEA_BASE - (punto.valor / maximo) * ALTO_TRAZADO
         return { x, y, punto }
     })
 
     const lineaPath = coordenadas.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x} ${c.y}`).join(' ')
-    const areaPath = `${lineaPath} L ${coordenadas[coordenadas.length - 1].x} ${ALTO - PADDING} L ${coordenadas[0].x} ${ALTO - PADDING} Z`
+    const areaPath = `${lineaPath} L ${coordenadas[coordenadas.length - 1].x} ${Y_LINEA_BASE} L ${coordenadas[0].x} ${Y_LINEA_BASE} Z`
 
     return (
         <div className="relative w-full">
             <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} className="w-full h-auto overflow-visible" role="img" aria-label="Evolución de búsquedas activas">
-                <line x1={PADDING} y1={ALTO - PADDING} x2={ANCHO - PADDING} y2={ALTO - PADDING} stroke="var(--color-border)" strokeWidth="1" />
+                <line x1={PADDING_LATERAL} y1={Y_LINEA_BASE} x2={ANCHO - PADDING_LATERAL} y2={Y_LINEA_BASE} stroke="var(--color-border)" strokeWidth="1" />
                 <path d={areaPath} fill="var(--color-primary)" fillOpacity="0.12" stroke="none" />
                 <path d={lineaPath} fill="none" stroke="var(--color-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 {coordenadas.map((c, indice) => {
@@ -59,7 +66,7 @@ function GraficoTendencia({ puntos }: GraficoTendenciaProps) {
                                     {c.punto.valor}
                                 </text>
                             )}
-                            <text x={c.x} y={ALTO - 4} textAnchor={anclaEtiqueta} fontSize="10" fill="var(--color-muted)">
+                            <text x={c.x} y={Y_LINEA_BASE + 20} textAnchor={anclaEtiqueta} fontSize="10" fill="var(--color-muted)">
                                 {c.punto.etiqueta}
                             </text>
                         </g>

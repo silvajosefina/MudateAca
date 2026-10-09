@@ -7,12 +7,13 @@ import { ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
 interface PublicacionPreviewModalProps {
     publicacion: Publicacion
     onClose: () => void
+    permitirEditar?: boolean
 }
 
-function PublicacionPreviewModal({ publicacion, onClose }: PublicacionPreviewModalProps) {
+function PublicacionPreviewModal({ publicacion, onClose, permitirEditar = true }: PublicacionPreviewModalProps) {
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4"
             onClick={onClose}
         >
             <div
@@ -61,10 +62,10 @@ function PublicacionPreviewModal({ publicacion, onClose }: PublicacionPreviewMod
                         <Eye className="w-4 h-4" aria-hidden="true" />
                         Ver publicación completa
                     </Link>
-                    {publicacion.estado !== 'alquilada' && (
+                    {permitirEditar && publicacion.estado !== 'alquilada' && publicacion.estado !== 'eliminada' && (
                         <Link
                             to={`/publicaciones/${publicacion.id}/editar`}
-                            className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-foreground font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
                         >
                             <Pencil className="w-4 h-4" aria-hidden="true" />
                             Editar

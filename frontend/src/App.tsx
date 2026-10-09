@@ -16,6 +16,7 @@ import PanelAdministracion from './pages/PanelAdministracion'
 import RutaPrivada from './components/RutaPrivada'
 import ToastViewport from './components/ToastViewport'
 import ScrollAlTope from './components/ScrollAlTope'
+import BotonAyuda from './components/BotonAyuda'
 
 const ROLES_ANUNCIANTE = ['propietario', 'inmobiliaria'] as const
 
@@ -105,6 +106,7 @@ function App() {
         />
       </Routes>
       <ToastViewport />
+      <BotonAyuda />
     </>
   )
 }
