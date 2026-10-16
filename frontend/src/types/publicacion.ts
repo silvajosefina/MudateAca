@@ -48,6 +48,21 @@ export const ETIQUETAS_DOCUMENTO_VERIFICACION: Record<TipoDocumentoVerificacionP
     poder_representacion: 'Poder o autorización de representación del propietario',
 }
 
+export type TipoEventoModeracion = 'rechazo' | 'solicitud_modificacion'
+
+export const ETIQUETAS_EVENTO_MODERACION: Record<TipoEventoModeracion, { texto: string; clase: string }> = {
+    rechazo: { texto: 'Rechazada', clase: 'bg-danger-subtle text-danger' },
+    solicitud_modificacion: { texto: 'Modificaciones solicitadas', clase: 'bg-warning-subtle text-warning' },
+}
+
+export interface EventoModeracion {
+    id: string
+    publicacionId: string
+    tipo: TipoEventoModeracion
+    nota: string
+    fecha: string
+}
+
 export interface Publicacion {
     id: string
     propietarioId: string

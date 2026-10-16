@@ -1,6 +1,7 @@
 import type { EstadoPublicacion, Publicacion, PublicacionFormData } from '../types/publicacion'
 import { esFavorito } from './favoritos'
 import { crearNotificacion } from './notificaciones'
+import { registrarEventoModeracion } from './historialModeracion'
 import { obtenerSesion } from './sesion'
 import { mostrarToast } from './toast'
 
@@ -376,6 +377,7 @@ export function rechazarVerificacionPublicacion(id: string, motivo: string): voi
         actualizadaEn: new Date().toISOString(),
     }
     guardarAlmacenamiento(lista)
+    registrarEventoModeracion(id, 'rechazo', motivo)
     crearNotificacion(lista[indice].propietarioId, `Tu publicación fue rechazada. Motivo: ${motivo}`, 'error', `/explorar/${id}`)
 }
 
@@ -390,6 +392,7 @@ export function solicitarModificacionesPublicacion(id: string, nota: string): vo
         actualizadaEn: new Date().toISOString(),
     }
     guardarAlmacenamiento(lista)
+    registrarEventoModeracion(id, 'solicitud_modificacion', nota)
     crearNotificacion(
         lista[indice].propietarioId,
         `Un administrador solicitó modificaciones en tu publicación. Nota: ${nota}`,

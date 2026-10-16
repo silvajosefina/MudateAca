@@ -1,8 +1,14 @@
 import { Link } from 'react-router'
-import { ChevronRight, Download, Eye, FileText, Pencil, X } from 'lucide-react'
+import { ChevronRight, Download, Eye, FileText, History, Pencil, X } from 'lucide-react'
 import CarruselFotos from './CarruselFotos'
-import { formatearPrecio } from '../utils/formato'
-import { ETIQUETAS_DOCUMENTO_VERIFICACION, ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
+import { obtenerHistorialDePublicacion } from '../mocks/historialModeracion'
+import { formatearFechaHora, formatearPrecio } from '../utils/formato'
+import {
+    ETIQUETAS_DOCUMENTO_VERIFICACION,
+    ETIQUETAS_EVENTO_MODERACION,
+    ETIQUETAS_TIPO_INMUEBLE,
+    type Publicacion,
+} from '../types/publicacion'
 import { ETIQUETAS_ROL, type Usuario } from '../types/usuario'
 
 interface PublicacionPreviewModalProps {
@@ -23,6 +29,7 @@ function PublicacionPreviewModal({
     const iniciales = propietario
         ? `${propietario.nombre.charAt(0)}${propietario.apellido.charAt(0)}`.toUpperCase()
         : ''
+    const historial = !permitirEditar ? obtenerHistorialDePublicacion(publicacion.id) : []
     return (
         <div
             className="fixed inset-0 z-[75] flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4"
@@ -108,6 +115,31 @@ function PublicacionPreviewModal({
                             >
                                 <Download className="w-4 h-4" aria-hidden="true" />
                             </a>
+                        </div>
+                    )}
+
+                    {historial.length > 0 && (
+                        <div>
+                            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground mb-2">
+                                <History className="w-4 h-4 text-primary" aria-hidden="true" />
+                                Historial de revisión
+                            </h4>
+                            <div className="flex flex-col gap-2">
+                                {historial.map((evento) => {
+                                    const etiqueta = ETIQUETAS_EVENTO_MODERACION[evento.tipo]
+                                    return (
+                                        <div key={evento.id} className="rounded-lg border border-border p-2.5">
+                                            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                                <span className={`text-xs font-semibold rounded-full px-2.5 py-1 ${etiqueta.clase}`}>
+                                                    {etiqueta.texto}
+                                                </span>
+                                                <span className="text-xs text-muted">{formatearFechaHora(evento.fecha)}</span>
+                                            </div>
+                                            <p className="text-sm text-foreground">{evento.nota}</p>
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
                     )}
                 </div>

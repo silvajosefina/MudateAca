@@ -46,8 +46,9 @@ function PublicacionDetalle() {
     const [galeriaAbierta, setGaleriaAbierta] = useState<number | null>(null)
     const [reclamoAbierto, setReclamoAbierto] = useState<'publicacion' | 'usuario' | null>(null)
     const esDueño = Boolean(sesion && publicacion && sesion.id === publicacion.propietarioId)
+    const esAdministrador = sesion?.rol === 'administrador'
 
-    if (!publicacion || (publicacion.estado !== 'activa' && !esDueño)) {
+    if (!publicacion || (publicacion.estado !== 'activa' && !esDueño && !esAdministrador)) {
         return (
             <PublicoLayout>
                 <div className="bg-surface rounded-2xl shadow-card p-6 sm:p-8 text-center">
