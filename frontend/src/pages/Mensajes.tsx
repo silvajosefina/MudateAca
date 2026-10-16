@@ -150,15 +150,17 @@ function Mensajes() {
                                             return contacto ? `${contacto.nombre} ${contacto.apellido}` : 'Usuario'
                                         })()}
                                     </p>
-                                    <button
-                                        type="button"
-                                        onClick={() => setReclamoAbierto(true)}
-                                        aria-label="Reportar usuario"
-                                        title="Reportar usuario"
-                                        className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer shrink-0"
-                                    >
-                                        <Flag className="w-3.5 h-3.5" aria-hidden="true" />
-                                    </button>
+                                    {sesion?.rol !== 'administrador' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setReclamoAbierto(true)}
+                                            aria-label="Reportar usuario"
+                                            title="Reportar usuario"
+                                            className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer shrink-0"
+                                        >
+                                            <Flag className="w-3.5 h-3.5" aria-hidden="true" />
+                                        </button>
+                                    )}
                                     {(() => {
                                         const publicacion = obtenerPublicacionPorId(conversacionActiva.publicacionId)
                                         if (!publicacion) return null

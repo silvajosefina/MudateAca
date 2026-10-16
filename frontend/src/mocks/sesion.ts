@@ -10,8 +10,6 @@ export function iniciarSesion(usuario: Usuario) {
         celular: usuario.celular,
         correo: usuario.correo,
         rol: usuario.rol,
-        estadoVerificacion: usuario.estadoVerificacion,
-        motivoRechazo: usuario.motivoRechazo,
         estadoCuenta: usuario.estadoCuenta,
         motivoSuspension: usuario.motivoSuspension,
     }

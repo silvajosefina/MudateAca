@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { ChevronRight, Flag, X } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import PanelLayout from '../layouts/PanelLayout'
@@ -6,8 +7,13 @@ import { obtenerNombreObjetivoReclamo, obtenerReclamosPorUsuario } from '../mock
 import { obtenerSesion } from '../mocks/sesion'
 import { ETIQUETAS_ESTADO_RECLAMO, ETIQUETAS_MOTIVO_RECLAMO, type Reclamo } from '../types/reclamo'
 
+function formatearFechaHora(iso: string): string {
+    return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 function ModalDetalleMiReclamo({ reclamo, onClose }: { reclamo: Reclamo; onClose: () => void }) {
     const etiquetaEstado = ETIQUETAS_ESTADO_RECLAMO[reclamo.estado]
+    const estaResuelto = reclamo.estado === 'resuelto' || reclamo.estado === 'descartado'
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4" onClick={onClose}>
             <div
@@ -39,9 +45,21 @@ function ModalDetalleMiReclamo({ reclamo, onClose }: { reclamo: Reclamo; onClose
                 </div>
                 <div>
                     <p className="text-sm font-semibold text-foreground">
-                        {ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]} · {obtenerNombreObjetivoReclamo(reclamo)}
+                        {ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]} ·{' '}
+                        {reclamo.objetivoTipo === 'publicacion' ? (
+                            <Link to={`/explorar/${reclamo.objetivoId}`} className="text-primary hover:underline">
+                                {obtenerNombreObjetivoReclamo(reclamo)}
+                            </Link>
+                        ) : (
+                            obtenerNombreObjetivoReclamo(reclamo)
+                        )}
                     </p>
                     <p className="text-sm text-muted mt-1">{reclamo.descripcion}</p>
+                </div>
+
+                <div className="text-xs text-muted flex flex-col gap-0.5">
+                    <p>Reportado el {formatearFechaHora(reclamo.creadoEn)}</p>
+                    {estaResuelto && <p>Resuelto el {formatearFechaHora(reclamo.actualizadoEn)}</p>}
                 </div>
 
                 {reclamo.notaAdmin && (

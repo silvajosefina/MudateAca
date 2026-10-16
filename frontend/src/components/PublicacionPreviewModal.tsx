@@ -1,16 +1,28 @@
 import { Link } from 'react-router'
-import { Eye, Pencil, X } from 'lucide-react'
+import { ChevronRight, Download, Eye, FileText, Pencil, X } from 'lucide-react'
 import CarruselFotos from './CarruselFotos'
 import { formatearPrecio } from '../utils/formato'
-import { ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
+import { ETIQUETAS_DOCUMENTO_VERIFICACION, ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
+import { ETIQUETAS_ROL, type Usuario } from '../types/usuario'
 
 interface PublicacionPreviewModalProps {
     publicacion: Publicacion
     onClose: () => void
     permitirEditar?: boolean
+    propietario?: Usuario
+    onVerPropietario?: () => void
 }
 
-function PublicacionPreviewModal({ publicacion, onClose, permitirEditar = true }: PublicacionPreviewModalProps) {
+function PublicacionPreviewModal({
+    publicacion,
+    onClose,
+    permitirEditar = true,
+    propietario,
+    onVerPropietario,
+}: PublicacionPreviewModalProps) {
+    const iniciales = propietario
+        ? `${propietario.nombre.charAt(0)}${propietario.apellido.charAt(0)}`.toUpperCase()
+        : ''
     return (
         <div
             className="fixed inset-0 z-[75] flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4"
@@ -52,6 +64,52 @@ function PublicacionPreviewModal({ publicacion, onClose, permitirEditar = true }
                         <p>{publicacion.ambientes} ambiente(s)</p>
                         <p>{publicacion.dormitorios} dormitorio(s)</p>
                     </div>
+
+                    {propietario && (
+                        <button
+                            type="button"
+                            onClick={onVerPropietario}
+                            className="w-full flex items-center gap-3 rounded-lg border border-border p-2.5 hover:border-primary hover:bg-primary-subtle transition-colors cursor-pointer text-left"
+                        >
+                            <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary text-surface font-heading font-semibold text-sm shrink-0">
+                                {iniciales}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-foreground truncate">
+                                    {propietario.nombre} {propietario.apellido}
+                                </p>
+                                <p className="text-xs text-muted truncate">{ETIQUETAS_ROL[propietario.rol]} · {propietario.correo}</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-muted shrink-0" aria-hidden="true" />
+                        </button>
+                    )}
+
+                    {publicacion.urlArchivoVerificacion && (
+                        <div className="flex items-center gap-3 rounded-lg border border-border p-2.5">
+                            <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-primary-subtle text-primary shrink-0">
+                                <FileText className="w-4 h-4" aria-hidden="true" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-foreground truncate">
+                                    {publicacion.tipoDocumentoVerificacion
+                                        ? ETIQUETAS_DOCUMENTO_VERIFICACION[publicacion.tipoDocumentoVerificacion]
+                                        : 'Documentación adjunta'}
+                                </p>
+                                <p className="text-xs text-muted truncate">{publicacion.nombreArchivoVerificacion}</p>
+                            </div>
+                            <a
+                                href={publicacion.urlArchivoVerificacion}
+                                download={publicacion.nombreArchivoVerificacion}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Descargar documento"
+                                title="Descargar documento"
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-muted hover:text-primary hover:bg-surface-hover transition-colors cursor-pointer shrink-0"
+                            >
+                                <Download className="w-4 h-4" aria-hidden="true" />
+                            </a>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 px-5 pb-5">

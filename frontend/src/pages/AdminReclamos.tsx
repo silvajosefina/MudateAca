@@ -19,6 +19,10 @@ import type { Publicacion } from '../types/publicacion'
 
 type FiltroReclamo = 'todos' | EstadoReclamo
 
+function formatearFechaHora(iso: string): string {
+    return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 const PESTANAS_RECLAMOS: { valor: FiltroReclamo; etiqueta: string }[] = [
     { valor: 'pendiente', etiqueta: 'Pendientes' },
     { valor: 'resuelto', etiqueta: 'Resueltos' },
@@ -164,6 +168,16 @@ export function ModalDetalleReclamo({
                 <div>
                     <p className="text-sm font-semibold text-foreground">{ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]}</p>
                     <p className="text-sm text-muted mt-1">{reclamo.descripcion}</p>
+                </div>
+
+                <div className="text-xs text-muted flex flex-col gap-0.5">
+                    <p>Reportado el {formatearFechaHora(reclamo.creadoEn)}</p>
+                    {reclamo.estado !== 'pendiente' && (
+                        <p>
+                            {reclamo.estado === 'resuelto' ? 'Resuelto' : 'Descartado'} el{' '}
+                            {formatearFechaHora(reclamo.actualizadoEn)}
+                        </p>
+                    )}
                 </div>
 
                 {(publicacionObjetivo || usuarioObjetivo) && (

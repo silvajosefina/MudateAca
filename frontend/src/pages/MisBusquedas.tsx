@@ -607,7 +607,6 @@ function MisBusquedas() {
                     mensaje={`¿Eliminar la búsqueda "${aEliminar.nombre}"? Ya no se generarán coincidencias para ella.`}
                     textoConfirmar="Eliminar"
                     peligroso
-                    colorConfirmar="accent"
                     onConfirmar={confirmarEliminar}
                     onCancelar={() => setAEliminar(null)}
                 />

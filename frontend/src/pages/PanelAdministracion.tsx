@@ -1,22 +1,19 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Ban, Building2, Check, FileText, Flag, ShieldCheck, Users, X } from 'lucide-react'
+import { Check, FileText, Flag, ShieldCheck, Users, X } from 'lucide-react'
 import PanelLayout from '../layouts/PanelLayout'
 import DialogoConMotivo from '../components/DialogoConMotivo'
+import PublicacionPreviewModal from '../components/PublicacionPreviewModal'
+import ModalDetalleUsuario from '../components/ModalDetalleUsuario'
 import type { SolicitudConMotivo } from '../types/accionAdmin'
 import { ModalDetalleReclamo } from './AdminReclamos'
 import {
     aprobarVerificacionPublicacion,
     obtenerPublicacionesEnRevision,
-    ocultarPublicacion,
     rechazarVerificacionPublicacion,
     solicitarModificacionesPublicacion,
 } from '../mocks/publicaciones'
-import {
-    actualizarEstadoVerificacionUsuario,
-    obtenerInmobiliariasPendientes,
-    obtenerTodosLosUsuarios,
-} from '../mocks/usuarios'
+import { obtenerTodosLosUsuarios, obtenerUsuarioPorId } from '../mocks/usuarios'
 import { descartarReclamo, obtenerNombreObjetivoReclamo, obtenerReclamosPendientes, resolverReclamo } from '../mocks/reclamos'
 import { mostrarToast } from '../mocks/toast'
 import { ETIQUETAS_ESTADO_PUBLICACION, type Publicacion } from '../types/publicacion'
@@ -26,27 +23,21 @@ import type { Usuario } from '../types/usuario'
 const LIMITE_CONDENSADO = 5
 
 function PanelAdministracion() {
-    const [inmobiliarias, setInmobiliarias] = useState<Usuario[]>(() => obtenerInmobiliariasPendientes())
     const [publicacionesEnRevision, setPublicacionesEnRevision] = useState<Publicacion[]>(() => obtenerPublicacionesEnRevision())
     const [reclamosPendientes, setReclamosPendientes] = useState<Reclamo[]>(() => obtenerReclamosPendientes())
     const [usuarios, setUsuarios] = useState<Usuario[]>(() => obtenerTodosLosUsuarios())
     const [solicitud, setSolicitud] = useState<SolicitudConMotivo | null>(null)
     const [reclamoActivo, setReclamoActivo] = useState<Reclamo | null>(null)
+    const [publicacionAVer, setPublicacionAVer] = useState<Publicacion | null>(null)
+    const [verPerfilPropietario, setVerPerfilPropietario] = useState(false)
 
     function refrescar() {
-        setInmobiliarias(obtenerInmobiliariasPendientes())
         setPublicacionesEnRevision(obtenerPublicacionesEnRevision())
         setReclamosPendientes(obtenerReclamosPendientes())
         setUsuarios(obtenerTodosLosUsuarios())
     }
 
     const usuariosSuspendidos = usuarios.filter((u) => u.rol !== 'administrador' && u.estadoCuenta === 'suspendido')
-
-    function handleAprobarInmobiliaria(usuario: Usuario) {
-        actualizarEstadoVerificacionUsuario(usuario.id, 'verificado')
-        mostrarToast(`${usuario.nombre} ${usuario.apellido} fue verificada.`)
-        refrescar()
-    }
 
     function handleAprobarPublicacion(publicacion: Publicacion) {
         aprobarVerificacionPublicacion(publicacion.id)
@@ -57,10 +48,6 @@ function PanelAdministracion() {
     function confirmarSolicitud(motivo: string) {
         if (!solicitud) return
         switch (solicitud.accion) {
-            case 'rechazar_inmobiliaria':
-                actualizarEstadoVerificacionUsuario(solicitud.id, 'rechazado', motivo)
-                mostrarToast('Rechazo registrado.', 'error')
-                break
             case 'rechazar_publicacion':
                 rechazarVerificacionPublicacion(solicitud.id, motivo)
                 mostrarToast('Rechazo registrado.', 'error')
@@ -68,10 +55,6 @@ function PanelAdministracion() {
             case 'solicitar_modificaciones':
                 solicitarModificacionesPublicacion(solicitud.id, motivo)
                 mostrarToast('Se solicitaron modificaciones al propietario.')
-                break
-            case 'ocultar_publicacion':
-                ocultarPublicacion(solicitud.id, motivo)
-                mostrarToast('Publicación ocultada.', 'error')
                 break
         }
         setSolicitud(null)
@@ -101,16 +84,7 @@ function PanelAdministracion() {
                 Panel de administración
             </h1>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                <div className="bg-surface rounded-2xl shadow-card p-5 flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-warning-subtle text-warning shrink-0">
-                        <Building2 className="w-5 h-5" aria-hidden="true" />
-                    </span>
-                    <div>
-                        <p className="text-2xl font-heading font-semibold text-foreground">{inmobiliarias.length}</p>
-                        <p className="text-xs text-muted">Inmobiliarias pendientes</p>
-                    </div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="bg-surface rounded-2xl shadow-card p-5 flex items-center gap-3">
                     <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-warning-subtle text-warning shrink-0">
                         <FileText className="w-5 h-5" aria-hidden="true" />
@@ -141,61 +115,6 @@ function PanelAdministracion() {
             </div>
 
             <div className="bg-surface rounded-2xl shadow-card p-5 mb-6">
-                <div className="flex items-center justify-between gap-3 mb-4">
-                    <h2 className="flex items-center gap-1.5 font-heading font-semibold text-foreground">
-                        <Building2 className="w-4 h-4 text-primary" aria-hidden="true" />
-                        Inmobiliarias pendientes de verificación
-                    </h2>
-                    <Link to="/panel-administracion/usuarios" className="text-sm font-semibold text-primary hover:underline shrink-0">
-                        Ver todo
-                    </Link>
-                </div>
-                {inmobiliarias.length === 0 ? (
-                    <p className="text-sm text-muted">No hay inmobiliarias esperando verificación.</p>
-                ) : (
-                    <div className="flex flex-col gap-3">
-                        {inmobiliarias.slice(0, LIMITE_CONDENSADO).map((usuario) => (
-                            <div
-                                key={usuario.id}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border p-3"
-                            >
-                                <div>
-                                    <p className="text-sm font-semibold text-foreground">
-                                        {usuario.nombre} {usuario.apellido}
-                                    </p>
-                                    <p className="text-xs text-muted">{usuario.correo}</p>
-                                </div>
-                                <div className="flex gap-2 shrink-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleAprobarInmobiliaria(usuario)}
-                                        className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 bg-accent text-on-accent hover:opacity-90 transition-colors cursor-pointer"
-                                    >
-                                        <Check className="w-4 h-4" aria-hidden="true" />
-                                        Aprobar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setSolicitud({
-                                                accion: 'rechazar_inmobiliaria',
-                                                id: usuario.id,
-                                                nombre: `${usuario.nombre} ${usuario.apellido}`,
-                                            })
-                                        }
-                                        className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-danger text-danger hover:bg-danger hover:text-white transition-colors cursor-pointer"
-                                    >
-                                        <X className="w-4 h-4" aria-hidden="true" />
-                                        Rechazar
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <div className="bg-surface rounded-2xl shadow-card p-5 mb-6">
                 <div className="flex items-center justify-between gap-3 mb-1">
                     <h2 className="flex items-center gap-1.5 font-heading font-semibold text-foreground">
                         <FileText className="w-4 h-4 text-primary" aria-hidden="true" />
@@ -206,7 +125,8 @@ function PanelAdministracion() {
                     </Link>
                 </div>
                 <p className="text-sm text-muted mb-4">
-                    Pendientes de moderación inicial, o marcadas como observadas automáticamente.
+                    Pendientes de moderación inicial, o marcadas como observadas automáticamente. Tocá una
+                    para ver el detalle completo, el perfil del propietario y la documentación adjunta.
                 </p>
                 {publicacionesEnRevision.length === 0 ? (
                     <p className="text-sm text-muted">No hay publicaciones esperando verificación.</p>
@@ -217,7 +137,8 @@ function PanelAdministracion() {
                             return (
                                 <div
                                     key={publicacion.id}
-                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border p-3"
+                                    onClick={() => setPublicacionAVer(publicacion)}
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-primary hover:bg-surface-hover transition-colors"
                                 >
                                     <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -234,7 +155,7 @@ function PanelAdministracion() {
                                             </p>
                                         )}
                                     </div>
-                                    <div className="flex gap-2 shrink-0 flex-wrap">
+                                    <div className="flex gap-2 shrink-0 flex-wrap" onClick={(e) => e.stopPropagation()}>
                                         <button
                                             type="button"
                                             onClick={() => handleAprobarPublicacion(publicacion)}
@@ -255,20 +176,6 @@ function PanelAdministracion() {
                                             className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
                                         >
                                             Solicitar modif.
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setSolicitud({
-                                                    accion: 'ocultar_publicacion',
-                                                    id: publicacion.id,
-                                                    nombre: 'publicación',
-                                                })
-                                            }
-                                            className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
-                                        >
-                                            <Ban className="w-4 h-4" aria-hidden="true" />
-                                            Ocultar
                                         </button>
                                         <button
                                             type="button"
@@ -341,6 +248,22 @@ function PanelAdministracion() {
                     onClose={() => setReclamoActivo(null)}
                     onResolver={handleResolverReclamo}
                     onDescartar={handleDescartarReclamo}
+                />
+            )}
+
+            {publicacionAVer && verPerfilPropietario && obtenerUsuarioPorId(publicacionAVer.propietarioId) && (
+                <ModalDetalleUsuario
+                    usuario={obtenerUsuarioPorId(publicacionAVer.propietarioId)!}
+                    onClose={() => setVerPerfilPropietario(false)}
+                />
+            )}
+            {publicacionAVer && !verPerfilPropietario && (
+                <PublicacionPreviewModal
+                    publicacion={publicacionAVer}
+                    permitirEditar={false}
+                    propietario={obtenerUsuarioPorId(publicacionAVer.propietarioId)}
+                    onVerPropietario={() => setVerPerfilPropietario(true)}
+                    onClose={() => setPublicacionAVer(null)}
                 />
             )}
         </PanelLayout>

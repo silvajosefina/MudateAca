@@ -31,13 +31,29 @@ function generarId(): string {
     return `reclamo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
+export function existeReclamoPendiente(
+    reclamanteId: string,
+    objetivoTipo: TipoObjetivoReclamo,
+    objetivoId: string,
+): boolean {
+    return reclamosEnMemoria.some(
+        (r) =>
+            r.reclamanteId === reclamanteId &&
+            r.objetivoTipo === objetivoTipo &&
+            r.objetivoId === objetivoId &&
+            r.estado === 'pendiente',
+    )
+}
+
 export function crearReclamo(datos: {
     reclamanteId: string
     objetivoTipo: TipoObjetivoReclamo
     objetivoId: string
     motivo: MotivoReclamo
     descripcion: string
-}): Reclamo {
+}): Reclamo | null {
+    if (existeReclamoPendiente(datos.reclamanteId, datos.objetivoTipo, datos.objetivoId)) return null
+
     const ahora = new Date().toISOString()
     const nuevo: Reclamo = {
         id: generarId(),

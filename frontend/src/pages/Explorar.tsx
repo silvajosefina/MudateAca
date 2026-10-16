@@ -17,7 +17,7 @@ import PublicoLayout from '../layouts/PublicoLayout'
 import TarjetaPublicacion from '../components/TarjetaPublicacion'
 import Paginacion from '../components/Paginacion'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
-import { obtenerPublicacionesActivas } from '../mocks/publicaciones'
+import { obtenerPublicacionesActivas, obtenerPublicacionesDeUsuario } from '../mocks/publicaciones'
 import { crearBusqueda } from '../mocks/busquedasActivas'
 import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
 import { obtenerSesion } from '../mocks/sesion'
@@ -60,6 +60,23 @@ const FILTROS_INICIALES: Filtros = {
 const OPCIONES_MINIMO = [0, 1, 2, 3, 4, 5]
 const RESULTADOS_POR_PAGINA = 9
 const DEBOUNCE_BUSQUEDA_MS = 300
+const STORAGE_KEY_BANNER = 'mudateaca_banner_explorar_cerrado'
+
+function obtenerBannerCerrado(): boolean {
+    try {
+        return localStorage.getItem(STORAGE_KEY_BANNER) === '1'
+    } catch {
+        return false
+    }
+}
+
+function guardarBannerCerrado() {
+    try {
+        localStorage.setItem(STORAGE_KEY_BANNER, '1')
+    } catch {
+        // El cierre sigue funcionando en memoria durante la sesión actual.
+    }
+}
 
 function filtrosDesdeQuery(params: URLSearchParams): Filtros {
     const modalidad = params.get('modalidad')
@@ -128,7 +145,7 @@ function Explorar() {
     const [nombreBusqueda, setNombreBusqueda] = useState('')
     const [paginaActual, setPaginaActual] = useState(1)
     const [, forzarActualizacion] = useState(0)
-    const [bannerCerrado, setBannerCerrado] = useState(false)
+    const [bannerCerrado, setBannerCerrado] = useState(() => obtenerBannerCerrado())
     const [vista, setVista] = useState(() => obtenerVistaListado())
 
     function actualizarFiltro<K extends keyof Filtros>(campo: K, valor: Filtros[K]) {
@@ -179,6 +196,14 @@ function Explorar() {
 
     const hayFiltrosActivos = JSON.stringify(filtros) !== JSON.stringify(FILTROS_INICIALES)
 
+    // El banner de "publicá gratis" solo tiene sentido para quien todavía puede
+    // publicar: visitantes (para que se registren) o propietarios/inmobiliarias
+    // que todavía no crearon ninguna publicación.
+    const mostrarBannerPublicar =
+        !sesion ||
+        ((sesion.rol === 'propietario' || sesion.rol === 'inmobiliaria') &&
+            obtenerPublicacionesDeUsuario(sesion.id).length === 0)
+
     const totalPaginas = Math.max(1, Math.ceil(resultados.length / RESULTADOS_POR_PAGINA))
     const paginaSegura = Math.min(paginaActual, totalPaginas)
     const resultadosPagina = resultados.slice(
@@ -192,7 +217,10 @@ function Explorar() {
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-banner-hero-from)] to-[var(--color-banner-hero-to)] px-6 py-10 sm:px-10 sm:py-14 text-[var(--color-banner-text)]">
                     <button
                         type="button"
-                        onClick={() => setBannerCerrado(true)}
+                        onClick={() => {
+                            setBannerCerrado(true)
+                            guardarBannerCerrado()
+                        }}
                         aria-label="Cerrar banner"
                         className="absolute top-4 right-4 inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface/15 text-[var(--color-banner-text)] hover:bg-surface/25 transition-colors cursor-pointer z-10"
                     >
@@ -497,7 +525,7 @@ function Explorar() {
 
             <Paginacion paginaActual={paginaSegura} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
 
-            {sesion?.rol !== 'interesado' && (
+            {mostrarBannerPublicar && (
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-banner-cta-from)] to-[var(--color-banner-cta-to)] px-6 py-8 sm:px-10 sm:py-10 mt-8 flex flex-wrap items-center justify-between gap-6">
                     <div className="max-w-md">
                         <h2 className="text-xl sm:text-2xl font-heading font-bold text-[var(--color-banner-text)] mb-2">

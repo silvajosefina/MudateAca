@@ -15,7 +15,6 @@ const usuarioExistente: Usuario = {
     correo: 'ya.registrado@mudateaca.com',
     contrasena: 'Clave123',
     rol: 'interesado',
-    estadoVerificacion: 'verificado',
     estadoCuenta: 'activo',
 }
 

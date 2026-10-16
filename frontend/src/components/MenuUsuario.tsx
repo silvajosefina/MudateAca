@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { Bell, Flag, LogOut, User } from 'lucide-react'
-import { ETIQUETAS_ESTADO_VERIFICACION, ETIQUETAS_ROL, type SesionUsuario } from '../types/usuario'
+import { Flag, LogOut, User } from 'lucide-react'
+import { ETIQUETAS_ROL, type SesionUsuario } from '../types/usuario'
 
 interface MenuUsuarioProps {
     sesion: SesionUsuario
@@ -30,8 +30,7 @@ function MenuUsuario({ sesion, onCerrarSesion }: MenuUsuarioProps) {
     }, [])
 
     const iniciales = `${sesion.nombre.charAt(0)}${sesion.apellido.charAt(0)}`.toUpperCase()
-    const mostrarVerificacion = sesion.rol === 'propietario' || sesion.rol === 'inmobiliaria'
-    const verificacion = sesion.estadoVerificacion ? ETIQUETAS_ESTADO_VERIFICACION[sesion.estadoVerificacion] : undefined
+    const esAdministrador = sesion.rol === 'administrador'
 
     return (
         <div className="relative" ref={contenedorRef}>
@@ -57,37 +56,28 @@ function MenuUsuario({ sesion, onCerrarSesion }: MenuUsuarioProps) {
                             <span className="text-[11px] font-semibold rounded-full px-2 py-0.5 bg-primary-subtle text-primary">
                                 {ETIQUETAS_ROL[sesion.rol]}
                             </span>
-                            {mostrarVerificacion && verificacion && (
-                                <span className={`text-[11px] font-semibold rounded-full px-2 py-0.5 ${verificacion.clase}`}>
-                                    {verificacion.texto}
-                                </span>
-                            )}
                         </div>
                     </div>
-                    <Link
-                        to="/mi-cuenta"
-                        onClick={() => setAbierto(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
-                    >
-                        <User className="w-4 h-4" aria-hidden="true" />
-                        Editar usuario
-                    </Link>
-                    <Link
-                        to="/mis-reclamos"
-                        onClick={() => setAbierto(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
-                    >
-                        <Flag className="w-4 h-4" aria-hidden="true" />
-                        Mis reclamos
-                    </Link>
-                    <Link
-                        to="/notificaciones"
-                        onClick={() => setAbierto(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
-                    >
-                        <Bell className="w-4 h-4" aria-hidden="true" />
-                        Historial de notificaciones
-                    </Link>
+                    {!esAdministrador && (
+                        <>
+                            <Link
+                                to="/mi-cuenta"
+                                onClick={() => setAbierto(false)}
+                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
+                            >
+                                <User className="w-4 h-4" aria-hidden="true" />
+                                Editar usuario
+                            </Link>
+                            <Link
+                                to="/mis-reclamos"
+                                onClick={() => setAbierto(false)}
+                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
+                            >
+                                <Flag className="w-4 h-4" aria-hidden="true" />
+                                Mis reclamos
+                            </Link>
+                        </>
+                    )}
                     <button
                         type="button"
                         onClick={onCerrarSesion}

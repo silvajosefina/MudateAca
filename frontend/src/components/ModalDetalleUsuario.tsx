@@ -1,5 +1,5 @@
 import { Mail, Phone, X } from 'lucide-react'
-import { ETIQUETAS_ESTADO_CUENTA, ETIQUETAS_ESTADO_VERIFICACION, ETIQUETAS_ROL, type Usuario } from '../types/usuario'
+import { ETIQUETAS_ESTADO_CUENTA, ETIQUETAS_ROL, type Usuario } from '../types/usuario'
 
 interface ModalDetalleUsuarioProps {
     usuario: Usuario
@@ -7,9 +7,7 @@ interface ModalDetalleUsuarioProps {
 }
 
 function ModalDetalleUsuario({ usuario, onClose }: ModalDetalleUsuarioProps) {
-    const muestraVerificacion = usuario.rol === 'propietario' || usuario.rol === 'inmobiliaria'
     const etiquetaCuenta = ETIQUETAS_ESTADO_CUENTA[usuario.estadoCuenta]
-    const etiquetaVerificacion = ETIQUETAS_ESTADO_VERIFICACION[usuario.estadoVerificacion]
     const iniciales = `${usuario.nombre.charAt(0)}${usuario.apellido.charAt(0)}`.toUpperCase()
 
     return (
@@ -40,11 +38,6 @@ function ModalDetalleUsuario({ usuario, onClose }: ModalDetalleUsuarioProps) {
                         <span className={`text-[11px] font-semibold rounded-full px-2 py-0.5 ${etiquetaCuenta.clase}`}>
                             {etiquetaCuenta.texto}
                         </span>
-                        {muestraVerificacion && (
-                            <span className={`text-[11px] font-semibold rounded-full px-2 py-0.5 ${etiquetaVerificacion.clase}`}>
-                                {etiquetaVerificacion.texto}
-                            </span>
-                        )}
                     </div>
                 </div>
 
@@ -67,11 +60,6 @@ function ModalDetalleUsuario({ usuario, onClose }: ModalDetalleUsuarioProps) {
                     {usuario.estadoCuenta === 'suspendido' && usuario.motivoSuspension && (
                         <p className="text-xs text-danger bg-danger-subtle rounded-lg px-3 py-2">
                             Motivo de suspensión: {usuario.motivoSuspension}
-                        </p>
-                    )}
-                    {usuario.estadoVerificacion === 'rechazado' && usuario.motivoRechazo && (
-                        <p className="text-xs text-danger bg-danger-subtle rounded-lg px-3 py-2">
-                            Motivo del rechazo: {usuario.motivoRechazo}
                         </p>
                     )}
                 </div>

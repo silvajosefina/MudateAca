@@ -98,7 +98,10 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
     const esInmobiliaria = sesion.rol === 'inmobiliaria'
     const opcionesDocumento = esInmobiliaria ? OPCIONES_DOCUMENTO_INMOBILIARIA : OPCIONES_DOCUMENTO_PROPIETARIO
     const requiereDocumentacion =
-        modo === 'crear' || publicacionExistente?.estado === 'pendiente_moderacion' || publicacionExistente?.estado === 'rechazada'
+        modo === 'crear' ||
+        publicacionExistente?.estado === 'pendiente_moderacion' ||
+        publicacionExistente?.estado === 'rechazada' ||
+        publicacionExistente?.estado === 'observada'
 
     function actualizarCampo<K extends keyof PublicacionFormData>(campo: K, valor: PublicacionFormData[K]) {
         setDatos((prev) => ({ ...prev, [campo]: valor }))
@@ -538,7 +541,6 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     mensaje="Ingresaste datos en el formulario. Si salís ahora, se van a perder."
                     textoConfirmar="Descartar y salir"
                     peligroso
-                    colorConfirmar="primary"
                     onConfirmar={() => navigate('/mis-publicaciones')}
                     onCancelar={() => setMostrarConfirmCancelar(false)}
                 />

@@ -39,6 +39,15 @@ export type TipoDocumentoVerificacionPublicacion =
     | 'constancia_inscripcion'
     | 'poder_representacion'
 
+export const ETIQUETAS_DOCUMENTO_VERIFICACION: Record<TipoDocumentoVerificacionPublicacion, string> = {
+    factura_servicio: 'Factura de un servicio asociada al domicilio',
+    impuesto: 'Impuesto correspondiente al inmueble',
+    documentacion_propiedad: 'Documentación de propiedad',
+    matricula_corredor: 'Matrícula de corredor/a inmobiliario/a',
+    constancia_inscripcion: 'Constancia de inscripción o CUIT de la inmobiliaria',
+    poder_representacion: 'Poder o autorización de representación del propietario',
+}
+
 export interface Publicacion {
     id: string
     propietarioId: string

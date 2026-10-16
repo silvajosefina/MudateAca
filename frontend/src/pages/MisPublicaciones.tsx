@@ -318,7 +318,6 @@ function MisPublicaciones() {
                     mensaje="¿Eliminar esta publicación? Dejará de estar disponible públicamente."
                     textoConfirmar="Eliminar"
                     peligroso
-                    colorConfirmar="primary"
                     onConfirmar={confirmarEliminar}
                     onCancelar={() => setPublicacionAEliminar(null)}
                 />

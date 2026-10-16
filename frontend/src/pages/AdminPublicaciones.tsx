@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { Ban, Check, Download, FileSearch, FileText, X } from 'lucide-react'
+import { Check, Download, FileSearch, FileText, X } from 'lucide-react'
 import PanelLayout from '../layouts/PanelLayout'
 import DialogoConMotivo from '../components/DialogoConMotivo'
 import PublicacionPreviewModal from '../components/PublicacionPreviewModal'
+import ModalDetalleUsuario from '../components/ModalDetalleUsuario'
 import type { SolicitudConMotivo } from '../types/accionAdmin'
 import {
     aprobarVerificacionPublicacion,
     obtenerTodasLasPublicaciones,
-    ocultarPublicacion,
     rechazarVerificacionPublicacion,
     solicitarModificacionesPublicacion,
 } from '../mocks/publicaciones'
@@ -15,21 +15,12 @@ import { obtenerUsuarioPorId } from '../mocks/usuarios'
 import { mostrarToast } from '../mocks/toast'
 import { formatearPrecio } from '../utils/formato'
 import {
+    ETIQUETAS_DOCUMENTO_VERIFICACION,
     ETIQUETAS_ESTADO_PUBLICACION,
     ETIQUETAS_TIPO_INMUEBLE,
     type EstadoPublicacion,
     type Publicacion,
-    type TipoDocumentoVerificacionPublicacion,
 } from '../types/publicacion'
-
-const ETIQUETAS_DOCUMENTO: Record<TipoDocumentoVerificacionPublicacion, string> = {
-    factura_servicio: 'Factura de un servicio asociada al domicilio',
-    impuesto: 'Impuesto correspondiente al inmueble',
-    documentacion_propiedad: 'Documentación de propiedad',
-    matricula_corredor: 'Matrícula de corredor/a inmobiliario/a',
-    constancia_inscripcion: 'Constancia de inscripción o CUIT de la inmobiliaria',
-    poder_representacion: 'Poder o autorización de representación del propietario',
-}
 
 type FiltroPublicaciones = 'todas' | EstadoPublicacion
 
@@ -54,6 +45,7 @@ function AdminPublicaciones() {
     const [filtro, setFiltro] = useState<FiltroPublicaciones>('todas')
     const [solicitud, setSolicitud] = useState<SolicitudConMotivo | null>(null)
     const [publicacionAVer, setPublicacionAVer] = useState<Publicacion | null>(null)
+    const [verPerfilPropietario, setVerPerfilPropietario] = useState(false)
 
     function refrescar() {
         setPublicaciones(obtenerTodasLasPublicaciones())
@@ -76,9 +68,6 @@ function AdminPublicaciones() {
         } else if (solicitud.accion === 'solicitar_modificaciones') {
             solicitarModificacionesPublicacion(solicitud.id, motivo)
             mostrarToast('Se solicitaron modificaciones al propietario.')
-        } else if (solicitud.accion === 'ocultar_publicacion') {
-            ocultarPublicacion(solicitud.id, motivo)
-            mostrarToast('Publicación ocultada.', 'error')
         }
         setSolicitud(null)
         refrescar()
@@ -92,7 +81,7 @@ function AdminPublicaciones() {
             </h1>
             <p className="text-sm text-muted mb-6">
                 Todas las publicaciones enviadas por propietarios e inmobiliarias. Las que están en
-                revisión u observadas pueden aprobarse, rechazarse u ocultarse directamente desde acá.
+                revisión u observadas pueden aprobarse, rechazarse o devolverse para modificar directamente desde acá.
             </p>
 
             <div className="bg-surface rounded-2xl shadow-card p-5">
@@ -149,7 +138,7 @@ function AdminPublicaciones() {
                                         {accionable && (
                                             <p className="text-xs text-muted mt-1">
                                                 {publicacion.tipoDocumentoVerificacion
-                                                    ? ETIQUETAS_DOCUMENTO[publicacion.tipoDocumentoVerificacion]
+                                                    ? ETIQUETAS_DOCUMENTO_VERIFICACION[publicacion.tipoDocumentoVerificacion]
                                                     : 'Sin tipo de documento'}
                                                 {publicacion.nombreArchivoVerificacion && ` · ${publicacion.nombreArchivoVerificacion}`}
                                             </p>
@@ -206,20 +195,6 @@ function AdminPublicaciones() {
                                                     type="button"
                                                     onClick={() =>
                                                         setSolicitud({
-                                                            accion: 'ocultar_publicacion',
-                                                            id: publicacion.id,
-                                                            nombre: 'publicación',
-                                                        })
-                                                    }
-                                                    className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
-                                                >
-                                                    <Ban className="w-4 h-4" aria-hidden="true" />
-                                                    Ocultar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setSolicitud({
                                                             accion: 'rechazar_publicacion',
                                                             id: publicacion.id,
                                                             nombre: 'publicación',
@@ -244,10 +219,18 @@ function AdminPublicaciones() {
                 <DialogoConMotivo solicitud={solicitud} onCancelar={() => setSolicitud(null)} onConfirmar={confirmarSolicitud} />
             )}
 
-            {publicacionAVer && (
+            {publicacionAVer && verPerfilPropietario && obtenerUsuarioPorId(publicacionAVer.propietarioId) && (
+                <ModalDetalleUsuario
+                    usuario={obtenerUsuarioPorId(publicacionAVer.propietarioId)!}
+                    onClose={() => setVerPerfilPropietario(false)}
+                />
+            )}
+            {publicacionAVer && !verPerfilPropietario && (
                 <PublicacionPreviewModal
                     publicacion={publicacionAVer}
                     permitirEditar={false}
+                    propietario={obtenerUsuarioPorId(publicacionAVer.propietarioId)}
+                    onVerPropietario={() => setVerPerfilPropietario(true)}
                     onClose={() => setPublicacionAVer(null)}
                 />
             )}

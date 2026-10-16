@@ -1,16 +1,10 @@
 import { useState } from 'react'
-import { Ban, Building2, Check, RotateCcw, Users, X } from 'lucide-react'
+import { Ban, RotateCcw, Users } from 'lucide-react'
 import PanelLayout from '../layouts/PanelLayout'
 import DialogoConMotivo from '../components/DialogoConMotivo'
 import ModalDetalleUsuario from '../components/ModalDetalleUsuario'
 import type { SolicitudConMotivo } from '../types/accionAdmin'
-import {
-    actualizarEstadoVerificacionUsuario,
-    obtenerInmobiliariasPendientes,
-    obtenerTodosLosUsuarios,
-    reactivarUsuario,
-    suspenderUsuario,
-} from '../mocks/usuarios'
+import { obtenerTodosLosUsuarios, reactivarUsuario, suspenderUsuario } from '../mocks/usuarios'
 import { mostrarToast } from '../mocks/toast'
 import { ETIQUETAS_ESTADO_CUENTA, ETIQUETAS_ROL, type EstadoCuenta, type Usuario } from '../types/usuario'
 
@@ -18,20 +12,17 @@ type FiltroUsuarios = 'todos' | EstadoCuenta
 
 const PESTANAS_USUARIOS: { valor: FiltroUsuarios; etiqueta: string }[] = [
     { valor: 'activo', etiqueta: 'Activos' },
-    { valor: 'pendiente', etiqueta: 'Pendientes' },
     { valor: 'suspendido', etiqueta: 'Suspendidos' },
     { valor: 'todos', etiqueta: 'Todos' },
 ]
 
 function AdminUsuarios() {
-    const [inmobiliarias, setInmobiliarias] = useState<Usuario[]>(() => obtenerInmobiliariasPendientes())
     const [usuarios, setUsuarios] = useState<Usuario[]>(() => obtenerTodosLosUsuarios())
     const [filtroUsuarios, setFiltroUsuarios] = useState<FiltroUsuarios>('activo')
     const [solicitud, setSolicitud] = useState<SolicitudConMotivo | null>(null)
     const [usuarioAVer, setUsuarioAVer] = useState<Usuario | null>(null)
 
     function refrescar() {
-        setInmobiliarias(obtenerInmobiliariasPendientes())
         setUsuarios(obtenerTodosLosUsuarios())
     }
 
@@ -41,12 +32,6 @@ function AdminUsuarios() {
             ? usuariosGestionables
             : usuariosGestionables.filter((u) => u.estadoCuenta === filtroUsuarios)
 
-    function handleAprobarInmobiliaria(usuario: Usuario) {
-        actualizarEstadoVerificacionUsuario(usuario.id, 'verificado')
-        mostrarToast(`${usuario.nombre} ${usuario.apellido} fue verificada.`)
-        refrescar()
-    }
-
     function handleReactivarUsuario(usuario: Usuario) {
         reactivarUsuario(usuario.id)
         mostrarToast(`${usuario.nombre} ${usuario.apellido} fue reactivado.`)
@@ -55,10 +40,7 @@ function AdminUsuarios() {
 
     function confirmarSolicitud(motivo: string) {
         if (!solicitud) return
-        if (solicitud.accion === 'rechazar_inmobiliaria') {
-            actualizarEstadoVerificacionUsuario(solicitud.id, 'rechazado', motivo)
-            mostrarToast('Rechazo registrado.', 'error')
-        } else if (solicitud.accion === 'suspender_usuario') {
+        if (solicitud.accion === 'suspender_usuario') {
             suspenderUsuario(solicitud.id, motivo)
             mostrarToast('Usuario suspendido.', 'error')
         }
@@ -72,57 +54,6 @@ function AdminUsuarios() {
                 <Users className="w-5 h-5 text-primary" aria-hidden="true" />
                 Usuarios
             </h1>
-
-            <div className="bg-surface rounded-2xl shadow-card p-5 mb-6">
-                <h2 className="flex items-center gap-1.5 font-heading font-semibold text-foreground mb-4">
-                    <Building2 className="w-4 h-4 text-primary" aria-hidden="true" />
-                    Inmobiliarias pendientes de verificación
-                </h2>
-                {inmobiliarias.length === 0 ? (
-                    <p className="text-sm text-muted">No hay inmobiliarias esperando verificación.</p>
-                ) : (
-                    <div className="flex flex-col gap-3">
-                        {inmobiliarias.map((usuario) => (
-                            <div
-                                key={usuario.id}
-                                onClick={() => setUsuarioAVer(usuario)}
-                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-primary hover:bg-surface-hover transition-colors"
-                            >
-                                <div>
-                                    <p className="text-sm font-semibold text-foreground">
-                                        {usuario.nombre} {usuario.apellido}
-                                    </p>
-                                    <p className="text-xs text-muted">{usuario.correo}</p>
-                                </div>
-                                <div className="flex gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleAprobarInmobiliaria(usuario)}
-                                        className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 bg-accent text-on-accent hover:opacity-90 transition-colors cursor-pointer"
-                                    >
-                                        <Check className="w-4 h-4" aria-hidden="true" />
-                                        Aprobar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setSolicitud({
-                                                accion: 'rechazar_inmobiliaria',
-                                                id: usuario.id,
-                                                nombre: `${usuario.nombre} ${usuario.apellido}`,
-                                            })
-                                        }
-                                        className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-danger text-danger hover:bg-danger hover:text-white transition-colors cursor-pointer"
-                                    >
-                                        <X className="w-4 h-4" aria-hidden="true" />
-                                        Rechazar
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
 
             <div className="bg-surface rounded-2xl shadow-card p-5">
                 <h2 className="flex items-center gap-1.5 font-heading font-semibold text-foreground mb-4">

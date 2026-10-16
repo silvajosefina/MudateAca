@@ -321,7 +321,10 @@ export function actualizarPublicacion(
     if (indice === -1) return undefined
 
     const anterior = lista[indice]
-    const forzarRevision = anterior.estado === 'pendiente_moderacion' || anterior.estado === 'rechazada'
+    const forzarRevision =
+        anterior.estado === 'pendiente_moderacion' ||
+        anterior.estado === 'rechazada' ||
+        anterior.estado === 'observada'
 
     const actualizada: Publicacion = {
         ...anterior,
@@ -359,7 +362,7 @@ export function aprobarVerificacionPublicacion(id: string): void {
         actualizadaEn: new Date().toISOString(),
     }
     guardarAlmacenamiento(lista)
-    crearNotificacion(lista[indice].propietarioId, 'Tu publicación fue verificada y ya está activa.', 'exito', '/mis-publicaciones')
+    crearNotificacion(lista[indice].propietarioId, 'Tu publicación fue verificada y ya está activa.', 'exito', `/explorar/${id}`)
 }
 
 export function rechazarVerificacionPublicacion(id: string, motivo: string): void {
@@ -373,7 +376,7 @@ export function rechazarVerificacionPublicacion(id: string, motivo: string): voi
         actualizadaEn: new Date().toISOString(),
     }
     guardarAlmacenamiento(lista)
-    crearNotificacion(lista[indice].propietarioId, `Tu publicación fue rechazada. Motivo: ${motivo}`, 'error', '/mis-publicaciones')
+    crearNotificacion(lista[indice].propietarioId, `Tu publicación fue rechazada. Motivo: ${motivo}`, 'error', `/explorar/${id}`)
 }
 
 export function solicitarModificacionesPublicacion(id: string, nota: string): void {
@@ -392,25 +395,6 @@ export function solicitarModificacionesPublicacion(id: string, nota: string): vo
         `Un administrador solicitó modificaciones en tu publicación. Nota: ${nota}`,
         'error',
         `/publicaciones/${id}/editar`,
-    )
-}
-
-export function ocultarPublicacion(id: string, motivo: string): void {
-    const lista = leerAlmacenamiento()
-    const indice = lista.findIndex((p) => p.id === id)
-    if (indice === -1) return
-    lista[indice] = {
-        ...lista[indice],
-        estado: 'archivada',
-        notaModeracion: motivo,
-        actualizadaEn: new Date().toISOString(),
-    }
-    guardarAlmacenamiento(lista)
-    crearNotificacion(
-        lista[indice].propietarioId,
-        `Un administrador ocultó tu publicación. Motivo: ${motivo}`,
-        'error',
-        '/mis-publicaciones',
     )
 }
 

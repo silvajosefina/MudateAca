@@ -25,7 +25,6 @@ function crearUsuario(overrides: Partial<Usuario>): Usuario {
         correo: 'ana@mudateaca.com',
         contrasena: 'Clave123',
         rol: 'interesado',
-        estadoVerificacion: 'verificado',
         estadoCuenta: 'activo',
         ...overrides,
     }

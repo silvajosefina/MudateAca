@@ -14,6 +14,9 @@ function DialogoConMotivo({
     const [motivo, setMotivo] = useState('')
     const [error, setError] = useState('')
     const etiquetas = ETIQUETAS_ACCION_MOTIVO[solicitud.accion]
+    const colorBoton = etiquetas.peligroso
+        ? 'bg-danger text-white hover:opacity-90'
+        : 'bg-primary text-surface hover:bg-primary-hover'
 
     function handleConfirmar() {
         if (!motivo.trim()) {
@@ -31,7 +34,10 @@ function DialogoConMotivo({
             >
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 shrink-0 text-danger" aria-hidden="true" />
+                        <AlertTriangle
+                        className={`w-5 h-5 shrink-0 ${etiquetas.peligroso ? 'text-danger' : 'text-warning'}`}
+                        aria-hidden="true"
+                    />
                         <h3 className="text-base font-heading font-semibold text-foreground">
                             {etiquetas.titulo(solicitud.nombre)}
                         </h3>
@@ -60,7 +66,7 @@ function DialogoConMotivo({
                     <button
                         type="button"
                         onClick={handleConfirmar}
-                        className="inline-flex items-center justify-center gap-1.5 font-heading font-semibold rounded-lg py-2 px-6 bg-danger text-white hover:opacity-90 transition-colors cursor-pointer"
+                        className={`inline-flex items-center justify-center gap-1.5 font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer ${colorBoton}`}
                     >
                         {etiquetas.textoBoton}
                     </button>

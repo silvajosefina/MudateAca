@@ -84,6 +84,8 @@ function limitesPeriodo(
     }
 }
 
+const HOY = new Date().toISOString().slice(0, 10)
+
 function PanelDemanda() {
     const sesion = obtenerSesion()
     const [periodo, setPeriodo] = useState<PeriodoPreset>('todos')
@@ -238,7 +240,11 @@ function PanelDemanda() {
                             <input
                                 type="date"
                                 value={fechaDesde}
-                                onChange={(e) => setFechaDesde(e.target.value)}
+                                max={HOY}
+                                onChange={(e) => {
+                                    setFechaDesde(e.target.value)
+                                    if (fechaHasta && e.target.value > fechaHasta) setFechaHasta(e.target.value)
+                                }}
                                 className="w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                             />
                         </div>
@@ -247,6 +253,8 @@ function PanelDemanda() {
                             <input
                                 type="date"
                                 value={fechaHasta}
+                                min={fechaDesde || undefined}
+                                max={HOY}
                                 onChange={(e) => setFechaHasta(e.target.value)}
                                 className="w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                             />

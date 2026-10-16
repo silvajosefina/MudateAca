@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import {
     ArrowLeft,
     BedDouble,
@@ -44,6 +44,7 @@ function formatearFecha(valor: string): string {
 function PublicacionDetalle() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
+    const location = useLocation()
     const sesion = obtenerSesion()
     const publicacion = id ? obtenerPublicacionPorId(id) : undefined
     const [, forzarActualizacion] = useState(0)
@@ -88,6 +89,14 @@ function PublicacionDetalle() {
         forzarActualizacion((n) => n + 1)
     }
 
+    function handleVolver() {
+        if (location.key === 'default') {
+            navigate('/explorar')
+        } else {
+            navigate(-1)
+        }
+    }
+
     function handleContactar() {
         if (!sesion) return
         const conversacion = obtenerOCrearConversacion(publicacion!.id, sesion.id, publicacion!.propietarioId)
@@ -103,10 +112,14 @@ function PublicacionDetalle() {
 
     return (
         <PublicoLayout>
-            <Link to="/explorar" className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary mb-4 cursor-pointer">
+            <button
+                type="button"
+                onClick={handleVolver}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted hover:text-primary mb-4 cursor-pointer"
+            >
                 <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-                Volver a explorar
-            </Link>
+                Volver
+            </button>
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
                 <div className="flex flex-col gap-6 min-w-0">
@@ -247,7 +260,7 @@ function PublicacionDetalle() {
                             </Link>
                         ) : null}
 
-                        {sesion && !esDueño && (
+                        {sesion && !esDueño && sesion.rol !== 'administrador' && (
                             <button
                                 type="button"
                                 onClick={() => setReclamoAbierto('publicacion')}
@@ -270,7 +283,7 @@ function PublicacionDetalle() {
                                     {publicador.rol === 'inmobiliaria' ? 'Inmobiliaria' : 'Propietario'}
                                 </span>
                             </p>
-                            {sesion && !esDueño && (
+                            {sesion && !esDueño && sesion.rol !== 'administrador' && (
                                 <button
                                     type="button"
                                     onClick={() => setReclamoAbierto('usuario')}
