@@ -81,8 +81,13 @@ describe('Login', () => {
         expect(mockNavigate).not.toHaveBeenCalled()
     })
 
-    test('muestra error cuando el correo tiene formato inválido', async () => {
-        await completarYEnviar('correo-invalido', 'Clave123')
+    test.each([
+        ['correo-invalido', 'sin arroba ni dominio'],
+        ['correo@', 'sin dominio'],
+        ['@mudateaca.com', 'sin usuario'],
+        ['correo con espacios@mudateaca.com', 'con espacios'],
+    ])('muestra error cuando el correo tiene formato inválido: "%s" (%s)', async (correoInvalido) => {
+        await completarYEnviar(correoInvalido, 'Clave123')
         expect(await screen.findByText('Ingresá un correo electrónico válido.')).toBeInTheDocument()
         expect(mockNavigate).not.toHaveBeenCalled()
     })

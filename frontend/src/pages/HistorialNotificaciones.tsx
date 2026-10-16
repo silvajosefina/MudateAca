@@ -13,18 +13,9 @@ import {
 } from '../mocks/notificaciones'
 import { obtenerSesion } from '../mocks/sesion'
 import { mostrarToast } from '../mocks/toast'
+import { formatearFechaHora } from '../utils/formato'
 
 const RESULTADOS_POR_PAGINA = 10
-
-function formatearFecha(iso: string): string {
-    return new Date(iso).toLocaleString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    })
-}
 
 function HistorialNotificaciones() {
     const sesion = obtenerSesion()
@@ -98,7 +89,7 @@ function HistorialNotificaciones() {
                                 )}
                                 <div className="min-w-0 flex-1">
                                     <p className="text-sm text-foreground">{n.mensaje}</p>
-                                    <p className="text-xs text-muted mt-0.5">{formatearFecha(n.creadaEn)}</p>
+                                    <p className="text-xs text-muted mt-0.5">{formatearFechaHora(n.creadaEn)}</p>
                                 </div>
                             </>
                         )

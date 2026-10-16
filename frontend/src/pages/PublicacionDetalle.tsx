@@ -30,16 +30,11 @@ import { obtenerSesion } from '../mocks/sesion'
 import { agregarFavorito, esFavorito, quitarFavorito } from '../mocks/favoritos'
 import { obtenerOCrearConversacion } from '../mocks/mensajes'
 import { mostrarToast } from '../mocks/toast'
-import { formatearPrecio } from '../utils/formato'
+import { formatearFecha, formatearPrecio } from '../utils/formato'
 import { ETIQUETAS_TIPO_INMUEBLE } from '../types/publicacion'
 
 const LAT_DEFECTO = -35.9666
 const LNG_DEFECTO = -62.7333
-
-function formatearFecha(valor: string): string {
-    const [anio, mes, dia] = valor.split('-')
-    return `${dia}/${mes}/${anio}`
-}
 
 function PublicacionDetalle() {
     const { id } = useParams<{ id: string }>()

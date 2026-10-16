@@ -6,10 +6,7 @@ import PanelLayout from '../layouts/PanelLayout'
 import { obtenerNombreObjetivoReclamo, obtenerReclamosPorUsuario } from '../mocks/reclamos'
 import { obtenerSesion } from '../mocks/sesion'
 import { ETIQUETAS_ESTADO_RECLAMO, ETIQUETAS_MOTIVO_RECLAMO, type Reclamo } from '../types/reclamo'
-
-function formatearFechaHora(iso: string): string {
-    return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
+import { formatearFechaHora } from '../utils/formato'
 
 function ModalDetalleMiReclamo({ reclamo, onClose }: { reclamo: Reclamo; onClose: () => void }) {
     const etiquetaEstado = ETIQUETAS_ESTADO_RECLAMO[reclamo.estado]

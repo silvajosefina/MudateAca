@@ -7,13 +7,10 @@ import {
     type Notificacion,
 } from '../mocks/notificaciones'
 import { useNotificacionesNoLeidas } from '../hooks/useNotificacionesNoLeidas'
+import { formatearFechaCorta } from '../utils/formato'
 
 interface MenuNotificacionesProps {
     usuarioId: string
-}
-
-function formatearFecha(iso: string): string {
-    return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 function MenuNotificaciones({ usuarioId }: MenuNotificacionesProps) {
@@ -78,7 +75,7 @@ function MenuNotificaciones({ usuarioId }: MenuNotificacionesProps) {
                                         )}
                                         <div className="min-w-0">
                                             <p className="text-sm text-foreground">{n.mensaje}</p>
-                                            <p className="text-xs text-muted mt-0.5">{formatearFecha(n.creadaEn)}</p>
+                                            <p className="text-xs text-muted mt-0.5">{formatearFechaCorta(n.creadaEn)}</p>
                                         </div>
                                     </>
                                 )

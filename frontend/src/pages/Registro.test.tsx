@@ -92,15 +92,11 @@ describe('Registro', () => {
         expect(await screen.findByText('Ingresá un número de celular válido.')).toBeInTheDocument()
     })
 
-    test('muestra error de correo vacío, con formato inválido y ya registrado', async () => {
+    test('muestra error de correo vacío y de correo ya registrado', async () => {
         renderRegistro()
         let user = await completarFormulario({ nombre: 'Ana', apellido: 'Gómez', celular: '2392400001' })
         await user.click(screen.getByRole('button', { name: 'Registrarme' }))
         expect(await screen.findByText('Ingresá tu correo electrónico.')).toBeInTheDocument()
-
-        user = await completarFormulario({ correo: 'correo-invalido' })
-        await user.click(screen.getByRole('button', { name: 'Registrarme' }))
-        expect(await screen.findByText('Ingresá un correo electrónico válido.')).toBeInTheDocument()
 
         await user.clear(screen.getByPlaceholderText('Correo electrónico'))
         user = await completarFormulario({ correo: 'ya.registrado@mudateaca.com' })
@@ -108,11 +104,29 @@ describe('Registro', () => {
         expect(await screen.findByText('Este correo ya está registrado.')).toBeInTheDocument()
     })
 
+    test.each([
+        ['correo-invalido', 'sin arroba ni dominio'],
+        ['correo@', 'sin dominio'],
+        ['@mudateaca.com', 'sin usuario'],
+        ['correo con espacios@mudateaca.com', 'con espacios'],
+        ['correo@sindominio', 'sin punto en el dominio'],
+    ])('rechaza el correo malformado "%s" (%s)', async (correoInvalido) => {
+        renderRegistro()
+        const user = await completarFormulario({
+            nombre: 'Ana',
+            apellido: 'Gómez',
+            celular: '2392400001',
+            correo: correoInvalido,
+        })
+        await user.click(screen.getByRole('button', { name: 'Registrarme' }))
+        expect(await screen.findByText('Ingresá un correo electrónico válido.')).toBeInTheDocument()
+    })
+
     // A diferencia de los demás campos, Registro.tsx no muestra el texto específico
     // del error de contraseña: solo colorea en rojo el hint estático de requisitos.
-    test('marca la contraseña como inválida cuando está vacía o no cumple el patrón', async () => {
+    test('marca la contraseña vacía como inválida', async () => {
         renderRegistro()
-        let user = await completarFormulario({
+        const user = await completarFormulario({
             nombre: 'Ana',
             apellido: 'Gómez',
             celular: '2392400001',
@@ -120,10 +134,25 @@ describe('Registro', () => {
         })
         await user.click(screen.getByRole('button', { name: 'Registrarme' }))
         expect(await screen.findByText(/Debe tener al menos 8 caracteres/)).toHaveClass('text-danger')
+    })
 
-        user = await completarFormulario({ contrasena: 'sinnumeroniminayuscula' })
+    test.each([
+        ['sinnumeroniminayuscula', 'sin número ni mayúscula'],
+        ['SINMINUSCULA123', 'sin minúscula'],
+        ['SinNumero', 'sin número'],
+        ['Ab1', 'cumple las clases de carácter pero tiene menos de 8 dígitos'],
+        ['12345678', 'solo números'],
+    ])('rechaza la contraseña débil "%s" (%s)', async (contrasenaDebil) => {
+        renderRegistro()
+        const user = await completarFormulario({
+            nombre: 'Ana',
+            apellido: 'Gómez',
+            celular: '2392400001',
+            correo: 'nueva@mudateaca.com',
+            contrasena: contrasenaDebil,
+        })
         await user.click(screen.getByRole('button', { name: 'Registrarme' }))
-        expect(screen.getByText(/Debe tener al menos 8 caracteres/)).toHaveClass('text-danger')
+        expect(await screen.findByText(/Debe tener al menos 8 caracteres/)).toHaveClass('text-danger')
     })
 
     test('cambiar el select de rol actualiza el valor seleccionado', async () => {

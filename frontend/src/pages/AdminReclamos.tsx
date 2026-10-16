@@ -16,12 +16,9 @@ import { mostrarToast } from '../mocks/toast'
 import { ETIQUETAS_ESTADO_RECLAMO, ETIQUETAS_MOTIVO_RECLAMO, type EstadoReclamo, type Reclamo } from '../types/reclamo'
 import { ETIQUETAS_ROL, type Usuario } from '../types/usuario'
 import type { Publicacion } from '../types/publicacion'
+import { formatearFechaHora } from '../utils/formato'
 
 type FiltroReclamo = 'todos' | EstadoReclamo
-
-function formatearFechaHora(iso: string): string {
-    return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 
 const PESTANAS_RECLAMOS: { valor: FiltroReclamo; etiqueta: string }[] = [
     { valor: 'pendiente', etiqueta: 'Pendientes' },
