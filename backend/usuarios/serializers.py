@@ -14,6 +14,9 @@ class RegistroSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = ['id', 'nombre', 'apellido', 'celular', 'correo', 'contrasena', 'rol']
+        # Sin esto, el UniqueValidator automático de DRF responde antes que
+        # validate_correo con su propio mensaje genérico ("este/a correo").
+        extra_kwargs = {'correo': {'validators': []}}
 
     def validate_rol(self, rol):
         if rol not in ROLES_REGISTRABLES:
