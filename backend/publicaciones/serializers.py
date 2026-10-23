@@ -4,6 +4,9 @@ from usuarios.serializers import UsuarioSerializer
 
 from .models import EventoModeracion, FotoPublicacion, Publicacion
 
+# RF-05: toda publicación debe tener al menos tres fotografías.
+MINIMO_FOTOS = 3
+
 
 class FotoPublicacionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,7 +21,12 @@ class EventoModeracionSerializer(serializers.ModelSerializer):
 
 
 class PublicacionCrearSerializer(serializers.ModelSerializer):
-    fotos = serializers.ListField(child=serializers.ImageField(), write_only=True, min_length=1)
+    fotos = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+        min_length=MINIMO_FOTOS,
+        error_messages={'min_length': f'Subí como mínimo {MINIMO_FOTOS} fotografías.'},
+    )
 
     class Meta:
         model = Publicacion

@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
 from django.db import models
 
 TIPOS_INMUEBLE = [
@@ -34,6 +35,9 @@ TIPOS_DOCUMENTO_VERIFICACION = [
     ('poder_representacion', 'Poder o autorización de representación del propietario'),
 ]
 
+# RF-04: formatos admitidos para la documentación de verificación.
+EXTENSIONES_VERIFICACION = ['pdf', 'jpg', 'jpeg', 'png']
+
 TIPOS_EVENTO_MODERACION = [
     ('rechazo', 'Rechazada'),
     ('solicitud_modificacion', 'Modificaciones solicitadas'),
@@ -57,7 +61,10 @@ class Publicacion(models.Model):
     estado = models.CharField(max_length=25, choices=ESTADOS_PUBLICACION, default='pendiente_moderacion')
 
     tipo_documento_verificacion = models.CharField(max_length=30, choices=TIPOS_DOCUMENTO_VERIFICACION)
-    archivo_verificacion = models.FileField(upload_to='verificaciones/')
+    archivo_verificacion = models.FileField(
+        upload_to='verificaciones/',
+        validators=[FileExtensionValidator(allowed_extensions=EXTENSIONES_VERIFICACION)],
+    )
     motivo_rechazo_verificacion = models.TextField(blank=True, null=True)
     nota_moderacion = models.TextField(blank=True, null=True)
 
