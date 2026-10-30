@@ -2,10 +2,23 @@ from django.contrib.auth.base_user import BaseUserManager
 
 
 class UsuarioManager(BaseUserManager):
+    def get_queryset(self):
+        return super().get_queryset().select_related('rol', 'estado_cuenta')
+
+    def _resolver_catalogo(self, campo, valor):
+        # Permite pasar el código del catálogo ('propietario') en vez de la instancia.
+        if isinstance(valor, str):
+            return self.model._meta.get_field(campo).related_model.por_codigo(valor)
+        return valor
+
     def create_user(self, correo, contrasena=None, **campos_extra):
         if not correo:
             raise ValueError('El usuario debe tener un correo electrónico.')
         correo = self.normalize_email(correo)
+        campos_extra['rol'] = self._resolver_catalogo('rol', campos_extra['rol'])
+        campos_extra['estado_cuenta'] = self._resolver_catalogo(
+            'estado_cuenta', campos_extra.get('estado_cuenta', 'activo'),
+        )
         usuario = self.model(correo=correo, **campos_extra)
         usuario.set_password(contrasena)
         usuario.full_clean(exclude=['password'])

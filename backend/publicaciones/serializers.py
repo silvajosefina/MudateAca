@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from usuarios.serializers import UsuarioSerializer
 
-from .models import EventoModeracion, FotoPublicacion, Publicacion
+from .models import EstadoPublicacion, EventoModeracion, FotoPublicacion, Modalidad, Publicacion, TipoInmueble
 
 # RF-05: toda publicación debe tener al menos tres fotografías.
 MINIMO_FOTOS = 3
@@ -21,6 +21,8 @@ class EventoModeracionSerializer(serializers.ModelSerializer):
 
 
 class PublicacionCrearSerializer(serializers.ModelSerializer):
+    tipo_inmueble = serializers.SlugRelatedField(slug_field='codigo', queryset=TipoInmueble.objects.all())
+    modalidad = serializers.SlugRelatedField(slug_field='codigo', queryset=Modalidad.objects.all())
     fotos = serializers.ListField(
         child=serializers.ImageField(),
         write_only=True,
@@ -39,7 +41,8 @@ class PublicacionCrearSerializer(serializers.ModelSerializer):
     def create(self, datos_validados):
         fotos = datos_validados.pop('fotos')
         propietario = self.context['request'].user
-        publicacion = Publicacion.objects.create(propietario=propietario, **datos_validados)
+        estado = EstadoPublicacion.por_codigo('pendiente_moderacion')
+        publicacion = Publicacion.objects.create(propietario=propietario, estado=estado, **datos_validados)
         for indice, imagen in enumerate(fotos):
             FotoPublicacion.objects.create(publicacion=publicacion, imagen=imagen, orden=indice)
         return publicacion
@@ -47,6 +50,9 @@ class PublicacionCrearSerializer(serializers.ModelSerializer):
 
 class PublicacionSerializer(serializers.ModelSerializer):
     propietario = UsuarioSerializer(read_only=True)
+    tipo_inmueble = serializers.SlugRelatedField(slug_field='codigo', read_only=True)
+    modalidad = serializers.SlugRelatedField(slug_field='codigo', read_only=True)
+    estado = serializers.SlugRelatedField(slug_field='codigo', read_only=True)
     fotos = FotoPublicacionSerializer(many=True, read_only=True)
     eventos_moderacion = EventoModeracionSerializer(many=True, read_only=True)
 

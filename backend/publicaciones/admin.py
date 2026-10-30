@@ -1,6 +1,8 @@
 from django.contrib import admin
 
-from .models import EventoModeracion, FotoPublicacion, Publicacion
+from .models import EstadoPublicacion, EventoModeracion, FotoPublicacion, Modalidad, Publicacion, TipoInmueble
+
+admin.site.register([EstadoPublicacion, TipoInmueble, Modalidad])
 
 
 class FotoPublicacionInline(admin.TabularInline):
@@ -11,7 +13,7 @@ class FotoPublicacionInline(admin.TabularInline):
 class EventoModeracionInline(admin.TabularInline):
     model = EventoModeracion
     extra = 0
-    readonly_fields = ['tipo', 'nota', 'creado_en']
+    readonly_fields = ['tipo', 'nota', 'administrador', 'creado_en']
     can_delete = False
 
 

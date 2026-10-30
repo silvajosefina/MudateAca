@@ -8,5 +8,5 @@ class EsPropietarioOInmobiliaria(BasePermission):
         return bool(
             request.user
             and request.user.is_authenticated
-            and request.user.rol in ROLES_QUE_PUBLICAN
+            and request.user.rol.codigo in ROLES_QUE_PUBLICAN
         )

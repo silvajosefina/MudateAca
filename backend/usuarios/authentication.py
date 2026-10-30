@@ -14,4 +14,8 @@ class CookieJWTAuthentication(JWTAuthentication):
             token_validado = self.get_validated_token(token_crudo)
         except InvalidToken:
             return None
-        return self.get_user(token_validado), token_validado
+        usuario = self.get_user(token_validado)
+        # RF-20: una suspensión también corta las sesiones que ya estaban abiertas.
+        if usuario.esta_suspendido:
+            return None
+        return usuario, token_validado

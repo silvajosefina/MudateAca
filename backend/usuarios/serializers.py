@@ -2,7 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Usuario
+from .models import Rol, Usuario
 from .validators import validador_contrasena
 
 ROLES_REGISTRABLES = ('interesado', 'propietario', 'inmobiliaria')
@@ -10,6 +10,11 @@ ROLES_REGISTRABLES = ('interesado', 'propietario', 'inmobiliaria')
 
 class RegistroSerializer(serializers.ModelSerializer):
     contrasena = serializers.CharField(write_only=True, validators=[validador_contrasena])
+    rol = serializers.SlugRelatedField(
+        slug_field='codigo',
+        queryset=Rol.objects.filter(codigo__in=ROLES_REGISTRABLES),
+        error_messages={'does_not_exist': 'El rol elegido no es válido para el registro.'},
+    )
 
     class Meta:
         model = Usuario
@@ -17,11 +22,6 @@ class RegistroSerializer(serializers.ModelSerializer):
         # Sin esto, el UniqueValidator automático de DRF responde antes que
         # validate_correo con su propio mensaje genérico ("este/a correo").
         extra_kwargs = {'correo': {'validators': []}}
-
-    def validate_rol(self, rol):
-        if rol not in ROLES_REGISTRABLES:
-            raise serializers.ValidationError('El rol elegido no es válido para el registro.')
-        return rol
 
     def validate_correo(self, correo):
         correo = correo.lower()
@@ -39,6 +39,9 @@ class RegistroSerializer(serializers.ModelSerializer):
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
+    rol = serializers.SlugRelatedField(slug_field='codigo', read_only=True)
+    estado_cuenta = serializers.SlugRelatedField(slug_field='codigo', read_only=True)
+
     class Meta:
         model = Usuario
         fields = ['id', 'nombre', 'apellido', 'celular', 'correo', 'rol', 'estado_cuenta', 'motivo_suspension']
@@ -64,7 +67,7 @@ class LoginSerializer(TokenObtainPairSerializer):
     def validate(self, atributos):
         atributos['password'] = atributos.pop('contrasena')
         datos = super().validate(atributos)
-        if self.user.estado_cuenta == 'suspendido':
+        if self.user.esta_suspendido:
             raise serializers.ValidationError(
                 f'Tu cuenta está suspendida. Motivo: {self.user.motivo_suspension}'
             )

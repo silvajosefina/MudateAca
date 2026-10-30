@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 from pathlib import Path
 
@@ -7,6 +8,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / '.env')
+
+# GeoDjango en Windows: GDAL y GEOS vienen de OSGeo4W, fuera del PATH del sistema.
+OSGEO4W_ROOT = env('OSGEO4W_ROOT', default='')
+if OSGEO4W_ROOT:
+    _osgeo4w = Path(OSGEO4W_ROOT)
+    os.environ['PATH'] = f'{_osgeo4w / "bin"}{os.pathsep}{os.environ["PATH"]}'
+    os.environ['GDAL_DATA'] = str(_osgeo4w / 'apps' / 'gdal' / 'share' / 'gdal')
+    os.environ['PROJ_DATA'] = str(_osgeo4w / 'share' / 'proj')
 
 SECRET_KEY = env('DJANGO_SECRET_KEY')
 DEBUG = env.bool('DJANGO_DEBUG', default=False)
@@ -20,11 +29,18 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'usuarios',
     'publicaciones',
+    'busquedas',
+    'favoritos',
+    'mensajeria',
+    'notificaciones',
+    'reclamos',
+    'auditoria',
 ]
 
 MIDDLEWARE = [
@@ -58,10 +74,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Base de datos (PostgreSQL local, restricción del SRS)
+# Base de datos (PostgreSQL local, restricción del SRS; PostGIS para las coordenadas del DER)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': env('DB_NAME'),
         'USER': env('DB_USER'),
         'PASSWORD': env('DB_PASSWORD'),
