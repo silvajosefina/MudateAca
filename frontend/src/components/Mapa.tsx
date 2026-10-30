@@ -8,9 +8,13 @@ import 'leaflet/dist/leaflet.css'
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
 L.Icon.Default.mergeOptions({ iconRetinaUrl, iconUrl, shadowUrl })
 
+// Solo centra la vista inicial: sin lat y lng no se dibuja ningún marcador.
+const LAT_CENTRO_DEFECTO = -35.9666
+const LNG_CENTRO_DEFECTO = -62.7333
+
 interface MapaProps {
-    lat: number
-    lng: number
+    lat?: number
+    lng?: number
     onCambiarPosicion?: (lat: number, lng: number) => void
     alturaClase?: string
 }
@@ -26,11 +30,12 @@ function ClicksDelMapa({ onCambiarPosicion }: { onCambiarPosicion: (lat: number,
 
 function Mapa({ lat, lng, onCambiarPosicion, alturaClase = 'h-64' }: MapaProps) {
     const interactivo = Boolean(onCambiarPosicion)
+    const tieneMarcador = lat !== undefined && lng !== undefined
 
     return (
         <div className={`${alturaClase} w-full rounded-lg overflow-hidden border border-border isolate`}>
             <MapContainer
-                center={[lat, lng]}
+                center={tieneMarcador ? [lat, lng] : [LAT_CENTRO_DEFECTO, LNG_CENTRO_DEFECTO]}
                 zoom={15}
                 scrollWheelZoom={interactivo}
                 className="w-full h-full"
@@ -39,20 +44,22 @@ function Mapa({ lat, lng, onCambiarPosicion, alturaClase = 'h-64' }: MapaProps) 
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <Marker
-                    position={[lat, lng]}
-                    draggable={interactivo}
-                    eventHandlers={
-                        onCambiarPosicion
-                            ? {
-                                dragend: (e) => {
-                                    const posicion = e.target.getLatLng()
-                                    onCambiarPosicion(posicion.lat, posicion.lng)
-                                },
-                            }
-                            : undefined
-                    }
-                />
+                {tieneMarcador && (
+                    <Marker
+                        position={[lat, lng]}
+                        draggable={interactivo}
+                        eventHandlers={
+                            onCambiarPosicion
+                                ? {
+                                    dragend: (e) => {
+                                        const posicion = e.target.getLatLng()
+                                        onCambiarPosicion(posicion.lat, posicion.lng)
+                                    },
+                                }
+                                : undefined
+                        }
+                    />
+                )}
                 {onCambiarPosicion && <ClicksDelMapa onCambiarPosicion={onCambiarPosicion} />}
             </MapContainer>
         </div>

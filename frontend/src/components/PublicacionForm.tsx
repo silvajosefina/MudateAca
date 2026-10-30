@@ -16,8 +16,6 @@ import type {
     TipoInmueble,
 } from '../types/publicacion'
 
-const LAT_DEFECTO = -35.9666
-const LNG_DEFECTO = -62.7333
 const EXTENSIONES_ADMITIDAS = ['application/pdf', 'image/jpeg', 'image/png']
 
 const OPCIONES_DOCUMENTO_PROPIETARIO: { valor: TipoDocumentoVerificacionPublicacion; etiqueta: string }[] = [
@@ -65,8 +63,9 @@ function valorInicial(publicacion?: Publicacion): PublicacionFormData {
         descripcion: publicacion?.descripcion ?? '',
         precio: publicacion?.precio ?? 0,
         ubicacion: publicacion?.ubicacion ?? '',
-        lat: publicacion?.lat ?? LAT_DEFECTO,
-        lng: publicacion?.lng ?? LNG_DEFECTO,
+        // Sin valor por defecto: solo hay coordenadas si el usuario interactuó con el mapa.
+        lat: publicacion?.lat,
+        lng: publicacion?.lng,
         ambientes: publicacion?.ambientes ?? 1,
         dormitorios: publicacion?.dormitorios ?? 1,
         disponibleDesde: publicacion?.disponibleDesde ?? '',
@@ -351,14 +350,25 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     Ubicación en el mapa (opcional)
                 </label>
                 <p className="text-xs text-muted mb-2">
-                    Hacé clic o arrastrá el marcador para ajustar la ubicación exacta.
+                    Hacé clic en el mapa para marcar la ubicación y arrastrá el marcador para ajustarla. Si no marcás
+                    nada, la publicación se guarda sin ubicación en el mapa.
                 </p>
                 <Mapa
-                    lat={datos.lat ?? LAT_DEFECTO}
-                    lng={datos.lng ?? LNG_DEFECTO}
+                    lat={datos.lat}
+                    lng={datos.lng}
                     onCambiarPosicion={(lat, lng) => setDatos((prev) => ({ ...prev, lat, lng }))}
                     alturaClase="h-80"
                 />
+                {datos.lat !== undefined && (
+                    <button
+                        type="button"
+                        onClick={() => setDatos((prev) => ({ ...prev, lat: undefined, lng: undefined }))}
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-primary mt-2 cursor-pointer"
+                    >
+                        <X className="w-4 h-4" aria-hidden="true" />
+                        Quitar ubicación
+                    </button>
+                )}
             </div>
 
             {datos.modalidad === 'temporario' && (

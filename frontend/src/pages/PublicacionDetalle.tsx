@@ -33,9 +33,6 @@ import { mostrarToast } from '../mocks/toast'
 import { formatearFecha, formatearPrecio } from '../utils/formato'
 import { ETIQUETAS_TIPO_INMUEBLE } from '../types/publicacion'
 
-const LAT_DEFECTO = -35.9666
-const LNG_DEFECTO = -62.7333
-
 function PublicacionDetalle() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
@@ -181,14 +178,12 @@ function PublicacionDetalle() {
                             </div>
                         )}
 
-                        <div>
-                            <h3 className="text-sm font-semibold text-foreground mb-2">Ubicación en el mapa</h3>
-                            <Mapa
-                                lat={publicacion.lat ?? LAT_DEFECTO}
-                                lng={publicacion.lng ?? LNG_DEFECTO}
-                                alturaClase="h-72"
-                            />
-                        </div>
+                        {publicacion.lat !== undefined && publicacion.lng !== undefined && (
+                            <div>
+                                <h3 className="text-sm font-semibold text-foreground mb-2">Ubicación en el mapa</h3>
+                                <Mapa lat={publicacion.lat} lng={publicacion.lng} alturaClase="h-72" />
+                            </div>
+                        )}
                     </div>
                 </div>
 
