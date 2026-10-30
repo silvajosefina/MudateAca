@@ -24,6 +24,10 @@ class PublicacionAdmin(admin.ModelAdmin):
     search_fields = ['descripcion', 'ubicacion', 'propietario__correo']
     inlines = [FotoPublicacionInline, EventoModeracionInline]
 
+    def has_delete_permission(self, request, obj=None):
+        # RF-09: las publicaciones nunca se borran físicamente.
+        return False
+
     def descripcion_corta(self, obj):
         return obj.descripcion[:50]
 
