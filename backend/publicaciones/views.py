@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Count
 from django.http import Http404
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
@@ -7,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from auditoria.servicios import registrar_accion
+from config.paginacion import PaginacionExplorar, PaginacionMisPublicaciones
 from usuarios.permissions import EsAdministrador
 
 from .estados import (
@@ -17,12 +19,14 @@ from .estados import (
     cambiar_estado,
     eliminar_logicamente,
 )
+from .filtros import FiltroMisPublicacionesSerializer, FiltrosPublicacionesSerializer, aplicar_filtros
 from .models import EstadoPublicacion, EventoModeracion, Publicacion
 from .permissions import EsDuenoDeLaPublicacion, EsPropietarioOInmobiliaria
 from .serializers import (
     AccionConNotaSerializer,
     CambioEstadoSerializer,
     PublicacionEscrituraSerializer,
+    PublicacionPropiaSerializer,
     PublicacionPublicaSerializer,
     PublicacionSerializer,
 )
@@ -48,6 +52,8 @@ def obtener_para_moderar(id):
 
 
 class PublicacionListaCrearView(generics.ListCreateAPIView):
+    pagination_class = PaginacionExplorar
+
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return [AllowAny()]
@@ -59,13 +65,52 @@ class PublicacionListaCrearView(generics.ListCreateAPIView):
         return PublicacionEscrituraSerializer
 
     def get_queryset(self):
-        return publicaciones_con_relaciones().filter(estado__codigo__in=ESTADOS_LISTADO_PUBLICO)
+        return (
+            publicaciones_con_relaciones()
+            .filter(estado__codigo__in=ESTADOS_LISTADO_PUBLICO)
+            .order_by('-actualizado_en', '-id')
+        )
+
+    def filter_queryset(self, queryset):
+        filtros = FiltrosPublicacionesSerializer(data=self.request.query_params, partial=True)
+        filtros.is_valid(raise_exception=True)
+        return aplicar_filtros(queryset, filtros.validated_data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         publicacion = serializer.save()
         return respuesta_interna(request, publicacion, status=status.HTTP_201_CREATED)
+
+
+class MisPublicacionesView(generics.ListAPIView):
+    serializer_class = PublicacionPropiaSerializer
+    permission_classes = [EsPropietarioOInmobiliaria]
+    pagination_class = PaginacionMisPublicaciones
+
+    def get_queryset(self):
+        return (
+            publicaciones_con_relaciones()
+            .filter(propietario=self.request.user)
+            .order_by('-actualizado_en', '-id')
+        )
+
+    def filter_queryset(self, queryset):
+        filtro = FiltroMisPublicacionesSerializer(data=self.request.query_params, partial=True)
+        filtro.is_valid(raise_exception=True)
+        estado = filtro.validated_data.get('estado')
+        return queryset.filter(estado=estado) if estado else queryset
+
+    def list(self, request, *args, **kwargs):
+        respuesta = super().list(request, *args, **kwargs)
+        totales = (
+            Publicacion.objects.filter(propietario=request.user)
+            .order_by()
+            .values('estado__codigo')
+            .annotate(cantidad=Count('id'))
+        )
+        respuesta.data['totales'] = {fila['estado__codigo']: fila['cantidad'] for fila in totales}
+        return respuesta
 
 
 class PublicacionDetalleView(generics.RetrieveUpdateDestroyAPIView):

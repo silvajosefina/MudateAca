@@ -135,19 +135,18 @@ export function eliminarBusqueda(id: string, usuarioId: string): void {
 }
 
 export function calcularCompatibilidad(busqueda: BusquedaActiva, publicacion: Publicacion): number {
+    // Modalidad y tipo son excluyentes: filtran candidatas y no suman al porcentaje.
+    if (busqueda.modalidad !== 'todas' && publicacion.modalidad !== busqueda.modalidad) return 0
+    if (busqueda.tipoInmueble !== 'todos' && publicacion.tipoInmueble !== busqueda.tipoInmueble) return 0
+
     const criterios: boolean[] = []
 
-    if (busqueda.modalidad !== 'todas') {
-        criterios.push(publicacion.modalidad === busqueda.modalidad)
-    }
-    if (busqueda.tipoInmueble !== 'todos') {
-        criterios.push(publicacion.tipoInmueble === busqueda.tipoInmueble)
-    }
-    if (busqueda.precioMin) {
-        criterios.push(publicacion.precio >= busqueda.precioMin)
-    }
-    if (busqueda.precioMax) {
-        criterios.push(publicacion.precio <= busqueda.precioMax)
+    if (busqueda.precioMin || busqueda.precioMax) {
+        // Mínimo y máximo son un solo criterio: casi todo precio cumple al menos uno de los dos.
+        criterios.push(
+            (!busqueda.precioMin || publicacion.precio >= busqueda.precioMin) &&
+            (!busqueda.precioMax || publicacion.precio <= busqueda.precioMax),
+        )
     }
     if (busqueda.ambientesMin) {
         criterios.push(publicacion.ambientes >= busqueda.ambientesMin)

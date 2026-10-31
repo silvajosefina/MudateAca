@@ -1,5 +1,6 @@
 import re
-import unicodedata
+
+from config.texto import normalizar_texto
 
 from .models import EstadoPublicacion, EventoModeracion, Publicacion
 
@@ -21,11 +22,6 @@ PATRON_CORREO = re.compile(r'[\w.+-]+@[\w-]+\.[\w.-]+')
 PATRON_ENLACE = re.compile(r'https?://|www\.|\b[a-z0-9-]+\.(?:com|net|org|ar|info)\b', re.IGNORECASE)
 
 
-def _normalizar(texto):
-    sin_acentos = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii')
-    return sin_acentos.lower()
-
-
 def tiene_datos_de_contacto(texto):
     sin_fechas_ni_precios = PATRON_FECHA_O_PRECIO.sub(' ', texto)
     return any(
@@ -35,7 +31,7 @@ def tiene_datos_de_contacto(texto):
 
 
 def tiene_palabras_prohibidas(texto):
-    return not PALABRAS_PROHIBIDAS.isdisjoint(re.findall(r'[a-z0-9]+', _normalizar(texto)))
+    return not PALABRAS_PROHIBIDAS.isdisjoint(re.findall(r'[a-z0-9]+', normalizar_texto(texto)))
 
 
 def es_duplicada(publicacion):

@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('', views.PublicacionListaCrearView.as_view(), name='publicacion-lista'),
+    path('mias/', views.MisPublicacionesView.as_view(), name='publicacion-mias'),
     path('pendientes/', views.PublicacionPendientesListView.as_view(), name='publicacion-pendientes'),
     path('<int:id>/', views.PublicacionDetalleView.as_view(), name='publicacion-detalle'),
     path('<int:id>/estado/', views.PublicacionCambiarEstadoView.as_view(), name='publicacion-estado'),

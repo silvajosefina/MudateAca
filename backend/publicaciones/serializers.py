@@ -8,7 +8,7 @@ from rest_framework import serializers
 from usuarios.models import Usuario
 from usuarios.serializers import UsuarioSerializer
 
-from .estados import ESTADOS_QUE_VUELVEN_A_REVISION
+from .estados import ESTADOS_QUE_VUELVEN_A_REVISION, acciones_permitidas
 from .models import EstadoPublicacion, EventoModeracion, FotoPublicacion, Modalidad, Publicacion, TipoInmueble
 from .moderacion import moderar
 
@@ -86,6 +86,32 @@ class PublicacionSerializer(PublicacionPublicaSerializer):
             'motivo_rechazo_verificacion', 'nota_moderacion', 'eventos_moderacion',
         ]
         read_only_fields = fields
+
+
+class PublicacionPropiaSerializer(PublicacionSerializer):
+    propietario = AnuncianteSerializer(read_only=True)
+    acciones = serializers.SerializerMethodField()
+
+    class Meta(PublicacionSerializer.Meta):
+        fields = [*PublicacionSerializer.Meta.fields, 'acciones']
+        read_only_fields = fields
+
+    def get_acciones(self, publicacion):
+        return acciones_permitidas(publicacion.estado.codigo)
+
+
+class PublicacionResumenSerializer(serializers.ModelSerializer):
+    estado = serializers.SlugRelatedField(slug_field='codigo', read_only=True)
+    foto = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Publicacion
+        fields = ['id', 'descripcion', 'precio', 'ubicacion', 'estado', 'foto']
+        read_only_fields = fields
+
+    def get_foto(self, publicacion):
+        foto = next(iter(publicacion.fotos.all()), None)
+        return FotoPublicacionSerializer(foto, context=self.context).data['imagen'] if foto else None
 
 
 class PublicacionEscrituraSerializer(serializers.ModelSerializer):

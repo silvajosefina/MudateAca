@@ -15,6 +15,9 @@ class Conversacion(models.Model):
         verbose_name = 'conversación'
         verbose_name_plural = 'conversaciones'
         ordering = ['-actualizado_en']
+        constraints = [
+            models.UniqueConstraint(fields=['publicacion', 'interesado'], name='conversacion_unica_por_interesado'),
+        ]
 
     def __str__(self):
         return f'Publicación {self.publicacion_id} - interesado {self.interesado_id}'

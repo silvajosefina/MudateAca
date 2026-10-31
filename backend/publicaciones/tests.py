@@ -41,7 +41,7 @@ def crear_usuario(correo, rol='propietario'):
     )
 
 
-def crear_publicacion(propietario, estado='activa', **campos):
+def crear_publicacion(propietario, estado='activa', tipo_inmueble='departamento', modalidad='residencial', **campos):
     datos = {
         'descripcion': DESCRIPCION,
         'ubicacion': 'Centro',
@@ -56,8 +56,8 @@ def crear_publicacion(propietario, estado='activa', **campos):
     publicacion = Publicacion.objects.create(
         propietario=propietario,
         estado=EstadoPublicacion.por_codigo(estado),
-        tipo_inmueble=TipoInmueble.por_codigo('departamento'),
-        modalidad=Modalidad.por_codigo('residencial'),
+        tipo_inmueble=TipoInmueble.por_codigo(tipo_inmueble),
+        modalidad=Modalidad.por_codigo(modalidad),
         **datos,
     )
     for orden in range(3):
@@ -523,7 +523,7 @@ class ConsultaDePublicacionesTests(PruebaDePublicaciones):
         respuesta = self.client.get(reverse('publicacion-lista'))
 
         self.assertEqual(respuesta.status_code, 200)
-        self.assertEqual([p['id'] for p in respuesta.data], [activa.id])
+        self.assertEqual([p['id'] for p in respuesta.data['results']], [activa.id])
 
     def test_no_expone_datos_privados_al_publico(self):
         publicacion = crear_publicacion(self.propietario)
@@ -586,6 +586,249 @@ class ConsultaDePublicacionesTests(PruebaDePublicaciones):
 
     def test_una_publicacion_inexistente_devuelve_404(self):
         self.assertEqual(self.client.get(reverse('publicacion-detalle', args=[999999])).status_code, 404)
+
+
+class FiltrosDeBusquedaTests(PruebaDePublicaciones):
+    def ids(self, **filtros):
+        respuesta = self.client.get(reverse('publicacion-lista'), filtros)
+        self.assertEqual(respuesta.status_code, 200)
+        return {publicacion['id'] for publicacion in respuesta.data['results']}
+
+    def test_sin_filtros_devuelve_todas_las_activas(self):
+        activa = crear_publicacion(self.propietario)
+
+        self.assertEqual(self.ids(), {activa.id})
+
+    def test_filtra_por_modalidad_y_tipo(self):
+        depto = crear_publicacion(self.propietario, ubicacion='Centro')
+        casa = crear_publicacion(self.propietario, tipo_inmueble='casa', ubicacion='Norte')
+        temporario = crear_publicacion(self.propietario, modalidad='temporario', ubicacion='Sur')
+
+        self.assertEqual(self.ids(modalidad='residencial'), {depto.id, casa.id})
+        self.assertEqual(self.ids(tipo_inmueble='casa'), {casa.id})
+        self.assertEqual(self.ids(modalidad='temporario', tipo_inmueble='departamento'), {temporario.id})
+
+    def test_filtra_por_rango_de_precio_incluyendo_los_extremos(self):
+        barata = crear_publicacion(self.propietario, precio='100000.00', ubicacion='A')
+        media = crear_publicacion(self.propietario, precio='200000.00', ubicacion='B')
+        crear_publicacion(self.propietario, precio='300000.00', ubicacion='C')
+
+        self.assertEqual(self.ids(precio_max='200000'), {barata.id, media.id})
+        self.assertEqual(self.ids(precio_min='200000', precio_max='200000'), {media.id})
+
+    def test_ambientes_y_dormitorios_funcionan_como_minimos(self):
+        chico = crear_publicacion(self.propietario, ambientes=1, dormitorios=0, ubicacion='A')
+        grande = crear_publicacion(self.propietario, ambientes=4, dormitorios=3, ubicacion='B')
+
+        self.assertEqual(self.ids(ambientes_min=2), {grande.id})
+        self.assertEqual(self.ids(dormitorios_min=3), {grande.id})
+        self.assertEqual(self.ids(ambientes_min=0), {chico.id, grande.id})
+
+    def test_la_ubicacion_ignora_acentos_y_mayusculas(self):
+        trenque = crear_publicacion(self.propietario, ubicacion='Barrio Belgrano, Trenque Lauquén')
+        crear_publicacion(self.propietario, ubicacion='Centro, Pehuajó')
+
+        self.assertEqual(self.ids(ubicacion='lauquen'), {trenque.id})
+        self.assertEqual(self.ids(ubicacion='BELGRANO'), {trenque.id})
+        self.assertEqual(self.ids(ubicacion='LAUQUÉN'), {trenque.id})
+        self.assertEqual(self.ids(ubicacion='inexistente'), set())
+
+    def test_las_caracteristicas_solo_filtran_cuando_se_piden(self):
+        con_mascotas = crear_publicacion(self.propietario, acepta_mascotas=True, ubicacion='A')
+        sin_mascotas = crear_publicacion(self.propietario, ubicacion='B')
+
+        self.assertEqual(self.ids(acepta_mascotas='true'), {con_mascotas.id})
+        self.assertEqual(self.ids(acepta_mascotas='1'), {con_mascotas.id})
+        self.assertEqual(self.ids(acepta_mascotas='false'), {con_mascotas.id, sin_mascotas.id})
+
+    def test_combina_varios_filtros(self):
+        buscada = crear_publicacion(self.propietario, tipo_inmueble='casa', amueblado=True, ubicacion='A')
+        crear_publicacion(self.propietario, tipo_inmueble='casa', ubicacion='B')
+        crear_publicacion(self.propietario, amueblado=True, ubicacion='C')
+
+        self.assertEqual(self.ids(tipo_inmueble='casa', amueblado='true'), {buscada.id})
+
+    def test_nunca_muestra_publicaciones_que_no_esten_activas(self):
+        crear_publicacion(self.propietario, estado='pausada', tipo_inmueble='casa')
+
+        self.assertEqual(self.ids(tipo_inmueble='casa'), set())
+
+    def test_ignora_parametros_vacios(self):
+        activa = crear_publicacion(self.propietario)
+
+        self.assertEqual(self.ids(modalidad='', ubicacion='', precio_min=''), {activa.id})
+
+    def test_rechaza_filtros_invalidos(self):
+        for filtros in (
+            {'precio_min': 'abc'},
+            {'precio_min': '-1'},
+            {'modalidad': 'inventada'},
+            {'tipo_inmueble': 'inventado'},
+            {'ambientes_min': 'muchos'},
+            {'fecha_ingreso': 'ayer'},
+            {'precio_min': '300', 'precio_max': '200'},
+            {'fecha_ingreso': '2026-12-10', 'fecha_salida': '2026-12-10'},
+        ):
+            with self.subTest(filtros=filtros):
+                self.assertEqual(self.client.get(reverse('publicacion-lista'), filtros).status_code, 400)
+
+    def test_pagina_de_a_nueve(self):
+        for numero in range(10):
+            crear_publicacion(self.propietario, ubicacion=f'Zona {numero}')
+
+        primera = self.client.get(reverse('publicacion-lista')).data
+        segunda = self.client.get(reverse('publicacion-lista'), {'pagina': 2}).data
+
+        self.assertEqual(primera['count'], 10)
+        self.assertEqual(len(primera['results']), 9)
+        self.assertEqual(len(segunda['results']), 1)
+        self.assertFalse({p['id'] for p in primera['results']} & {p['id'] for p in segunda['results']})
+
+
+class FiltroDeEstadiaTests(PruebaDePublicaciones):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.temporario = crear_publicacion(
+            cls.propietario,
+            modalidad='temporario',
+            duracion_minima_dias=7,
+            disponible_desde='2026-12-01',
+            disponible_hasta='2026-12-20',
+        )
+
+    def encuentra(self, **filtros):
+        ids = {p['id'] for p in self.client.get(reverse('publicacion-lista'), filtros).data['results']}
+        return self.temporario.id in ids
+
+    def test_acepta_una_estadia_cubierta_completa(self):
+        self.assertTrue(self.encuentra(fecha_ingreso='2026-12-05', fecha_salida='2026-12-15'))
+        self.assertTrue(self.encuentra(fecha_ingreso='2026-12-01', fecha_salida='2026-12-20'))
+
+    def test_rechaza_una_estadia_que_solo_se_superpone(self):
+        self.assertFalse(self.encuentra(fecha_ingreso='2026-12-15', fecha_salida='2026-12-25'))
+        self.assertFalse(self.encuentra(fecha_ingreso='2026-11-25', fecha_salida='2026-12-05'))
+
+    def test_rechaza_una_estadia_menor_a_la_duracion_minima(self):
+        self.assertFalse(self.encuentra(fecha_ingreso='2026-12-05', fecha_salida='2026-12-08'))
+        self.assertTrue(self.encuentra(fecha_ingreso='2026-12-05', fecha_salida='2026-12-12'))
+
+    def test_filtra_por_duracion_de_estadia(self):
+        self.assertFalse(self.encuentra(duracion_estadia=6))
+        self.assertTrue(self.encuentra(duracion_estadia=7))
+
+    def test_acepta_una_sola_fecha(self):
+        self.assertTrue(self.encuentra(fecha_ingreso='2026-12-10'))
+        self.assertFalse(self.encuentra(fecha_ingreso='2026-12-21'))
+        self.assertFalse(self.encuentra(fecha_salida='2026-11-30'))
+
+    def test_una_disponibilidad_sin_fecha_final_cubre_cualquier_salida(self):
+        abierta = crear_publicacion(
+            self.propietario, modalidad='temporario', duracion_minima_dias=7,
+            disponible_desde='2026-12-01', ubicacion='Abierta',
+        )
+
+        ids = {
+            p['id'] for p in self.client.get(
+                reverse('publicacion-lista'), {'fecha_ingreso': '2027-03-01', 'fecha_salida': '2027-03-15'},
+            ).data['results']
+        }
+
+        self.assertIn(abierta.id, ids)
+
+    def test_las_fechas_no_afectan_a_los_alquileres_residenciales(self):
+        residencial = crear_publicacion(self.propietario, ubicacion='Residencial')
+
+        ids = {
+            p['id'] for p in self.client.get(
+                reverse('publicacion-lista'), {'fecha_ingreso': '2030-01-01', 'fecha_salida': '2030-01-10'},
+            ).data['results']
+        }
+
+        self.assertIn(residencial.id, ids)
+        self.assertNotIn(self.temporario.id, ids)
+
+
+class MisPublicacionesTests(PruebaDePublicaciones):
+    def listar(self, **filtros):
+        return self.client.get(reverse('publicacion-mias'), filtros)
+
+    def setUp(self):
+        self.client.force_authenticate(self.propietario)
+
+    def test_lista_todas_las_propias_en_cualquier_estado(self):
+        estados = ('pendiente_moderacion', 'activa', 'eliminada', 'archivada')
+        for estado in estados:
+            crear_publicacion(self.propietario, estado=estado, ubicacion=estado)
+        crear_publicacion(self.otro, ubicacion='Ajena')
+
+        respuesta = self.listar()
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual({p['estado'] for p in respuesta.data['results']}, set(estados))
+        self.assertEqual(respuesta.data['count'], 4)
+
+    def test_filtra_por_estado_y_conserva_los_totales(self):
+        crear_publicacion(self.propietario, estado='activa', ubicacion='A')
+        crear_publicacion(self.propietario, estado='activa', ubicacion='B')
+        pausada = crear_publicacion(self.propietario, estado='pausada', ubicacion='C')
+
+        respuesta = self.listar(estado='pausada')
+
+        self.assertEqual([p['id'] for p in respuesta.data['results']], [pausada.id])
+        self.assertEqual(respuesta.data['totales'], {'activa': 2, 'pausada': 1})
+
+    def test_rechaza_un_estado_inexistente(self):
+        self.assertEqual(self.listar(estado='inventado').status_code, 400)
+
+    def test_pagina_de_a_seis(self):
+        for numero in range(7):
+            crear_publicacion(self.propietario, ubicacion=f'Zona {numero}')
+
+        self.assertEqual(len(self.listar().data['results']), 6)
+        self.assertEqual(len(self.listar(pagina=2).data['results']), 1)
+
+    def test_indica_las_acciones_permitidas_de_cada_estado(self):
+        esperadas = {
+            'activa': ['editar', 'pausar', 'reservar', 'marcar_alquilada', 'eliminar'],
+            'pausada': ['editar', 'reactivar', 'eliminar'],
+            'reservada': ['reactivar', 'marcar_alquilada', 'eliminar'],
+            'alquilada': ['reactivar', 'eliminar'],
+            'observada': ['editar', 'eliminar'],
+            'archivada': ['eliminar'],
+            'eliminada': [],
+        }
+        for estado in esperadas:
+            crear_publicacion(self.propietario, estado=estado, ubicacion=estado)
+
+        publicaciones = []
+        for pagina in (1, 2):
+            publicaciones += self.listar(pagina=pagina).data['results']
+
+        self.assertEqual({p['estado']: p['acciones'] for p in publicaciones}, esperadas)
+
+    def test_muestra_los_datos_internos_y_la_nota_de_moderacion(self):
+        publicacion = crear_publicacion(self.propietario, estado='observada')
+        EventoModeracion.objects.create(publicacion=publicacion, tipo='solicitud_modificacion', nota='Falta una foto.')
+
+        datos = self.listar().data['results'][0]
+
+        self.assertEqual(datos['nota_moderacion'], 'Falta una foto.')
+        self.assertIn('archivo_verificacion', datos)
+
+    def test_solo_propietarios_e_inmobiliarias_acceden(self):
+        for usuario, codigo in ((self.interesado, 403), (self.administrador, 403), (None, 401)):
+            with self.subTest(usuario=usuario):
+                self.client.force_authenticate(usuario)
+
+                self.assertEqual(self.listar().status_code, codigo)
+
+    def test_la_inmobiliaria_tiene_su_propio_panel(self):
+        propia = crear_publicacion(self.inmobiliaria, ubicacion='Inmobiliaria')
+        crear_publicacion(self.propietario, ubicacion='Particular')
+        self.client.force_authenticate(self.inmobiliaria)
+
+        self.assertEqual([p['id'] for p in self.listar().data['results']], [propia.id])
 
 
 class EstadosDePublicacionTests(PruebaDePublicaciones):
@@ -709,7 +952,7 @@ class EliminacionLogicaTests(PruebaDePublicaciones):
         self.client.force_authenticate(None)
 
         self.assertEqual(self.client.get(self.detalle(publicacion)).status_code, 404)
-        self.assertEqual(self.client.get(reverse('publicacion-lista')).data, [])
+        self.assertEqual(self.client.get(reverse('publicacion-lista')).data['results'], [])
 
     def test_el_dueno_la_sigue_viendo_en_su_historial(self):
         publicacion = crear_publicacion(self.propietario)

@@ -50,6 +50,9 @@ class BusquedaActiva(models.Model):
     def __str__(self):
         return self.nombre or f'Búsqueda {self.pk}'
 
+    def coincidencias_visibles(self):
+        return self.coincidencias.filter(publicacion__estado__codigo='activa')
+
 
 class Coincidencia(models.Model):
     busqueda = models.ForeignKey(BusquedaActiva, on_delete=models.CASCADE, related_name='coincidencias')
@@ -63,6 +66,9 @@ class Coincidencia(models.Model):
         verbose_name = 'coincidencia'
         verbose_name_plural = 'coincidencias'
         ordering = ['-creado_en']
+        constraints = [
+            models.UniqueConstraint(fields=['busqueda', 'publicacion'], name='coincidencia_unica_por_busqueda'),
+        ]
 
     def __str__(self):
         return f'Búsqueda {self.busqueda_id} - publicación {self.publicacion_id}'

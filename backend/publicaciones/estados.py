@@ -18,6 +18,7 @@ ESTADOS_EDITABLES = ('pendiente_moderacion', 'activa', 'pausada', 'observada', '
 ESTADOS_EN_REVISION = ('pendiente_moderacion', 'observada')
 # Un cambio del anunciante en estos estados vuelve a la cola del administrador.
 ESTADOS_QUE_VUELVEN_A_REVISION = ('pendiente_moderacion', 'observada', 'rechazada')
+ESTADOS_QUE_ADMITEN_CONTACTO = ('activa', 'reservada')
 
 TRANSICIONES_DEL_ANUNCIANTE = {
     'activa': ('pausada', 'reservada', 'alquilada'),
@@ -25,6 +26,22 @@ TRANSICIONES_DEL_ANUNCIANTE = {
     'reservada': ('activa', 'alquilada'),
     'alquilada': ('activa',),
 }
+
+ACCION_POR_DESTINO = {
+    'activa': 'reactivar',
+    'pausada': 'pausar',
+    'reservada': 'reservar',
+    'alquilada': 'marcar_alquilada',
+}
+
+
+def acciones_permitidas(codigo_estado):
+    # RF-10: el backend define las acciones de cada estado y el panel solo las muestra.
+    acciones = ['editar'] if codigo_estado in ESTADOS_EDITABLES else []
+    acciones += [ACCION_POR_DESTINO[destino] for destino in TRANSICIONES_DEL_ANUNCIANTE.get(codigo_estado, ())]
+    if codigo_estado != 'eliminada':
+        acciones.append('eliminar')
+    return acciones
 
 
 def cambiar_estado(publicacion, codigo_destino):
