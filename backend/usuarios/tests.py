@@ -1,4 +1,8 @@
+import os
+from unittest import mock
+
 from django.conf import settings
+from django.core.management import call_command
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
@@ -31,6 +35,38 @@ class CatalogosTests(APITestCase):
 
     def test_el_administrador_siempre_es_staff(self):
         self.assertTrue(crear_usuario(rol='administrador').is_staff)
+
+
+class SuperusuarioTests(APITestCase):
+    def iniciar_sesion(self, correo, contrasena):
+        return self.client.post(reverse('login'), {'correo': correo, 'contrasena': contrasena}, format='json')
+
+    @mock.patch.dict(os.environ, {'DJANGO_SUPERUSER_PASSWORD': 'Prueba123'})
+    def test_createsuperuser_guarda_la_contrasena_elegida(self):
+        call_command(
+            'createsuperuser', '--noinput', correo='admin@mudateaca.com',
+            nombre='Admin', apellido='Mudate', celular='3411234567', verbosity=0,
+        )
+
+        administrador = Usuario.objects.get(correo='admin@mudateaca.com')
+        self.assertTrue(administrador.check_password('Prueba123'))
+        self.assertEqual(administrador.rol.codigo, 'administrador')
+        self.assertTrue(administrador.is_superuser)
+        self.assertEqual(self.iniciar_sesion('admin@mudateaca.com', 'Prueba123').status_code, 200)
+
+    def test_create_superuser_acepta_la_contrasena_con_ambos_nombres(self):
+        for correo, clave in (('uno@mudateaca.com', {'password': 'Prueba123'}),
+                              ('dos@mudateaca.com', {'contrasena': 'Prueba123'})):
+            with self.subTest(clave=list(clave)):
+                Usuario.objects.create_superuser(correo, **clave)
+
+                self.assertEqual(self.iniciar_sesion(correo, 'Prueba123').status_code, 200)
+
+    def test_la_contrasena_nunca_se_guarda_en_texto_plano(self):
+        administrador = Usuario.objects.create_superuser('admin@mudateaca.com', password='Prueba123')
+
+        self.assertNotEqual(administrador.password, 'Prueba123')
+        self.assertTrue(administrador.password.startswith('pbkdf2_sha256$'))
 
 
 class RegistroTests(APITestCase):

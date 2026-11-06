@@ -14,6 +14,8 @@ class UsuarioManager(BaseUserManager):
     def create_user(self, correo, contrasena=None, **campos_extra):
         if not correo:
             raise ValueError('El usuario debe tener un correo electrónico.')
+        # createsuperuser de Django envía la clave como 'password'; sin esto se guardaría inutilizable.
+        contrasena = campos_extra.pop('password', None) or contrasena
         correo = self.normalize_email(correo)
         campos_extra['rol'] = self._resolver_catalogo('rol', campos_extra['rol'])
         campos_extra['estado_cuenta'] = self._resolver_catalogo(
