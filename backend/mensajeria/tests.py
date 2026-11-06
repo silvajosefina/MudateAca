@@ -201,3 +201,59 @@ class MensajesTests(PruebaDeChat):
         respuesta = self.client.get(reverse('conversacion-mensajes', args=[999999]))
 
         self.assertEqual(respuesta.status_code, 404)
+
+
+class PollingTests(PruebaDeChat):
+    def setUp(self):
+        super().setUp()
+        self.conversacion = self.nueva_conversacion()
+
+    def no_leidos(self):
+        return self.client.get(reverse('conversacion-no-leidos')).data['cantidad']
+
+    def test_devuelve_solo_los_mensajes_posteriores(self):
+        self.enviar(self.conversacion, 'Uno')
+        ultimo_visto = self.enviar(self.conversacion, 'Dos').data['id']
+        self.client.force_authenticate(self.propietario)
+        self.enviar(self.conversacion, 'Tres')
+
+        respuesta = self.client.get(
+            reverse('conversacion-mensajes', args=[self.conversacion.id]), {'despues_de': ultimo_visto},
+        )
+
+        self.assertEqual([m['texto'] for m in respuesta.data], ['Tres'])
+
+    def test_rechaza_un_parametro_invalido(self):
+        respuesta = self.client.get(reverse('conversacion-mensajes', args=[self.conversacion.id]), {'despues_de': 'x'})
+
+        self.assertEqual(respuesta.status_code, 400)
+
+    def test_cuenta_los_no_leidos_de_cada_participante(self):
+        self.enviar(self.conversacion, 'Hola')
+        self.enviar(self.conversacion, '¿Sigue disponible?')
+
+        self.assertEqual(self.no_leidos(), 0)
+        self.client.force_authenticate(self.propietario)
+        self.assertEqual(self.no_leidos(), 2)
+        self.assertEqual(self.client.get(reverse('conversacion-lista')).data[0]['no_leidos'], 2)
+
+    def test_marcar_leida_afecta_solo_los_mensajes_recibidos(self):
+        self.enviar(self.conversacion, 'Hola')
+        self.client.force_authenticate(self.propietario)
+        self.enviar(self.conversacion, 'Hola, ¿cómo estás?')
+
+        respuesta = self.client.post(reverse('conversacion-leer', args=[self.conversacion.id]))
+
+        self.assertEqual(respuesta.data, {'marcados': 1})
+        self.assertEqual(self.no_leidos(), 0)
+        self.client.force_authenticate(self.interesado)
+        self.assertEqual(self.no_leidos(), 1)
+        self.assertEqual([m['leido'] for m in self.mensajes(self.conversacion).data], [True, False])
+
+    def test_nadie_mas_marca_ni_cuenta_mensajes_ajenos(self):
+        self.enviar(self.conversacion, 'Hola')
+        self.client.force_authenticate(self.otro_interesado)
+
+        self.assertEqual(self.client.post(reverse('conversacion-leer', args=[self.conversacion.id])).status_code, 404)
+        self.assertEqual(self.no_leidos(), 0)
+        self.assertFalse(Mensaje.objects.get().leido)

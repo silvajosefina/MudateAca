@@ -92,6 +92,13 @@ class Publicacion(models.Model):
     def __str__(self):
         return f'{self.descripcion[:40]} ({self.propietario.correo})'
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        # Recuerda el estado leído de la base para detectar cambios al guardar (RF-14).
+        publicacion = super().from_db(db, field_names, values)
+        publicacion.estado_id_guardado = publicacion.estado_id
+        return publicacion
+
     def _nota_del_ultimo_evento(self, *tipos):
         # Recorre .all() para aprovechar el prefetch de los listados.
         for evento in self.eventos_moderacion.all():

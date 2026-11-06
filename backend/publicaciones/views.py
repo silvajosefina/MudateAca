@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from auditoria.servicios import registrar_accion
 from config.paginacion import PaginacionExplorar, PaginacionMisPublicaciones
+from notificaciones.servicios import notificar
 from usuarios.permissions import EsAdministrador
 
 from .estados import (
@@ -181,6 +182,9 @@ class PublicacionAprobarView(APIView):
         publicacion.estado = EstadoPublicacion.por_codigo('activa')
         publicacion.save(update_fields=['estado', 'actualizado_en'])
         registrar_accion(request.user, 'aprobacion_publicacion', publicacion)
+        notificar(
+            [publicacion.propietario], 'Tu publicación fue verificada y ya está activa.', referencia=publicacion,
+        )
         return respuesta_interna(request, publicacion)
 
 
@@ -200,6 +204,9 @@ class PublicacionRechazarView(APIView):
             publicacion=publicacion, administrador=request.user, tipo='rechazo', nota=nota,
         )
         registrar_accion(request.user, 'rechazo_publicacion', publicacion, nota)
+        notificar(
+            [publicacion.propietario], f'Tu publicación fue rechazada. Motivo: {nota}', 'error', publicacion,
+        )
         return respuesta_interna(request, publicacion)
 
 
@@ -219,4 +226,10 @@ class PublicacionSolicitarModificacionesView(APIView):
             publicacion=publicacion, administrador=request.user, tipo='solicitud_modificacion', nota=nota,
         )
         registrar_accion(request.user, 'solicitud_modificaciones', publicacion, nota)
+        notificar(
+            [publicacion.propietario],
+            f'Un administrador solicitó modificaciones en tu publicación. Nota: {nota}',
+            'error',
+            publicacion,
+        )
         return respuesta_interna(request, publicacion)

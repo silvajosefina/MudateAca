@@ -65,8 +65,15 @@ def eliminar_logicamente(publicacion, actor):
 
 
 def archivar_vencidas():
-    ahora = timezone.now()
-    return Publicacion.objects.filter(
+    # Guarda una por una para que se avise a quienes las tienen en favoritos.
+    archivada = EstadoPublicacion.por_codigo('archivada')
+    vencidas = Publicacion.objects.filter(
         estado__codigo='alquilada',
-        alquilada_en__lte=ahora - timedelta(days=DIAS_ALQUILADA_VISIBLE),
-    ).update(estado=EstadoPublicacion.por_codigo('archivada'), actualizado_en=ahora)
+        alquilada_en__lte=timezone.now() - timedelta(days=DIAS_ALQUILADA_VISIBLE),
+    )
+    cantidad = 0
+    for publicacion in vencidas:
+        publicacion.estado = archivada
+        publicacion.save(update_fields=['estado', 'actualizado_en'])
+        cantidad += 1
+    return cantidad

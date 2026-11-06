@@ -113,11 +113,63 @@ Todas las rutas empiezan con `/api/conversaciones/`. Solo los dos participantes 
 
 | Método | Ruta | Acceso | Acción |
 |---|---|---|---|
-| `GET` | `/` | Participante | Lista las conversaciones propias |
+| `GET` | `/` | Participante | Lista las conversaciones propias, con la cantidad de mensajes no leídos de cada una |
 | `POST` | `/` | Interesado | Inicia o retoma una conversación sobre una publicación |
+| `GET` | `/no-leidos/` | Participante | Devuelve el total de mensajes no leídos |
 | `GET` | `/<id>/` | Participante | Muestra una conversación |
-| `GET` | `/<id>/mensajes/` | Participante | Lista los mensajes |
+| `GET` | `/<id>/mensajes/` | Participante | Lista los mensajes; con `despues_de=<id>` devuelve solo los nuevos |
 | `POST` | `/<id>/mensajes/` | Participante | Envía un mensaje |
+| `POST` | `/<id>/leer/` | Participante | Marca como leídos los mensajes recibidos |
+
+El frontend consulta periódicamente `/no-leidos/` y `/<id>/mensajes/?despues_de=<último id>` para mostrar los mensajes nuevos sin recargar la página.
+
+## Favoritos
+
+Todas las rutas empiezan con `/api/favoritos/` y son solo para usuarios interesados.
+
+| Método | Ruta | Acción |
+|---|---|---|
+| `GET` | `/` | Lista los favoritos propios, de a 9 por página |
+| `POST` | `/` | Guarda una publicación; si ya estaba guardada devuelve el favorito existente |
+| `DELETE` | `/<id de la publicación>/` | Quita una publicación de favoritos |
+
+Si una publicación guardada deja de ser pública, el listado solo informa su estado.
+
+## Notificaciones
+
+Todas las rutas empiezan con `/api/notificaciones/` y cada usuario accede solo a las suyas.
+
+| Método | Ruta | Acción |
+|---|---|---|
+| `GET` | `/` | Lista las notificaciones, de a 10 por página |
+| `DELETE` | `/` | Elimina todas las notificaciones |
+| `GET` | `/no-leidas/` | Devuelve la cantidad de notificaciones no leídas |
+| `POST` | `/marcar-leidas/` | Marca todas como leídas |
+| `DELETE` | `/<id>/` | Elimina una notificación |
+
+Se generan notificaciones cuando:
+
+- una publicación guardada en favoritos cambia de estado,
+- aparece una publicación compatible con una búsqueda activa,
+- un administrador aprueba, rechaza o pide cambios en una publicación,
+- un reclamo se resuelve o se descarta.
+
+## Reclamos
+
+Todas las rutas empiezan con `/api/reclamos/`.
+
+| Método | Ruta | Acceso | Acción |
+|---|---|---|---|
+| `POST` | `/` | Usuario registrado, salvo administradores | Reclama sobre una publicación o un usuario |
+| `GET` | `/mios/` | Usuario registrado | Lista los reclamos propios |
+| `GET` | `/` | Administrador | Lista todos los reclamos, con filtro `estado` |
+| `POST` | `/<id>/estado/` | Administrador | Cambia el estado y agrega una nota opcional |
+
+Los estados son pendiente, en revisión, resuelto y descartado. Cada cambio queda registrado en la auditoría.
+
+## Panel de demanda
+
+`GET /api/demanda/`, solo para propietarios e inmobiliarias. Devuelve datos agregados de las búsquedas activas, sin datos personales: cantidad de búsquedas y de usuarios, tipos, rangos de precio, zonas, características, tendencia de las últimas 4 semanas y usuarios compatibles con cada publicación propia. Acepta los filtros `desde`, `hasta`, `zona` y `tipo_inmueble`.
 
 ## Archivado automático
 

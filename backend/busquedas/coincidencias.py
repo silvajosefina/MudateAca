@@ -1,4 +1,5 @@
 from config.texto import normalizar_texto
+from notificaciones.servicios import notificar
 from publicaciones.filtros import CARACTERISTICAS, cubre_estadia
 from publicaciones.models import Publicacion
 
@@ -48,23 +49,42 @@ def calcular_compatibilidad(busqueda, publicacion):
     return round(100 * sum(criterios) / len(criterios))
 
 
-def _actualizar_coincidencia(busqueda, publicacion):
+def _avisar_coincidencia(coincidencia):
+    nombre = coincidencia.busqueda.nombre or 'Búsqueda sin nombre'
+    notificar(
+        [coincidencia.busqueda.usuario],
+        f'Hay una nueva publicación compatible con tu búsqueda "{nombre}" '
+        f'({coincidencia.nivel_compatibilidad}% de compatibilidad).',
+        referencia=coincidencia.publicacion,
+    )
+
+
+def _actualizar_coincidencia(busqueda, publicacion, avisar):
     nivel = calcular_compatibilidad(busqueda, publicacion)
-    if nivel >= MINIMO_COMPATIBILIDAD:
-        Coincidencia.objects.update_or_create(
-            busqueda=busqueda, publicacion=publicacion, defaults={'nivel_compatibilidad': nivel},
-        )
-    else:
+    if nivel < MINIMO_COMPATIBILIDAD:
         Coincidencia.objects.filter(busqueda=busqueda, publicacion=publicacion).delete()
+        return
+
+    # RF-13: solo se avisa por propiedades nuevas; lo que ya existía al guardar la búsqueda se da por visto.
+    coincidencia, creada = Coincidencia.objects.update_or_create(
+        busqueda=busqueda,
+        publicacion=publicacion,
+        defaults={'nivel_compatibilidad': nivel},
+        create_defaults={'nivel_compatibilidad': nivel, 'notificada': not avisar},
+    )
+    if creada and avisar:
+        _avisar_coincidencia(coincidencia)
+        coincidencia.notificada = True
+        coincidencia.save(update_fields=['notificada'])
 
 
 def recalcular_por_busqueda(busqueda):
     for publicacion in Publicacion.objects.filter(estado__codigo='activa').select_related('modalidad'):
-        _actualizar_coincidencia(busqueda, publicacion)
+        _actualizar_coincidencia(busqueda, publicacion, avisar=False)
 
 
 def recalcular_por_publicacion(publicacion_id):
     # Se relee para comparar valores ya tipados por la base, no los que llegaron en la instancia.
     publicacion = Publicacion.objects.select_related('modalidad').get(id=publicacion_id)
-    for busqueda in BusquedaActiva.objects.filter(estado__codigo='activa'):
-        _actualizar_coincidencia(busqueda, publicacion)
+    for busqueda in BusquedaActiva.objects.filter(estado__codigo='activa').select_related('usuario'):
+        _actualizar_coincidencia(busqueda, publicacion, avisar=True)

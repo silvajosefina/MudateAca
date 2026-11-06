@@ -15,10 +15,11 @@ class ConversacionSerializer(serializers.ModelSerializer):
     publicacion = PublicacionResumenSerializer(read_only=True)
     interesado = AnuncianteSerializer(read_only=True)
     anunciante = AnuncianteSerializer(source='publicacion.propietario', read_only=True)
+    no_leidos = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Conversacion
-        fields = ['id', 'publicacion', 'interesado', 'anunciante', 'creado_en', 'actualizado_en']
+        fields = ['id', 'publicacion', 'interesado', 'anunciante', 'no_leidos', 'creado_en', 'actualizado_en']
         read_only_fields = fields
 
 

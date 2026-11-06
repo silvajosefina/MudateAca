@@ -4,9 +4,11 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from publicaciones.permissions import EsPropietarioOInmobiliaria
 from usuarios.permissions import EsInteresado
 
 from .coincidencias import recalcular_por_busqueda
+from .demanda import FiltrosDemandaSerializer, calcular_demanda
 from .models import BusquedaActiva, EstadoBusqueda
 from .serializers import BusquedaActivaSerializer, CambioEstadoBusquedaSerializer, CoincidenciaSerializer
 
@@ -62,6 +64,15 @@ class BusquedaCambiarEstadoView(APIView):
         if destino == 'activa':
             recalcular_por_busqueda(busqueda)
         return Response(BusquedaActivaSerializer(busqueda, context={'request': request}).data)
+
+
+class PanelDemandaView(APIView):
+    permission_classes = [EsPropietarioOInmobiliaria]
+
+    def get(self, request, *args, **kwargs):
+        filtros = FiltrosDemandaSerializer(data=request.query_params, partial=True)
+        filtros.is_valid(raise_exception=True)
+        return Response(calcular_demanda(request.user, filtros.validated_data))
 
 
 class BusquedaCoincidenciasView(generics.ListAPIView):

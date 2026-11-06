@@ -1,6 +1,8 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from publicaciones.models import EstadoPublicacion, Modalidad, Publicacion, TipoInmueble
@@ -298,7 +300,8 @@ class GeneracionDeCoincidenciasTests(PruebaDeBusquedas):
         coincidencia = Coincidencia.objects.get()
         self.assertEqual(coincidencia.busqueda, busqueda)
         self.assertEqual(coincidencia.publicacion, publicacion)
-        self.assertFalse(coincidencia.notificada)
+        self.assertTrue(coincidencia.notificada)
+        self.assertEqual(self.interesado.notificaciones.count(), 1)
 
     def test_no_coincide_con_busquedas_pausadas(self):
         self.crear_busqueda(estado='pausada', tipo_inmueble='departamento')
@@ -364,3 +367,115 @@ class GeneracionDeCoincidenciasTests(PruebaDeBusquedas):
 
         self.assertNotIn(self.propietario.correo, contenido)
         self.assertNotIn('archivo_verificacion', contenido)
+
+
+class PanelDemandaTests(PruebaDeBusquedas):
+    def setUp(self):
+        self.client.force_authenticate(self.propietario)
+
+    def panel(self, **filtros):
+        respuesta = self.client.get(reverse('panel-demanda'), filtros)
+        self.assertEqual(respuesta.status_code, 200)
+        return respuesta.data
+
+    def con_fecha(self, busqueda, dias_atras):
+        BusquedaActiva.objects.filter(id=busqueda.id).update(creado_en=timezone.now() - timedelta(days=dias_atras))
+
+    def test_agrega_la_demanda_sin_datos_personales(self):
+        self.crear_busqueda(tipo_inmueble='casa', precio_maximo=Decimal('150000'), ubicacion='Centro, Trenque')
+        self.crear_busqueda(tipo_inmueble='casa', acepta_mascotas=True, ubicacion='centro')
+        self.crear_busqueda(usuario=self.otro_interesado, tipo_inmueble='departamento', ubicacion='Norte')
+        self.crear_busqueda(estado='pausada', tipo_inmueble='habitacion')
+
+        datos = self.panel()
+
+        self.assertEqual(datos['busquedas_activas'], 3)
+        self.assertEqual(datos['usuarios_buscando'], 2)
+        self.assertEqual(datos['tipo_mas_buscado'], 'Casa')
+        self.assertEqual(
+            datos['por_tipo'], [{'etiqueta': 'Casa', 'cantidad': 2}, {'etiqueta': 'Departamento', 'cantidad': 1}],
+        )
+        self.assertIn({'etiqueta': 'acepta_mascotas', 'cantidad': 1}, datos['caracteristicas'])
+        contenido = self.client.get(reverse('panel-demanda')).content.decode()
+        for dato_privado in (self.interesado.correo, self.interesado.apellido, self.interesado.celular, 'usuario_id'):
+            self.assertNotIn(dato_privado, contenido)
+
+    def test_agrupa_zonas_escritas_de_distinta_forma(self):
+        self.crear_busqueda(ubicacion='Centro, Trenque Lauquen')
+        self.crear_busqueda(ubicacion='centro')
+        self.crear_busqueda(ubicacion='CÉNTRO')
+        self.crear_busqueda(ubicacion='Norte')
+
+        datos = self.panel()
+
+        self.assertEqual(datos['por_zona'], [{'etiqueta': 'Centro', 'cantidad': 3}, {'etiqueta': 'Norte', 'cantidad': 1}])
+        self.assertEqual(datos['zonas_disponibles'], ['Centro', 'Norte'])
+        self.assertEqual(self.panel(zona='centro')['busquedas_activas'], 3)
+
+    def test_agrupa_por_rango_de_precio(self):
+        self.crear_busqueda(precio_minimo=Decimal('100000'), precio_maximo=Decimal('200000'))
+        self.crear_busqueda(precio_maximo=Decimal('50000'))
+        self.crear_busqueda(precio_minimo=Decimal('400000'))
+        self.crear_busqueda(amueblado=True)
+
+        datos = self.panel()
+
+        self.assertEqual([rango['cantidad'] for rango in datos['por_rango_precio']], [1, 1, 0, 1])
+        self.assertEqual(datos['rango_mas_solicitado'], 'Menos de $100.000')
+
+    def test_filtra_por_zona_tipo_y_periodo(self):
+        vieja = self.crear_busqueda(tipo_inmueble='casa', ubicacion='Centro')
+        self.con_fecha(vieja, 40)
+        self.crear_busqueda(tipo_inmueble='casa', ubicacion='Norte', amueblado=True)
+        self.crear_busqueda(tipo_inmueble='departamento', ubicacion='Centro', amueblado=True)
+        hace_un_mes = (timezone.localdate() - timedelta(days=30)).isoformat()
+
+        self.assertEqual(self.panel(zona='CENTRO')['busquedas_activas'], 2)
+        self.assertEqual(self.panel(tipo_inmueble='casa')['busquedas_activas'], 2)
+        self.assertEqual(self.panel(desde=hace_un_mes)['busquedas_activas'], 2)
+        self.assertEqual(self.panel(zona='Centro', tipo_inmueble='casa', desde=hace_un_mes)['busquedas_activas'], 0)
+        self.assertEqual(self.panel()['zonas_disponibles'], ['Centro', 'Norte'])
+
+    def test_la_tendencia_ordena_las_ultimas_cuatro_semanas(self):
+        for dias in (0, 2, 8, 20, 60):
+            self.con_fecha(self.crear_busqueda(ambientes_minimos=dias + 1), dias)
+
+        tendencia = self.panel(desde=timezone.localdate().isoformat())['tendencia_semanal']
+
+        self.assertEqual(
+            tendencia,
+            [
+                {'etiqueta': 'Hace 3 semanas', 'cantidad': 0},
+                {'etiqueta': 'Hace 2 semanas', 'cantidad': 1},
+                {'etiqueta': 'La semana pasada', 'cantidad': 1},
+                {'etiqueta': 'Esta semana', 'cantidad': 2},
+            ],
+        )
+
+    def test_cuenta_usuarios_compatibles_con_cada_publicacion_propia(self):
+        self.crear_busqueda(tipo_inmueble='departamento')
+        self.crear_busqueda(tipo_inmueble='departamento', amueblado=True)
+        self.crear_busqueda(usuario=self.otro_interesado, tipo_inmueble='departamento')
+        propia = crear_publicacion(self.propietario)
+        crear_publicacion(self.propietario, estado='pausada', ubicacion='Pausada')
+        crear_publicacion(crear_usuario('ajeno@mudateaca.com'), ubicacion='Ajena')
+
+        coincidencias = self.panel()['coincidencias_por_publicacion']
+
+        self.assertEqual(
+            coincidencias, [{'publicacion': {'id': propia.id, 'descripcion': propia.descripcion}, 'usuarios': 2}],
+        )
+
+    def test_rechaza_filtros_invalidos(self):
+        for filtros in (
+            {'desde': 'ayer'}, {'tipo_inmueble': 'inventado'}, {'desde': '2026-12-10', 'hasta': '2026-12-01'},
+        ):
+            with self.subTest(filtros=filtros):
+                self.assertEqual(self.client.get(reverse('panel-demanda'), filtros).status_code, 400)
+
+    def test_solo_propietarios_e_inmobiliarias_ven_la_demanda(self):
+        for usuario, codigo in ((self.interesado, 403), (self.administrador, 403), (None, 401)):
+            with self.subTest(usuario=usuario):
+                self.client.force_authenticate(usuario)
+
+                self.assertEqual(self.client.get(reverse('panel-demanda')).status_code, codigo)
