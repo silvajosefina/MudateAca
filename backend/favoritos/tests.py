@@ -56,14 +56,25 @@ class FavoritosTests(APITestCase):
 
         self.assertEqual(self.listar(), [])
 
-    def test_quita_un_favorito_por_publicacion(self):
+    def test_quitar_un_favorito_es_logico(self):
         self.agregar()
 
         respuesta = self.client.delete(reverse('favorito-quitar', args=[self.publicacion.id]))
 
         self.assertEqual(respuesta.status_code, 204)
-        self.assertFalse(Favorito.objects.exists())
-        self.assertEqual(self.client.delete(reverse('favorito-quitar', args=[self.publicacion.id])).status_code, 404)
+        self.assertEqual(self.listar(), [])
+        self.assertIsNotNone(Favorito.todos.get().eliminado_en)
+        segunda = self.client.delete(reverse('favorito-quitar', args=[self.publicacion.id]))
+        self.assertEqual(segunda.status_code, 404)
+        self.assertEqual(segunda.data['detail'], 'No se encontró el recurso solicitado.')
+
+    def test_se_puede_volver_a_guardar_un_favorito_quitado(self):
+        self.agregar()
+        self.client.delete(reverse('favorito-quitar', args=[self.publicacion.id]))
+
+        self.assertEqual(self.agregar().status_code, 201)
+        self.assertEqual(Favorito.objects.count(), 1)
+        self.assertEqual(Favorito.todos.count(), 2)
 
     def test_no_quita_favoritos_ajenos(self):
         Favorito.objects.create(usuario=self.otro_interesado, publicacion=self.publicacion)

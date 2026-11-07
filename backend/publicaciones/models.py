@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.core.validators import FileExtensionValidator
 
+from config.borrado_logico import BorradoLogico
 from config.catalogos import Catalogo
 
 TIPOS_DOCUMENTO_VERIFICACION = [
@@ -119,7 +120,7 @@ class Publicacion(models.Model):
         return self._nota_del_ultimo_evento('solicitud_modificacion', 'moderacion_automatica')
 
 
-class FotoPublicacion(models.Model):
+class FotoPublicacion(BorradoLogico):
     publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='fotos')
     imagen = models.ImageField(upload_to='publicaciones/', max_length=255, db_column='imagen_url')
     orden = models.PositiveSmallIntegerField(default=0)

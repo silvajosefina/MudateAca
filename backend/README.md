@@ -63,6 +63,10 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+## Borrado lógico
+
+La API nunca borra registros de la base. Las publicaciones pasan al estado `eliminada`. Las búsquedas, favoritos, notificaciones, fotos y coincidencias guardan la fecha en `eliminado_en` y dejan de aparecer en las consultas.
+
 ## Pruebas
 
 ```bash

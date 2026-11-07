@@ -198,7 +198,8 @@ class PublicacionEscrituraSerializer(serializers.ModelSerializer):
         return datos
 
     def _agregar_fotos(self, publicacion, fotos):
-        ultimo_orden = publicacion.fotos.aggregate(ultimo=Max('orden'))['ultimo']
+        # Incluye las fotos quitadas para que el orden nunca se repita.
+        ultimo_orden = FotoPublicacion.todos.filter(publicacion=publicacion).aggregate(ultimo=Max('orden'))['ultimo']
         siguiente = 0 if ultimo_orden is None else ultimo_orden + 1
         for indice, imagen in enumerate(fotos, start=siguiente):
             FotoPublicacion.objects.create(publicacion=publicacion, imagen=imagen, orden=indice)
@@ -226,7 +227,7 @@ class PublicacionEscrituraSerializer(serializers.ModelSerializer):
         requiere_revision = documento_cambiado or publicacion.estado.codigo in ESTADOS_QUE_VUELVEN_A_REVISION
 
         publicacion = super().update(publicacion, datos_validados)
-        publicacion.fotos.filter(id__in=a_eliminar).delete()
+        publicacion.fotos.filter(id__in=a_eliminar).eliminar()
         self._agregar_fotos(publicacion, fotos)
         moderar(publicacion, requiere_revision=requiere_revision)
         return publicacion

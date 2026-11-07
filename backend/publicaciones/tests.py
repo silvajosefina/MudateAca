@@ -475,6 +475,7 @@ class EditarPublicacionTests(PruebaDePublicaciones):
         self.assertEqual(len(respuesta.data['fotos']), 3)
         self.assertNotIn(primera.id, [foto['id'] for foto in respuesta.data['fotos']])
         self.assertEqual(respuesta.data['fotos'][-1]['orden'], 3)
+        self.assertIsNotNone(FotoPublicacion.todos.get(id=primera.id).eliminado_en)
 
     def test_no_permite_quedar_con_menos_de_tres_fotos(self):
         publicacion = crear_publicacion(self.propietario)

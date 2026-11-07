@@ -45,6 +45,9 @@ class BusquedaDetalleView(generics.RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         recalcular_por_busqueda(serializer.save())
 
+    def perform_destroy(self, busqueda):
+        busqueda.eliminar()
+
 
 class BusquedaCambiarEstadoView(APIView):
     permission_classes = [EsInteresado]

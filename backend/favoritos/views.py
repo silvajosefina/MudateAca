@@ -58,3 +58,6 @@ class FavoritoQuitarView(generics.DestroyAPIView):
 
     def get_queryset(self):
         return Favorito.objects.filter(usuario=self.request.user)
+
+    def perform_destroy(self, favorito):
+        favorito.eliminar()

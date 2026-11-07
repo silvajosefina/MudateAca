@@ -124,6 +124,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'auth_sensible': '10/min',
     },
+    'EXCEPTION_HANDLER': 'config.excepciones.manejar_excepcion',
 }
 
 # Tokens en cookies httpOnly, no en localStorage, para mitigar robo vía XSS.

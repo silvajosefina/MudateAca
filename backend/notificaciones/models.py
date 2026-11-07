@@ -3,6 +3,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
+from config.borrado_logico import BorradoLogico
 from config.catalogos import Catalogo
 
 
@@ -13,7 +14,7 @@ class TipoNotificacion(Catalogo):
         verbose_name_plural = 'tipos de notificación'
 
 
-class Notificacion(models.Model):
+class Notificacion(BorradoLogico):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notificaciones')
     tipo = models.ForeignKey(TipoNotificacion, on_delete=models.PROTECT, related_name='notificaciones')
     mensaje = models.TextField()

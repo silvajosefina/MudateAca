@@ -19,7 +19,7 @@ class NotificacionListaView(generics.ListAPIView):
         return notificaciones_del_usuario(self.request.user)
 
     def delete(self, request, *args, **kwargs):
-        notificaciones_del_usuario(request.user).delete()
+        notificaciones_del_usuario(request.user).eliminar()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -28,6 +28,9 @@ class NotificacionDetalleView(generics.DestroyAPIView):
 
     def get_queryset(self):
         return notificaciones_del_usuario(self.request.user)
+
+    def perform_destroy(self, notificacion):
+        notificacion.eliminar()
 
 
 class NotificacionesNoLeidasView(APIView):

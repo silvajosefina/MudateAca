@@ -233,16 +233,33 @@ class BusquedaActivaTests(PruebaDeBusquedas):
         self.assertEqual(self.client.get(reverse('busqueda-coincidencias', args=[ajena.id])).status_code, 404)
         self.assertTrue(BusquedaActiva.objects.filter(id=ajena.id).exists())
 
-    def test_eliminar_borra_la_busqueda_y_sus_coincidencias(self):
+    def test_eliminar_es_logico_y_la_oculta(self):
         crear_publicacion(self.propietario)
         busqueda_id = self.crear(tipo_inmueble='departamento').data['id']
-        self.assertEqual(Coincidencia.objects.count(), 1)
 
         respuesta = self.client.delete(reverse('busqueda-detalle', args=[busqueda_id]))
 
         self.assertEqual(respuesta.status_code, 204)
-        self.assertFalse(BusquedaActiva.objects.exists())
-        self.assertFalse(Coincidencia.objects.exists())
+        self.assertIsNotNone(BusquedaActiva.todos.get(id=busqueda_id).eliminado_en)
+        self.assertEqual(Coincidencia.todos.filter(busqueda_id=busqueda_id).count(), 1)
+        self.assertEqual(self.client.get(reverse('busqueda-lista')).data, [])
+        self.assertEqual(self.client.get(reverse('busqueda-detalle', args=[busqueda_id])).status_code, 404)
+        self.assertEqual(self.client.delete(reverse('busqueda-detalle', args=[busqueda_id])).status_code, 404)
+
+    def test_una_busqueda_eliminada_no_genera_coincidencias_ni_cuenta_como_duplicada(self):
+        busqueda_id = self.crear(tipo_inmueble='departamento').data['id']
+        self.client.delete(reverse('busqueda-detalle', args=[busqueda_id]))
+
+        crear_publicacion(self.propietario)
+
+        self.assertFalse(Coincidencia.todos.exists())
+        self.assertEqual(self.crear(tipo_inmueble='departamento').status_code, 201)
+
+    def test_el_mensaje_de_busqueda_inexistente_esta_en_espanol(self):
+        respuesta = self.client.get(reverse('busqueda-detalle', args=[999999]))
+
+        self.assertEqual(respuesta.status_code, 404)
+        self.assertEqual(respuesta.data['detail'], 'No se encontró el recurso solicitado.')
 
     def test_pausa_y_reactiva(self):
         busqueda = self.crear_busqueda(ubicacion='Centro')
@@ -348,6 +365,21 @@ class GeneracionDeCoincidenciasTests(PruebaDeBusquedas):
         self.assertEqual(
             self.client.get(reverse('busqueda-detalle', args=[id_busqueda])).data['cantidad_coincidencias'], 0,
         )
+
+    def test_una_coincidencia_que_deja_de_cumplir_se_oculta_y_se_recupera(self):
+        self.crear_busqueda(precio_maximo=Decimal('200000'))
+        publicacion = crear_publicacion(self.propietario, precio='100000.00')
+        self.assertEqual(self.interesado.notificaciones.count(), 1)
+        self.client.force_authenticate(self.propietario)
+        url = reverse('publicacion-detalle', args=[publicacion.id])
+
+        self.client.patch(url, {'precio': '500000.00'}, format='multipart')
+        self.assertFalse(Coincidencia.objects.exists())
+        self.assertIsNotNone(Coincidencia.todos.get().eliminado_en)
+
+        self.client.patch(url, {'precio': '150000.00'}, format='multipart')
+        self.assertIsNone(Coincidencia.todos.get().eliminado_en)
+        self.assertEqual(self.interesado.notificaciones.count(), 1)
 
     def test_una_publicacion_reactivada_no_pierde_la_marca_de_notificada(self):
         publicacion = crear_publicacion(self.propietario)

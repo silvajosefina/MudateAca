@@ -132,9 +132,9 @@ class ConsultaDeConversacionesTests(PruebaDeChat):
                 self.client.force_authenticate(usuario)
 
                 self.assertEqual(self.client.get(reverse('conversacion-lista')).data, [])
-                self.assertEqual(
-                    self.client.get(reverse('conversacion-detalle', args=[conversacion.id])).status_code, 404,
-                )
+                detalle = self.client.get(reverse('conversacion-detalle', args=[conversacion.id]))
+                self.assertEqual(detalle.status_code, 404)
+                self.assertEqual(detalle.data['detail'], 'No se encontró el recurso solicitado.')
                 self.assertEqual(self.mensajes(conversacion).status_code, 404)
                 self.assertEqual(self.enviar(conversacion).status_code, 404)
 
@@ -197,10 +197,11 @@ class MensajesTests(PruebaDeChat):
 
         self.assertEqual(self.enviar(self.conversacion).status_code, 201)
 
-    def test_devuelve_404_si_la_conversacion_no_existe(self):
-        respuesta = self.client.get(reverse('conversacion-mensajes', args=[999999]))
+    def test_devuelve_404_en_espanol_si_la_conversacion_no_existe(self):
+        respuesta = self.enviar(Conversacion(id=999999))
 
         self.assertEqual(respuesta.status_code, 404)
+        self.assertEqual(respuesta.data['detail'], 'No se encontró el recurso solicitado.')
 
 
 class PollingTests(PruebaDeChat):

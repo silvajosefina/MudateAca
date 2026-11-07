@@ -62,14 +62,15 @@ def _avisar_coincidencia(coincidencia):
 def _actualizar_coincidencia(busqueda, publicacion, avisar):
     nivel = calcular_compatibilidad(busqueda, publicacion)
     if nivel < MINIMO_COMPATIBILIDAD:
-        Coincidencia.objects.filter(busqueda=busqueda, publicacion=publicacion).delete()
+        Coincidencia.objects.filter(busqueda=busqueda, publicacion=publicacion).eliminar()
         return
 
     # RF-13: solo se avisa por propiedades nuevas; lo que ya existía al guardar la búsqueda se da por visto.
-    coincidencia, creada = Coincidencia.objects.update_or_create(
+    # Si estaba oculta se recupera, conservando si ya se había avisado.
+    coincidencia, creada = Coincidencia.todos.update_or_create(
         busqueda=busqueda,
         publicacion=publicacion,
-        defaults={'nivel_compatibilidad': nivel},
+        defaults={'nivel_compatibilidad': nivel, 'eliminado_en': None},
         create_defaults={'nivel_compatibilidad': nivel, 'notificada': not avisar},
     )
     if creada and avisar:

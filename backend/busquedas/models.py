@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from config.borrado_logico import BorradoLogico
 from config.catalogos import Catalogo
 from publicaciones.models import Modalidad, Publicacion, TipoInmueble
 
@@ -12,7 +13,7 @@ class EstadoBusqueda(Catalogo):
         verbose_name_plural = 'estados de búsqueda'
 
 
-class BusquedaActiva(models.Model):
+class BusquedaActiva(BorradoLogico):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='busquedas_activas')
     modalidad = models.ForeignKey(
         Modalidad, on_delete=models.PROTECT, blank=True, null=True, related_name='busquedas_activas',
@@ -54,7 +55,7 @@ class BusquedaActiva(models.Model):
         return self.coincidencias.filter(publicacion__estado__codigo='activa')
 
 
-class Coincidencia(models.Model):
+class Coincidencia(BorradoLogico):
     busqueda = models.ForeignKey(BusquedaActiva, on_delete=models.CASCADE, related_name='coincidencias')
     publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, related_name='coincidencias')
     nivel_compatibilidad = models.PositiveSmallIntegerField()

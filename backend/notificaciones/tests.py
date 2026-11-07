@@ -81,6 +81,8 @@ class ConsultaDeNotificacionesTests(PruebaDeNotificaciones):
         self.assertEqual(self.client.delete(reverse('notificacion-lista')).status_code, 204)
         self.assertEqual(self.mensajes_de(self.interesado), [])
         self.assertEqual(self.mensajes_de(self.otro_interesado), ['Ajena'])
+        self.assertEqual(Notificacion.todos.filter(usuario=self.interesado, eliminado_en__isnull=False).count(), 2)
+        self.assertEqual(self.client.get(reverse('notificacion-no-leidas')).data, {'cantidad': 0})
 
     def test_no_permite_borrar_notificaciones_ajenas(self):
         notificar([self.otro_interesado], 'Ajena')
