@@ -70,6 +70,39 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+## Copias de seguridad (RNF-11)
+
+El comando `respaldar_base` hace lo siguiente:
+
+1. Genera una copia de la base con `pg_dump` en `RESPALDOS_DIR`, por defecto `copias_de_seguridad/`.
+2. Verifica que la copia se pueda leer con `pg_restore`.
+3. Si Cloudinary está configurado, la sube como archivo privado, así que perder el servidor no implica perder las copias.
+4. Borra las copias de más de 7 días, en las dos ubicaciones.
+
+En Windows, `PG_BIN_DIR` debe apuntar a la carpeta de PostgreSQL, por ejemplo `C:\Program Files\PostgreSQL\18\bin`.
+
+```bash
+python manage.py respaldar_base
+```
+
+Se programa una vez por día. En Linux, con cron:
+
+```bash
+0 3 * * * cd /ruta/al/backend && .venv/bin/python manage.py respaldar_base
+```
+
+En Windows, con el Programador de tareas:
+
+```bash
+schtasks /Create /SC DAILY /ST 03:00 /TN "Mudate Aca - respaldo diario" /TR "C:\ruta\al\backend\.venv\Scripts\python.exe C:\ruta\al\backend\manage.py respaldar_base"
+```
+
+Para restaurar una copia en una base vacía:
+
+```bash
+pg_restore --no-owner --dbname mudateaca copias_de_seguridad/mudateaca_AAAAMMDD_HHMMSS.dump
+```
+
 ## Archivos y Cloudinary
 
 Las fotos, la documentación de verificación y las copias de seguridad se guardan en Cloudinary cuando `.env` tiene `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET`. Sin esas variables se usan carpetas locales: `media/` para las fotos y `privado/` para la documentación. El servidor nunca publica `privado/`. Las pruebas automáticas siempre usan carpetas temporales y no suben nada a Cloudinary.

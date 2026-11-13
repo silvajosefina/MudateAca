@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'notificaciones',
     'reclamos',
     'auditoria',
+    'respaldos',
 ]
 
 MIDDLEWARE = [
@@ -193,6 +194,12 @@ MAILERS = {
     },
 }
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='no-responder@mudateaca.com')
+
+# Backups diarios (RNF-11): carpeta local, días que se conservan y carpeta de pg_dump/pg_restore
+# (vacía si ya están en el PATH, como en Linux).
+RESPALDOS_DIR = env('RESPALDOS_DIR', default='') or str(BASE_DIR / 'copias_de_seguridad')
+RETENCION_RESPALDOS_DIAS = 7
+PG_BIN_DIR = env('PG_BIN_DIR', default='')
 
 # Tiempo de vigencia del enlace de recuperación de cuenta (RF-03): 1 hora.
 PASSWORD_RESET_TIMEOUT = 60 * 60

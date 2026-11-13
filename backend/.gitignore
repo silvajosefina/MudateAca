@@ -8,4 +8,4 @@ staticfiles/
 *.log
 .DS_Store
 privado/
-respaldos/
+copias_de_seguridad/
