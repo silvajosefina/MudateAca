@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.core.validators import FileExtensionValidator
 
+from config.almacenamiento import almacenamiento_privado
 from config.borrado_logico import BorradoLogico
 from config.catalogos import Catalogo
 
@@ -78,6 +79,7 @@ class Publicacion(models.Model):
     tipo_documento_verificacion = models.CharField(max_length=30, choices=TIPOS_DOCUMENTO_VERIFICACION)
     archivo_verificacion = models.FileField(
         upload_to='verificaciones/',
+        storage=almacenamiento_privado,
         max_length=255,
         db_column='archivo_verificacion_url',
         validators=[FileExtensionValidator(allowed_extensions=EXTENSIONES_VERIFICACION)],

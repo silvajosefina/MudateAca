@@ -70,6 +70,13 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+## Archivos y Cloudinary
+
+Las fotos, la documentación de verificación y las copias de seguridad se guardan en Cloudinary cuando `.env` tiene `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET`. Sin esas variables se usan carpetas locales: `media/` para las fotos y `privado/` para la documentación. El servidor nunca publica `privado/`. Las pruebas automáticas siempre usan carpetas temporales y no suben nada a Cloudinary.
+
+- **Fotos:** son públicas, porque cualquier visitante las ve.
+- **Documentación de verificación (RNF-06):** es privada. Solo se descarga desde `GET /api/publicaciones/<id>/documento/`, que responde al dueño de la publicación o a un administrador. Con Cloudinary, esa ruta redirige a un enlace firmado que vence a los 10 minutos.
+
 ## Errores
 
 Todos los errores de la API se devuelven en JSON y en español, sin detalles internos del servidor (RNF-10):

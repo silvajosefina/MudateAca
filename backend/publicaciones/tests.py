@@ -1,8 +1,10 @@
 import io
+import os
 import shutil
 import tempfile
 from datetime import timedelta
 from io import StringIO
+from unittest import mock
 
 from django.contrib.gis.geos import Point
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -14,6 +16,7 @@ from PIL import Image
 from rest_framework.test import APITestCase
 
 from auditoria.models import RegistroAuditoria
+from config.almacenamiento import AlmacenamientoCloudinary
 from favoritos.models import Favorito
 from usuarios.models import Usuario
 
@@ -21,6 +24,7 @@ from .models import EstadoPublicacion, EventoModeracion, FotoPublicacion, Modali
 from .moderacion import tiene_datos_de_contacto, tiene_palabras_prohibidas
 
 MEDIA_TEMPORAL = tempfile.mkdtemp()
+PRIVADO_TEMPORAL = tempfile.mkdtemp()
 
 DESCRIPCION = 'Departamento luminoso cerca del centro.'
 
@@ -66,12 +70,13 @@ def crear_publicacion(propietario, estado='activa', tipo_inmueble='departamento'
     return publicacion
 
 
-@override_settings(MEDIA_ROOT=MEDIA_TEMPORAL)
+@override_settings(MEDIA_ROOT=MEDIA_TEMPORAL, PRIVADO_ROOT=PRIVADO_TEMPORAL)
 class PruebaDePublicaciones(APITestCase):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
         shutil.rmtree(MEDIA_TEMPORAL, ignore_errors=True)
+        shutil.rmtree(PRIVADO_TEMPORAL, ignore_errors=True)
 
     @classmethod
     def setUpTestData(cls):
@@ -1171,3 +1176,73 @@ class RevisionAdministrativaTests(PruebaDePublicaciones):
         for accion in ('ocultar', 'mostrar', 'mantener-observada'):
             with self.subTest(accion=accion):
                 self.assertEqual(self.accion(accion, publicacion, nota='Nota').status_code, 403)
+
+
+class DocumentoDeVerificacionTests(PruebaDePublicaciones):
+    def crear_con_documento(self):
+        self.client.force_authenticate(self.propietario)
+        respuesta = self.client.post(reverse('publicacion-lista'), {
+            'tipo_inmueble': 'departamento', 'modalidad': 'residencial', 'descripcion': DESCRIPCION,
+            'precio': '250000.00', 'ubicacion': 'Centro', 'ambientes': 2, 'dormitorios': 1,
+            'disponible_desde': '2026-11-01', 'tipo_documento_verificacion': 'factura_servicio',
+            'archivo_verificacion': SimpleUploadedFile(
+                'factura.pdf', b'%PDF-1.4 privado', content_type='application/pdf',
+            ),
+            'fotos': [imagen_de_prueba(f'foto{i}.jpg') for i in range(3)],
+        }, format='multipart')
+        return Publicacion.objects.get(id=respuesta.data['id']), respuesta
+
+    def documento(self, publicacion):
+        return self.client.get(reverse('publicacion-documento', args=[publicacion.id]))
+
+    def test_el_documento_no_queda_en_la_carpeta_publica(self):
+        publicacion, respuesta = self.crear_con_documento()
+        nombre = publicacion.archivo_verificacion.name
+
+        self.assertTrue(respuesta.data['archivo_verificacion'].endswith(f'/api/publicaciones/{publicacion.id}/documento/'))
+        self.assertTrue(os.path.exists(os.path.join(PRIVADO_TEMPORAL, nombre)))
+        self.assertFalse(os.path.exists(os.path.join(MEDIA_TEMPORAL, nombre)))
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(f'/media/{nombre}').status_code, 404)
+
+    def test_el_dueno_y_el_administrador_lo_descargan(self):
+        publicacion, _ = self.crear_con_documento()
+
+        for usuario in (self.propietario, self.administrador):
+            with self.subTest(usuario=usuario.correo):
+                self.client.force_authenticate(usuario)
+                respuesta = self.documento(publicacion)
+
+                self.assertEqual(respuesta.status_code, 200)
+                self.assertEqual(b''.join(respuesta.streaming_content), b'%PDF-1.4 privado')
+
+    def test_nadie_mas_lo_descarga(self):
+        publicacion, _ = self.crear_con_documento()
+
+        for usuario, codigo in ((self.otro, 404), (self.interesado, 404), (None, 401)):
+            with self.subTest(usuario=usuario):
+                self.client.force_authenticate(usuario)
+
+                self.assertEqual(self.documento(publicacion).status_code, codigo)
+
+    def test_un_archivo_faltante_tiene_un_mensaje_claro(self):
+        publicacion = crear_publicacion(self.propietario, archivo_verificacion='verificaciones/no_existe.pdf')
+        self.client.force_authenticate(self.propietario)
+
+        respuesta = self.documento(publicacion)
+
+        self.assertEqual(respuesta.status_code, 404)
+        self.assertEqual(respuesta.data['detail'], 'El documento no está disponible.')
+
+    def test_con_cloudinary_redirige_a_un_enlace_firmado(self):
+        publicacion = crear_publicacion(self.propietario, archivo_verificacion='verificaciones/abc.pdf')
+        privado = AlmacenamientoCloudinary(privado=True, tipo_recurso='raw')
+        campo = Publicacion._meta.get_field('archivo_verificacion')
+        self.client.force_authenticate(self.propietario)
+
+        with mock.patch.object(campo, 'storage', privado), \
+                mock.patch.object(privado, 'url', return_value='https://api.cloudinary.com/firmado'):
+            respuesta = self.documento(publicacion)
+
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(respuesta['Location'], 'https://api.cloudinary.com/firmado')

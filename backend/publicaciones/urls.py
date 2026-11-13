@@ -9,6 +9,7 @@ urlpatterns = [
     path('administracion/', views.PublicacionesAdministracionView.as_view(), name='publicacion-administracion'),
     path('<int:id>/', views.PublicacionDetalleView.as_view(), name='publicacion-detalle'),
     path('<int:id>/estado/', views.PublicacionCambiarEstadoView.as_view(), name='publicacion-estado'),
+    path('<int:id>/documento/', views.PublicacionDocumentoView.as_view(), name='publicacion-documento'),
     path('<int:id>/aprobar/', views.PublicacionAprobarView.as_view(), name='publicacion-aprobar'),
     path('<int:id>/rechazar/', views.PublicacionRechazarView.as_view(), name='publicacion-rechazar'),
     path(

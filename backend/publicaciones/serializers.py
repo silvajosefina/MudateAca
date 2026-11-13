@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.contrib.gis.geos import Point
 from django.db import transaction
 from django.db.models import Max
+from django.urls import reverse
 from rest_framework import serializers
 
 from config.campos import CodigoDeCatalogo
@@ -80,6 +81,8 @@ class PublicacionSerializer(PublicacionPublicaSerializer):
     # Vista interna: solo para el anunciante dueño y los administradores.
     propietario = UsuarioSerializer(read_only=True)
     eventos_moderacion = EventoModeracionSerializer(many=True, read_only=True)
+    # RNF-06: nunca la URL del archivo; siempre la ruta de la API que controla quién lo descarga.
+    archivo_verificacion = serializers.SerializerMethodField()
 
     class Meta(PublicacionPublicaSerializer.Meta):
         fields = [
@@ -87,6 +90,13 @@ class PublicacionSerializer(PublicacionPublicaSerializer):
             'motivo_rechazo_verificacion', 'nota_moderacion', 'motivo_ocultamiento', 'eventos_moderacion',
         ]
         read_only_fields = fields
+
+    def get_archivo_verificacion(self, publicacion):
+        if not publicacion.archivo_verificacion:
+            return None
+        ruta = reverse('publicacion-documento', args=[publicacion.id])
+        request = self.context.get('request')
+        return request.build_absolute_uri(ruta) if request else ruta
 
 
 class PublicacionPropiaSerializer(PublicacionSerializer):

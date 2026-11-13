@@ -1,6 +1,13 @@
+import io
+from unittest import mock
+
+import cloudinary
+from django.test import SimpleTestCase
 from rest_framework.test import APITestCase
 
 from publicaciones.tests import crear_usuario
+
+from .almacenamiento import AlmacenamientoCloudinary
 
 NO_ENCONTRADO = 'No se encontró el recurso solicitado.'
 
@@ -64,3 +71,53 @@ class ErroresGeneralesDeLaApiTests(APITestCase):
 
                 self.assertEqual(respuesta.status_code, 404)
                 self.assertEqual(respuesta.json(), {'detail': NO_ENCONTRADO})
+
+
+class AlmacenamientoCloudinaryTests(SimpleTestCase):
+    # Simula Cloudinary: las pruebas nunca llaman al servicio real.
+    def setUp(self):
+        configuracion = cloudinary.config()
+        self.configuracion_anterior = (configuracion.cloud_name, configuracion.api_key, configuracion.api_secret)
+        cloudinary.config(cloud_name='prueba', api_key='111', api_secret='secreto')
+
+    def tearDown(self):
+        nombre, clave, secreto = self.configuracion_anterior
+        cloudinary.config(cloud_name=nombre, api_key=clave, api_secret=secreto)
+
+    def test_las_fotos_se_suben_publicas_con_un_nombre_aleatorio(self):
+        almacenamiento = AlmacenamientoCloudinary()
+        respuesta = {'public_id': 'publicaciones/abc', 'format': 'jpg'}
+        with mock.patch('cloudinary.uploader.upload', return_value=respuesta) as subir:
+            nombre = almacenamiento.save('publicaciones/casa.jpg', io.BytesIO(b'imagen'))
+
+        self.assertEqual(nombre, 'publicaciones/abc.jpg')
+        opciones = subir.call_args.kwargs
+        self.assertEqual((opciones['type'], opciones['resource_type']), ('upload', 'image'))
+        self.assertNotIn('casa', opciones['public_id'])
+        self.assertTrue(almacenamiento.url(nombre).startswith('https://res.cloudinary.com/prueba/image/upload/'))
+
+    def test_los_documentos_son_privados_y_se_descargan_con_un_enlace_que_vence(self):
+        almacenamiento = AlmacenamientoCloudinary(privado=True, tipo_recurso='raw')
+        with mock.patch('cloudinary.uploader.upload', return_value={'public_id': 'verificaciones/abc.pdf'}) as subir:
+            nombre = almacenamiento.save('verificaciones/factura.pdf', io.BytesIO(b'%PDF-1.4'))
+
+        self.assertEqual(nombre, 'verificaciones/abc.pdf')
+        opciones = subir.call_args.kwargs
+        self.assertEqual((opciones['type'], opciones['resource_type']), ('authenticated', 'raw'))
+        self.assertTrue(opciones['public_id'].endswith('.pdf'))
+        url = almacenamiento.url(nombre)
+        self.assertTrue(url.startswith('https://api.cloudinary.com/v1_1/prueba/raw/download?'))
+        self.assertIn('expires_at=', url)
+        self.assertIn('signature=', url)
+        self.assertNotIn('secreto', url)
+
+    def test_borrar_usa_el_mismo_tipo_de_entrega(self):
+        with mock.patch('cloudinary.uploader.destroy') as destruir:
+            AlmacenamientoCloudinary(privado=True, tipo_recurso='raw').delete('verificaciones/abc.pdf')
+
+        destruir.assert_called_once_with(
+            'verificaciones/abc.pdf', invalidate=True, resource_type='raw', type='authenticated',
+        )
+
+    def test_nunca_informa_que_un_archivo_existe(self):
+        self.assertFalse(AlmacenamientoCloudinary().exists('publicaciones/abc.jpg'))

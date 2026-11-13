@@ -1,13 +1,16 @@
+import os
+
 from django.db import transaction
 from django.db.models import Count
-from django.http import Http404
+from django.http import FileResponse, Http404, HttpResponseRedirect
 from rest_framework import generics, status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import SAFE_METHODS, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from auditoria.servicios import registrar_accion
+from config.almacenamiento import AlmacenamientoCloudinary
 from config.paginacion import PaginacionAdministracion, PaginacionExplorar, PaginacionMisPublicaciones
 from notificaciones.servicios import notificar
 from usuarios.permissions import EsAdministrador
@@ -151,6 +154,21 @@ class PublicacionDetalleView(generics.RetrieveUpdateDestroyAPIView):
         # RF-09: eliminación lógica; el registro se conserva para historial y auditoría.
         eliminar_logicamente(self.get_object(), request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PublicacionDocumentoView(APIView):
+    # RNF-06: la documentación de verificación solo la descargan el dueño y los administradores.
+    def get(self, request, id, *args, **kwargs):
+        publicacion = generics.get_object_or_404(Publicacion, id=id)
+        if not (request.user.es_administrador or publicacion.propietario_id == request.user.id):
+            raise Http404
+        archivo = publicacion.archivo_verificacion
+        if isinstance(archivo.storage, AlmacenamientoCloudinary):
+            return HttpResponseRedirect(archivo.url)
+        try:
+            return FileResponse(archivo.open('rb'), filename=os.path.basename(archivo.name))
+        except FileNotFoundError:
+            raise NotFound('El documento no está disponible.')
 
 
 class PublicacionCambiarEstadoView(APIView):

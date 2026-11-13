@@ -1,7 +1,9 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
+import cloudinary
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -107,9 +109,35 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# MEDIA_ROOT local como placeholder hasta integrar Cloudinary.
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Cloudinary guarda fotos, documentación y backups (restricción del SRS). Sin credenciales se usan
+# carpetas locales; las pruebas nunca suben archivos al servicio real.
+CLOUDINARY_CLOUD_NAME = env('CLOUDINARY_CLOUD_NAME', default='')
+CLOUDINARY_API_KEY = env('CLOUDINARY_API_KEY', default='')
+CLOUDINARY_API_SECRET = env('CLOUDINARY_API_SECRET', default='')
+EJECUTANDO_PRUEBAS = sys.argv[1:2] == ['test']
+USAR_CLOUDINARY = all((CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)) and not EJECUTANDO_PRUEBAS
+
+if USAR_CLOUDINARY:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME, api_key=CLOUDINARY_API_KEY, api_secret=CLOUDINARY_API_SECRET, secure=True,
+    )
+    STORAGES = {
+        'default': {'BACKEND': 'config.almacenamiento.AlmacenamientoCloudinary'},
+        'privado': {
+            'BACKEND': 'config.almacenamiento.AlmacenamientoCloudinary',
+            'OPTIONS': {'privado': True, 'tipo_recurso': 'raw'},
+        },
+    }
+else:
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'privado': {'BACKEND': 'config.almacenamiento.AlmacenamientoPrivadoLocal'},
+    }
+PRIVADO_ROOT = BASE_DIR / 'privado'
+STORAGES['staticfiles'] = {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
