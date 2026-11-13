@@ -500,7 +500,8 @@ class PanelDemandaTests(PruebaDeBusquedas):
 
     def test_rechaza_filtros_invalidos(self):
         for filtros in (
-            {'desde': 'ayer'}, {'tipo_inmueble': 'inventado'}, {'desde': '2026-12-10', 'hasta': '2026-12-01'},
+            {'desde': 'ayer'}, {'desde': '2026-02-30'}, {'tipo_inmueble': 'inventado'},
+            {'desde': '2026-12-10', 'hasta': '2026-12-01'},
         ):
             with self.subTest(filtros=filtros):
                 self.assertEqual(self.client.get(reverse('panel-demanda'), filtros).status_code, 400)

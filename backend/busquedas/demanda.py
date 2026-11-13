@@ -5,6 +5,7 @@ from django.db.models import Count
 from django.utils import timezone
 from rest_framework import serializers
 
+from config.campos import CodigoDeCatalogo
 from config.texto import normalizar_texto
 from publicaciones.filtros import CARACTERISTICAS
 from publicaciones.models import Publicacion, TipoInmueble
@@ -25,8 +26,8 @@ class FiltrosDemandaSerializer(serializers.Serializer):
     desde = serializers.DateField(required=False)
     hasta = serializers.DateField(required=False)
     zona = serializers.CharField(required=False, allow_blank=True)
-    tipo_inmueble = serializers.SlugRelatedField(
-        slug_field='codigo', queryset=TipoInmueble.objects.all(), required=False, allow_null=True,
+    tipo_inmueble = CodigoDeCatalogo(
+        queryset=TipoInmueble.objects.all(), required=False, allow_null=True,
     )
 
     def validate(self, datos):

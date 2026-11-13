@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import Max
 from rest_framework import serializers
 
+from config.campos import CodigoDeCatalogo
 from usuarios.models import Usuario
 from usuarios.serializers import UsuarioSerializer
 
@@ -115,8 +116,8 @@ class PublicacionResumenSerializer(serializers.ModelSerializer):
 
 
 class PublicacionEscrituraSerializer(serializers.ModelSerializer):
-    tipo_inmueble = serializers.SlugRelatedField(slug_field='codigo', queryset=TipoInmueble.objects.all())
-    modalidad = serializers.SlugRelatedField(slug_field='codigo', queryset=Modalidad.objects.all())
+    tipo_inmueble = CodigoDeCatalogo(queryset=TipoInmueble.objects.all())
+    modalidad = CodigoDeCatalogo(queryset=Modalidad.objects.all())
     precio = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,

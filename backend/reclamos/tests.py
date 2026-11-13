@@ -66,9 +66,36 @@ class CrearReclamoTests(PruebaDeReclamos):
         self.assertEqual(self.reclamar(descripcion='').status_code, 400)
         self.assertEqual(self.reclamar(descripcion='a' * 2001).status_code, 400)
 
-    def test_rechaza_objetivos_inexistentes(self):
-        self.assertEqual(self.reclamar(publicacion=999999).status_code, 400)
-        self.assertEqual(self.reclamar(usuario_reportado=999999, motivo='otro').status_code, 400)
+    def test_rechaza_objetivos_inexistentes_con_un_mensaje_claro(self):
+        for datos, campo, mensaje in (
+            ({'publicacion': 999999}, 'publicacion', 'La publicación no existe.'),
+            ({'publicacion': 10**30}, 'publicacion', 'La publicación no existe.'),
+            ({'publicacion': 'abc'}, 'publicacion', 'La publicación no existe.'),
+            ({'usuario_reportado': 999999, 'motivo': 'otro'}, 'usuario_reportado', 'El usuario no existe.'),
+        ):
+            with self.subTest(datos=datos):
+                respuesta = self.reclamar(**datos)
+
+                self.assertEqual(respuesta.status_code, 400)
+                self.assertEqual(respuesta.data[campo], [mensaje])
+
+    def test_sin_objetivo_explica_que_falta(self):
+        respuesta = self.client.post(
+            reverse('reclamo-lista'),
+            {'publicacion': None, 'usuario_reportado': None, 'motivo': 'otro', 'descripcion': 'Detalle'},
+            format='json',
+        )
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertEqual(respuesta.data['non_field_errors'], ['Indicá una publicación o un usuario, no ambos.'])
+
+    def test_un_motivo_desconocido_o_demasiado_largo_tiene_el_mismo_mensaje(self):
+        for motivo in ('inventado', 'x' * 40):
+            with self.subTest(motivo=motivo):
+                self.assertEqual(self.reclamar(motivo=motivo).data['motivo'], ['Elegí un motivo válido.'])
+
+    def test_una_descripcion_de_espacios_no_es_valida(self):
+        self.assertEqual(self.reclamar(descripcion='    ').status_code, 400)
 
     def test_no_se_reporta_a_si_mismo_ni_a_un_administrador(self):
         self.client.force_authenticate(self.propietario)
@@ -125,6 +152,14 @@ class ConsultaDeReclamosTests(PruebaDeReclamos):
         self.assertEqual(len(todos), 2)
         self.assertEqual([r['id'] for r in en_revision], [primero])
 
+    def test_rechaza_un_filtro_de_estado_inexistente(self):
+        self.client.force_authenticate(self.administrador)
+
+        respuesta = self.client.get(reverse('reclamo-lista'), {'estado': 'inventado'})
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertEqual(respuesta.data['estado'], ['Elegí una opción válida.'])
+
     def test_solo_el_administrador_ve_el_listado_completo(self):
         self.assertEqual(self.client.get(reverse('reclamo-lista')).status_code, 403)
 
@@ -179,6 +214,21 @@ class EstadosDeReclamoTests(PruebaDeReclamos):
         notificacion = self.interesado.notificaciones.get()
         self.assertIn('fue resuelto', notificacion.mensaje)
         self.assertEqual(notificacion.tipo.codigo, 'exito')
+
+    def test_valida_el_cuerpo_del_cambio_de_estado(self):
+        self.assertEqual(self.cambiar_estado(self.reclamo_id, '').status_code, 400)
+        self.client.force_authenticate(self.administrador)
+        sin_estado = self.client.post(reverse('reclamo-estado', args=[self.reclamo_id]), {}, format='json')
+        self.assertEqual(sin_estado.data['estado'], ['Este campo es requerido.'])
+        nota_larga = self.cambiar_estado(self.reclamo_id, 'resuelto', nota_administrador='a' * 2001)
+        self.assertEqual(nota_larga.status_code, 400)
+        self.assertEqual(Reclamo.objects.get().estado.codigo, 'pendiente')
+
+    def test_un_reclamo_inexistente_devuelve_404(self):
+        respuesta = self.cambiar_estado(999999, 'resuelto')
+
+        self.assertEqual(respuesta.status_code, 404)
+        self.assertEqual(respuesta.data['detail'], 'No se encontró el recurso solicitado.')
 
     def test_solo_el_administrador_cambia_estados(self):
         self.client.force_authenticate(self.interesado)

@@ -70,6 +70,14 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+## Errores
+
+Todos los errores de la API se devuelven en JSON y en español, sin detalles internos del servidor (RNF-10):
+
+- **Datos inválidos (400):** un mensaje por campo, por ejemplo `{"publicacion": ["La publicación no existe."]}`.
+- **Recurso o ruta inexistente (404):** `{"detail": "No se encontró el recurso solicitado."}`. Si a la ruta solo le falta la barra final, el mensaje lo indica.
+- **Cuerpo mal formado (400):** `{"detail": "El cuerpo de la solicitud no tiene un formato válido."}`.
+
 ## Borrado lógico
 
 La API nunca borra registros de la base. Las publicaciones pasan al estado `eliminada`. Las búsquedas, favoritos, notificaciones, fotos y coincidencias guardan la fecha en `eliminado_en` y dejan de aparecer en las consultas.

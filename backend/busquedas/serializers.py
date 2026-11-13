@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from config.campos import CodigoDeCatalogo
 from config.texto import normalizar_texto
 from publicaciones.models import Modalidad, TipoInmueble
 from publicaciones.serializers import PublicacionPublicaSerializer
@@ -17,11 +18,11 @@ CRITERIOS_DE_ESTADIA = ['fecha_ingreso', 'fecha_salida', 'duracion_estadia_dias'
 
 
 class BusquedaActivaSerializer(serializers.ModelSerializer):
-    modalidad = serializers.SlugRelatedField(
-        slug_field='codigo', queryset=Modalidad.objects.all(), required=False, allow_null=True,
+    modalidad = CodigoDeCatalogo(
+        queryset=Modalidad.objects.all(), required=False, allow_null=True,
     )
-    tipo_inmueble = serializers.SlugRelatedField(
-        slug_field='codigo', queryset=TipoInmueble.objects.all(), required=False, allow_null=True,
+    tipo_inmueble = CodigoDeCatalogo(
+        queryset=TipoInmueble.objects.all(), required=False, allow_null=True,
     )
     estado = serializers.SlugRelatedField(slug_field='codigo', read_only=True)
     cantidad_coincidencias = serializers.SerializerMethodField()

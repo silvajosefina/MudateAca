@@ -84,6 +84,17 @@ class ConsultaDeNotificacionesTests(PruebaDeNotificaciones):
         self.assertEqual(Notificacion.todos.filter(usuario=self.interesado, eliminado_en__isnull=False).count(), 2)
         self.assertEqual(self.client.get(reverse('notificacion-no-leidas')).data, {'cantidad': 0})
 
+    def test_sin_notificaciones_las_acciones_masivas_no_fallan(self):
+        self.assertEqual(self.client.post(reverse('notificacion-marcar-leidas')).data, {'marcadas': 0})
+        self.assertEqual(self.client.delete(reverse('notificacion-lista')).status_code, 204)
+        self.assertEqual(self.client.get(reverse('notificacion-lista')).data['results'], [])
+
+    def test_una_pagina_invalida_o_un_metodo_no_permitido_tienen_mensaje_claro(self):
+        self.assertEqual(self.client.get(reverse('notificacion-lista'), {'pagina': 0}).data['detail'], 'Página inválida.')
+        self.assertEqual(
+            self.client.put(reverse('notificacion-lista'), {}, format='json').data['detail'], 'Método "PUT" no permitido.',
+        )
+
     def test_no_permite_borrar_notificaciones_ajenas(self):
         notificar([self.otro_interesado], 'Ajena')
         ajena = self.otro_interesado.notificaciones.get()

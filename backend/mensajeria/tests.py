@@ -92,7 +92,9 @@ class IniciarConversacionTests(PruebaDeChat):
     def test_rechaza_publicaciones_inexistentes_o_invalidas(self):
         url = reverse('conversacion-lista')
 
-        self.assertEqual(self.client.post(url, {'publicacion': 999999}, format='json').status_code, 404)
+        inexistente = self.client.post(url, {'publicacion': 999999}, format='json')
+        self.assertEqual(inexistente.status_code, 404)
+        self.assertEqual(inexistente.data['detail'], 'La publicación no existe.')
         self.assertEqual(self.client.post(url, {'publicacion': 'abc'}, format='json').status_code, 400)
         self.assertEqual(self.client.post(url, {}, format='json').status_code, 400)
 
@@ -225,9 +227,32 @@ class PollingTests(PruebaDeChat):
         self.assertEqual([m['texto'] for m in respuesta.data], ['Tres'])
 
     def test_rechaza_un_parametro_invalido(self):
-        respuesta = self.client.get(reverse('conversacion-mensajes', args=[self.conversacion.id]), {'despues_de': 'x'})
+        url = reverse('conversacion-mensajes', args=[self.conversacion.id])
 
-        self.assertEqual(respuesta.status_code, 400)
+        for valor in ('x', '-1', '1.5'):
+            with self.subTest(valor=valor):
+                respuesta = self.client.get(url, {'despues_de': valor})
+
+                self.assertEqual(respuesta.status_code, 400)
+                self.assertIn('despues_de', respuesta.data)
+
+    def test_un_id_enorme_devuelve_una_lista_vacia(self):
+        self.enviar(self.conversacion, 'Hola')
+
+        respuesta = self.client.get(
+            reverse('conversacion-mensajes', args=[self.conversacion.id]), {'despues_de': 10**30},
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.data, [])
+
+    def test_valida_el_texto_del_mensaje(self):
+        for valor, mensaje in ((None, 'Este campo no puede ser nulo.'), ('', 'Este campo no puede estar en blanco.')):
+            with self.subTest(valor=valor):
+                respuesta = self.enviar(self.conversacion, valor)
+
+                self.assertEqual(respuesta.status_code, 400)
+                self.assertEqual(respuesta.data['texto'], [mensaje])
 
     def test_cuenta_los_no_leidos_de_cada_participante(self):
         self.enviar(self.conversacion, 'Hola')

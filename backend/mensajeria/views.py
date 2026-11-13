@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.db.models import Count, Q
 from rest_framework import generics, serializers, status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -51,9 +51,11 @@ class ConversacionListaCrearView(generics.ListAPIView):
     def post(self, request, *args, **kwargs):
         serializer = IniciarConversacionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        publicacion = generics.get_object_or_404(
-            Publicacion.objects.select_related('estado'), id=serializer.validated_data['publicacion'],
-        )
+        publicacion = Publicacion.objects.select_related('estado').filter(
+            id=serializer.validated_data['publicacion'],
+        ).first()
+        if publicacion is None:
+            raise NotFound('La publicación no existe.')
 
         existente = Conversacion.objects.filter(publicacion=publicacion, interesado=request.user).first()
         if existente is None and publicacion.estado.codigo not in ESTADOS_QUE_ADMITEN_CONTACTO:

@@ -89,9 +89,28 @@ class FavoritosTests(APITestCase):
 
                 self.assertEqual(self.agregar(publicacion).status_code, codigo)
 
-        self.assertEqual(
-            self.client.post(reverse('favorito-lista'), {'publicacion': 999999}, format='json').status_code, 404,
-        )
+    def test_valida_la_publicacion_indicada(self):
+        url = reverse('favorito-lista')
+        for valor, codigo, mensaje in (
+            (999999, 404, 'La publicación no existe.'),
+            (-1, 404, 'La publicación no existe.'),
+            (10**30, 404, 'La publicación no existe.'),
+            ('abc', 400, ['Introduzca un número entero válido.']),
+            (None, 400, ['Este campo no puede ser nulo.']),
+        ):
+            with self.subTest(valor=valor):
+                respuesta = self.client.post(url, {'publicacion': valor}, format='json')
+
+                self.assertEqual(respuesta.status_code, codigo)
+                self.assertEqual(respuesta.data.get('detail', respuesta.data.get('publicacion')), mensaje)
+
+        self.assertEqual(self.client.post(url, {}, format='json').data['publicacion'], ['Este campo es requerido.'])
+
+    def test_una_pagina_inexistente_tiene_un_mensaje_claro(self):
+        respuesta = self.client.get(reverse('favorito-lista'), {'pagina': 99})
+
+        self.assertEqual(respuesta.status_code, 404)
+        self.assertEqual(respuesta.data['detail'], 'Página inválida.')
 
     def test_una_publicacion_que_dejo_de_ser_publica_no_expone_sus_datos(self):
         publicacion = crear_publicacion(self.propietario, ubicacion='Norte')

@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.db.models import Q
 from rest_framework import serializers
 
+from config.campos import CodigoDeCatalogo
+
 from .models import EstadoPublicacion, Modalidad, TipoInmueble
 
 CARACTERISTICAS = ('amueblado', 'servicios_incluidos', 'acepta_mascotas', 'apto_estudiantes')
@@ -42,11 +44,11 @@ def condicion_de_estadia(fecha_ingreso, fecha_salida, duracion_estadia):
 
 
 class FiltrosPublicacionesSerializer(serializers.Serializer):
-    modalidad = serializers.SlugRelatedField(
-        slug_field='codigo', queryset=Modalidad.objects.all(), required=False, allow_null=True,
+    modalidad = CodigoDeCatalogo(
+        queryset=Modalidad.objects.all(), required=False, allow_null=True,
     )
-    tipo_inmueble = serializers.SlugRelatedField(
-        slug_field='codigo', queryset=TipoInmueble.objects.all(), required=False, allow_null=True,
+    tipo_inmueble = CodigoDeCatalogo(
+        queryset=TipoInmueble.objects.all(), required=False, allow_null=True,
     )
     ubicacion = serializers.CharField(required=False, allow_blank=True, max_length=255)
     precio_min = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal('0'), required=False)
@@ -72,8 +74,8 @@ class FiltrosPublicacionesSerializer(serializers.Serializer):
 
 
 class FiltroMisPublicacionesSerializer(serializers.Serializer):
-    estado = serializers.SlugRelatedField(
-        slug_field='codigo', queryset=EstadoPublicacion.objects.all(), required=False, allow_null=True,
+    estado = CodigoDeCatalogo(
+        queryset=EstadoPublicacion.objects.all(), required=False, allow_null=True,
     )
 
 

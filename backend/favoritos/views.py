@@ -1,5 +1,5 @@
 from rest_framework import generics, status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 
 from config.paginacion import PaginacionExplorar
@@ -34,9 +34,11 @@ class FavoritoListaView(generics.ListAPIView):
     def post(self, request, *args, **kwargs):
         serializer = AgregarFavoritoSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        publicacion = generics.get_object_or_404(
-            Publicacion.objects.select_related('estado'), id=serializer.validated_data['publicacion'],
-        )
+        publicacion = Publicacion.objects.select_related('estado').filter(
+            id=serializer.validated_data['publicacion'],
+        ).first()
+        if publicacion is None:
+            raise NotFound('La publicación no existe.')
 
         existente = Favorito.objects.filter(usuario=request.user, publicacion=publicacion).first()
         if existente is None and publicacion.estado.codigo not in ESTADOS_DETALLE_PUBLICO:

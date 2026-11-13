@@ -10,7 +10,12 @@ from notificaciones.servicios import notificar, resumen
 from usuarios.permissions import EsAdministrador
 
 from .models import EstadoReclamo, Reclamo
-from .serializers import CambioEstadoReclamoSerializer, CrearReclamoSerializer, ReclamoSerializer
+from .serializers import (
+    CambioEstadoReclamoSerializer,
+    CrearReclamoSerializer,
+    FiltroReclamosSerializer,
+    ReclamoSerializer,
+)
 
 TRANSICIONES = {
     'pendiente': ('en_revision', 'resuelto', 'descartado'),
@@ -48,9 +53,11 @@ class ReclamoListaCrearView(generics.ListAPIView):
         return [EsAdministrador()]
 
     def get_queryset(self):
+        filtro = FiltroReclamosSerializer(data=self.request.query_params, partial=True)
+        filtro.is_valid(raise_exception=True)
+        estado = filtro.validated_data.get('estado')
         reclamos = reclamos_con_relaciones()
-        estado = self.request.query_params.get('estado')
-        return reclamos.filter(estado__codigo=estado) if estado else reclamos
+        return reclamos.filter(estado=estado) if estado else reclamos
 
     def post(self, request, *args, **kwargs):
         serializer = CrearReclamoSerializer(data=request.data, context={'request': request})

@@ -1,10 +1,11 @@
 from rest_framework import serializers
 
+from config.campos import CodigoDeCatalogo
 from publicaciones.models import Publicacion
 from publicaciones.serializers import AnuncianteSerializer, PublicacionResumenSerializer
 from usuarios.models import Usuario
 
-from .models import Reclamo
+from .models import EstadoReclamo, Reclamo
 
 # Motivos de las pantallas del frontend.
 MOTIVOS_POR_OBJETIVO = {
@@ -16,9 +17,20 @@ LARGO_MAXIMO_DESCRIPCION = 2000
 
 
 class CrearReclamoSerializer(serializers.Serializer):
-    publicacion = serializers.PrimaryKeyRelatedField(queryset=Publicacion.objects.all(), required=False)
-    usuario_reportado = serializers.PrimaryKeyRelatedField(queryset=Usuario.objects.all(), required=False)
-    motivo = serializers.CharField(max_length=30)
+    # Los mensajes por defecto hablan de "clave primaria" y tipos de Python.
+    publicacion = serializers.PrimaryKeyRelatedField(
+        queryset=Publicacion.objects.all(),
+        required=False,
+        allow_null=True,
+        error_messages={'does_not_exist': 'La publicación no existe.', 'incorrect_type': 'La publicación no existe.'},
+    )
+    usuario_reportado = serializers.PrimaryKeyRelatedField(
+        queryset=Usuario.objects.all(),
+        required=False,
+        allow_null=True,
+        error_messages={'does_not_exist': 'El usuario no existe.', 'incorrect_type': 'El usuario no existe.'},
+    )
+    motivo = serializers.CharField()
     descripcion = serializers.CharField(max_length=LARGO_MAXIMO_DESCRIPCION)
 
     def validate(self, datos):
@@ -62,6 +74,10 @@ class ReclamoSerializer(serializers.ModelSerializer):
 
     def get_objetivo(self, reclamo):
         return 'publicacion' if reclamo.publicacion_id else 'usuario'
+
+
+class FiltroReclamosSerializer(serializers.Serializer):
+    estado = CodigoDeCatalogo(queryset=EstadoReclamo.objects.all(), required=False, allow_null=True)
 
 
 class CambioEstadoReclamoSerializer(serializers.Serializer):

@@ -1,9 +1,10 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 from busquedas.views import PanelDemandaView
+from config.excepciones import ruta_inexistente
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -15,6 +16,8 @@ urlpatterns = [
     path('api/notificaciones/', include('notificaciones.urls')),
     path('api/reclamos/', include('reclamos.urls')),
     path('api/demanda/', PanelDemandaView.as_view(), name='panel-demanda'),
+    # Siempre al final: atrapa cualquier ruta de la API que no exista.
+    re_path(r'^api/', ruta_inexistente),
 ]
 
 if settings.DEBUG:
