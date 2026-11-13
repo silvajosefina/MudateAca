@@ -6,6 +6,9 @@ from django.urls import include, path, re_path
 from busquedas.views import PanelDemandaView
 from config.excepciones import ruta_inexistente
 
+handler404 = 'config.excepciones.pagina_inexistente'
+handler500 = 'config.excepciones.error_del_servidor'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('usuarios.urls')),

@@ -171,8 +171,19 @@ SIMPLE_JWT = {
 
 JWT_ACCESS_COOKIE = 'access_token'
 JWT_REFRESH_COOKIE = 'refresh_token'
-JWT_COOKIE_SECURE = env.bool('JWT_COOKIE_SECURE', default=False)
+JWT_COOKIE_SECURE = env.bool('JWT_COOKIE_SECURE', default=not DEBUG)
 JWT_COOKIE_SAMESITE = 'Lax'
+
+# En producción todo viaja por HTTPS (requisito transversal de la arquitectura).
+if not DEBUG:
+    SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=True)
+    SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=60 * 60 * 24 * 365)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Detrás de un proxy (por ejemplo el del hosting), indica que la conexión original era HTTPS.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 CORS_ALLOW_CREDENTIALS = True

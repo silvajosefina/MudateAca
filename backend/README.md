@@ -128,6 +128,8 @@ La API nunca borra registros de la base. Las publicaciones pasan al estado `elim
 python manage.py test
 ```
 
+Las pruebas generales de seguridad, sus resultados y lo pendiente para el despliegue están en [SEGURIDAD.md](SEGURIDAD.md).
+
 ## Publicaciones
 
 Todas las rutas empiezan con `/api/publicaciones/`.
@@ -145,6 +147,11 @@ Todas las rutas empiezan con `/api/publicaciones/`.
 | `POST` | `/<id>/aprobar/` | Administrador | Aprueba la publicación |
 | `POST` | `/<id>/rechazar/` | Administrador | Rechaza la publicación con una nota |
 | `POST` | `/<id>/solicitar-modificaciones/` | Administrador | Pide cambios con una nota |
+| `POST` | `/<id>/mantener-observada/` | Administrador | Deja registrada la revisión de una observada, con una nota |
+| `POST` | `/<id>/ocultar/` | Administrador | Oculta la publicación del público, con un motivo |
+| `POST` | `/<id>/mostrar/` | Administrador | Vuelve a mostrar una publicación oculta |
+| `GET` | `/administracion/` | Administrador | Lista todas las publicaciones, de a 10, con filtro `estado` y totales |
+| `GET` | `/<id>/documento/` | Dueño o administrador | Descarga la documentación de verificación |
 
 El listado público acepta estos filtros, que se pueden combinar: `modalidad`, `tipo_inmueble`, `ubicacion`, `precio_min`, `precio_max`, `ambientes_min`, `dormitorios_min`, `amueblado`, `servicios_incluidos`, `acepta_mascotas`, `apto_estudiantes`, `fecha_ingreso`, `fecha_salida`, `duracion_estadia` y `pagina`.
 
@@ -225,6 +232,19 @@ Todas las rutas empiezan con `/api/reclamos/`.
 | `POST` | `/<id>/estado/` | Administrador | Cambia el estado y agrega una nota opcional |
 
 Los estados son pendiente, en revisión, resuelto y descartado. Cada cambio queda registrado en la auditoría.
+
+## Usuarios e inmobiliarias
+
+`GET` y `PATCH` en `/api/auth/perfil/`: cada usuario ve y edita su nombre, apellido y celular. Las inmobiliarias también editan su razón social, que es obligatoria desde el registro (RF-21).
+
+Las rutas de administración empiezan con `/api/usuarios/` y son solo para administradores. Los administradores no se gestionan desde la API.
+
+| Método | Ruta | Acción |
+|---|---|---|
+| `GET` | `/` | Lista los usuarios, de a 10, con filtros `estado`, `rol` y `busqueda`, y totales por estado |
+| `GET` | `/<id>/` | Muestra un usuario, con sus publicaciones, reclamos recibidos e historial de suspensiones |
+| `POST` | `/<id>/suspender/` | Suspende la cuenta con un motivo y se lo informa en la app y por correo (RF-20) |
+| `POST` | `/<id>/reactivar/` | Reactiva la cuenta y se lo informa en la app y por correo |
 
 ## Panel de demanda
 

@@ -5,6 +5,7 @@ from django.core.validators import FileExtensionValidator
 from config.almacenamiento import almacenamiento_privado
 from config.borrado_logico import BorradoLogico
 from config.catalogos import Catalogo
+from config.validadores import validar_documento_verificacion
 
 TIPOS_DOCUMENTO_VERIFICACION = [
     ('factura_servicio', 'Factura de un servicio asociada al domicilio'),
@@ -82,7 +83,9 @@ class Publicacion(models.Model):
         storage=almacenamiento_privado,
         max_length=255,
         db_column='archivo_verificacion_url',
-        validators=[FileExtensionValidator(allowed_extensions=EXTENSIONES_VERIFICACION)],
+        validators=[
+            FileExtensionValidator(allowed_extensions=EXTENSIONES_VERIFICACION), validar_documento_verificacion,
+        ],
     )
 
     creado_en = models.DateTimeField(auto_now_add=True)

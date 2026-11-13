@@ -7,6 +7,7 @@ from django.urls import reverse
 from rest_framework import serializers
 
 from config.campos import CodigoDeCatalogo
+from config.validadores import validar_tamano
 from usuarios.models import Usuario
 from usuarios.serializers import UsuarioSerializer
 
@@ -139,7 +140,9 @@ class PublicacionEscrituraSerializer(serializers.ModelSerializer):
     )
     lat = serializers.FloatField(write_only=True, required=False, allow_null=True, min_value=-90, max_value=90)
     lng = serializers.FloatField(write_only=True, required=False, allow_null=True, min_value=-180, max_value=180)
-    fotos = serializers.ListField(child=serializers.ImageField(), write_only=True, required=False)
+    fotos = serializers.ListField(
+        child=serializers.ImageField(validators=[validar_tamano]), write_only=True, required=False,
+    )
     fotos_a_eliminar = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
 
     class Meta:
