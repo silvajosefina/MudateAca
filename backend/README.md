@@ -91,11 +91,16 @@ Se programa una vez por día. En Linux, con cron:
 0 3 * * * cd /ruta/al/backend && .venv/bin/python manage.py respaldar_base
 ```
 
-En Windows, con el Programador de tareas:
+En Windows, con el Programador de tareas. En PowerShell, desde la carpeta `backend`:
 
-```bash
-schtasks /Create /SC DAILY /ST 03:00 /TN "Mudate Aca - respaldo diario" /TR "C:\ruta\al\backend\.venv\Scripts\python.exe C:\ruta\al\backend\manage.py respaldar_base"
+```powershell
+$backend = (Get-Location).Path
+$accion = New-ScheduledTaskAction -Execute 'cmd.exe' -WorkingDirectory $backend -Argument "/c `"`"$backend\.venv\Scripts\python.exe`" `"$backend\manage.py`" respaldar_base >> `"$backend\copias_de_seguridad\respaldo.log`" 2>&1`""
+$ajustes = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+Register-ScheduledTask -TaskName 'Mudate Aca - respaldo diario' -Action $accion -Trigger (New-ScheduledTaskTrigger -Daily -At '21:00') -Settings $ajustes
 ```
+
+Si la PC está apagada a la hora programada, la copia se hace apenas se vuelve a prender. El resultado de cada ejecución queda en `copias_de_seguridad/respaldo.log`.
 
 Para restaurar una copia en una base vacía:
 
