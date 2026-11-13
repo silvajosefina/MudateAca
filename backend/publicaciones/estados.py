@@ -19,6 +19,10 @@ ESTADOS_EN_REVISION = ('pendiente_moderacion', 'observada')
 # Un cambio del anunciante en estos estados vuelve a la cola del administrador.
 ESTADOS_QUE_VUELVEN_A_REVISION = ('pendiente_moderacion', 'observada', 'rechazada')
 ESTADOS_QUE_ADMITEN_CONTACTO = ('activa', 'reservada')
+# RF-19: el administrador puede ocultar cualquier publicación que todavía pueda verse o volver a verse.
+ESTADOS_OCULTABLES = (
+    'pendiente_moderacion', 'activa', 'pausada', 'observada', 'reservada', 'rechazada', 'alquilada',
+)
 
 TRANSICIONES_DEL_ANUNCIANTE = {
     'activa': ('pausada', 'reservada', 'alquilada'),

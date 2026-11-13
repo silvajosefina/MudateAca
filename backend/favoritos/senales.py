@@ -14,6 +14,7 @@ AVISOS_POR_ESTADO = {
     'alquilada': ('fue marcada como alquilada', 'error'),
     'archivada': ('ya no está disponible', 'error'),
     'eliminada': ('ya no está disponible', 'error'),
+    'oculta': ('ya no está disponible', 'error'),
 }
 
 

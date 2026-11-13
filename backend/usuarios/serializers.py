@@ -2,10 +2,19 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import Rol, Usuario
+from .models import Rol, Suspension, Usuario
 from .validators import validador_contrasena
 
 ROLES_REGISTRABLES = ('interesado', 'propietario', 'inmobiliaria')
+
+
+def validar_razon_social(datos, rol):
+    # RF-21: las publicaciones de una inmobiliaria la identifican por su razón social.
+    if rol != 'inmobiliaria':
+        datos.pop('razon_social', None)
+    elif not (datos.get('razon_social') or '').strip():
+        raise serializers.ValidationError({'razon_social': ['Indicá la razón social de la inmobiliaria.']})
+    return datos
 
 
 class RegistroSerializer(serializers.ModelSerializer):
@@ -18,10 +27,13 @@ class RegistroSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['id', 'nombre', 'apellido', 'celular', 'correo', 'contrasena', 'rol']
+        fields = ['id', 'nombre', 'apellido', 'celular', 'correo', 'contrasena', 'rol', 'razon_social']
         # Sin esto, el UniqueValidator automático de DRF responde antes que
         # validate_correo con su propio mensaje genérico ("este/a correo").
         extra_kwargs = {'correo': {'validators': []}}
+
+    def validate(self, datos):
+        return validar_razon_social(datos, datos['rol'].codigo)
 
     def validate_correo(self, correo):
         correo = correo.lower()
@@ -44,8 +56,52 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['id', 'nombre', 'apellido', 'celular', 'correo', 'rol', 'estado_cuenta', 'motivo_suspension']
+        fields = [
+            'id', 'nombre', 'apellido', 'celular', 'correo', 'rol', 'razon_social', 'estado_cuenta', 'motivo_suspension',
+        ]
         read_only_fields = fields
+
+
+class PerfilSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['nombre', 'apellido', 'celular', 'razon_social']
+
+    def validate(self, datos):
+        if self.instance.rol.codigo == 'inmobiliaria' and 'razon_social' not in datos:
+            return datos
+        return validar_razon_social(datos, self.instance.rol.codigo)
+
+
+class SuspensionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Suspension
+        fields = ['id', 'motivo', 'creado_en', 'levantada_en']
+        read_only_fields = fields
+
+
+class UsuarioAdministracionSerializer(UsuarioSerializer):
+    fecha_registro = serializers.DateTimeField(read_only=True)
+    cantidad_publicaciones = serializers.IntegerField(read_only=True)
+    reclamos_recibidos = serializers.IntegerField(source='cantidad_reclamos_recibidos', read_only=True)
+    suspensiones = SuspensionSerializer(many=True, read_only=True)
+
+    class Meta(UsuarioSerializer.Meta):
+        fields = [
+            *UsuarioSerializer.Meta.fields, 'fecha_registro', 'cantidad_publicaciones', 'reclamos_recibidos',
+            'suspensiones',
+        ]
+        read_only_fields = fields
+
+
+class FiltroUsuariosSerializer(serializers.Serializer):
+    estado = serializers.ChoiceField(choices=['activo', 'suspendido'], required=False)
+    rol = serializers.ChoiceField(choices=list(ROLES_REGISTRABLES), required=False)
+    busqueda = serializers.CharField(required=False, allow_blank=True, max_length=100)
+
+
+class MotivoSuspensionSerializer(serializers.Serializer):
+    motivo = serializers.CharField(max_length=2000)
 
 
 class LoginSerializer(TokenObtainPairSerializer):

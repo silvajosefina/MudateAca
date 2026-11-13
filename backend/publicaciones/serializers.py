@@ -84,7 +84,7 @@ class PublicacionSerializer(PublicacionPublicaSerializer):
     class Meta(PublicacionPublicaSerializer.Meta):
         fields = [
             *CAMPOS_PUBLICOS, 'alquilada_en', 'tipo_documento_verificacion', 'archivo_verificacion',
-            'motivo_rechazo_verificacion', 'nota_moderacion', 'eventos_moderacion',
+            'motivo_rechazo_verificacion', 'nota_moderacion', 'motivo_ocultamiento', 'eventos_moderacion',
         ]
         read_only_fields = fields
 

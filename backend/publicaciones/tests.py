@@ -14,6 +14,7 @@ from PIL import Image
 from rest_framework.test import APITestCase
 
 from auditoria.models import RegistroAuditoria
+from favoritos.models import Favorito
 from usuarios.models import Usuario
 
 from .models import EstadoPublicacion, EventoModeracion, FotoPublicacion, Modalidad, Publicacion, TipoInmueble
@@ -1059,3 +1060,114 @@ class AccionesDelAdministradorTests(PruebaDePublicaciones):
 
         self.assertEqual(self.accion('aprobar').status_code, 403)
         self.assertEqual(self.client.get(reverse('publicacion-pendientes')).status_code, 403)
+
+
+class RevisionAdministrativaTests(PruebaDePublicaciones):
+    def setUp(self):
+        self.client.force_authenticate(self.administrador)
+
+    def accion(self, nombre, publicacion, **datos):
+        return self.client.post(reverse(f'publicacion-{nombre}', args=[publicacion.id]), datos, format='json')
+
+    def test_lista_todas_las_publicaciones_con_totales(self):
+        for estado in ('activa', 'observada', 'eliminada'):
+            crear_publicacion(self.propietario, estado=estado, ubicacion=estado)
+        crear_publicacion(self.otro, estado='activa', ubicacion='Otro')
+
+        respuesta = self.client.get(reverse('publicacion-administracion'))
+        observadas = self.client.get(reverse('publicacion-administracion'), {'estado': 'observada'})
+
+        self.assertEqual(respuesta.data['count'], 4)
+        self.assertEqual(respuesta.data['totales'], {'activa': 2, 'observada': 1, 'eliminada': 1})
+        self.assertEqual([p['estado'] for p in observadas.data['results']], ['observada'])
+        self.assertIn('archivo_verificacion', respuesta.data['results'][0])
+
+    def test_mantener_observada_registra_la_decision_sin_cambiar_el_estado(self):
+        publicacion = crear_publicacion(self.propietario, estado='observada')
+
+        respuesta = self.accion('mantener-observada', publicacion, nota='Todavía falta la foto del baño.')
+
+        self.assertEqual(respuesta.data['estado'], 'observada')
+        self.assertEqual(respuesta.data['nota_moderacion'], 'Todavía falta la foto del baño.')
+        self.assertEqual(RegistroAuditoria.objects.get().tipo_accion, 'mantener_observada')
+        self.assertIn('sigue observada', self.propietario.notificaciones.get().mensaje)
+
+    def test_solo_se_mantiene_observada_una_observada(self):
+        publicacion = crear_publicacion(self.propietario, estado='pendiente_moderacion')
+
+        respuesta = self.accion('mantener-observada', publicacion, nota='Nota')
+
+        self.assertEqual(respuesta.status_code, 400)
+        self.assertFalse(EventoModeracion.objects.exists())
+
+    def test_ocultar_saca_la_publicacion_del_publico_y_avisa(self):
+        publicacion = crear_publicacion(self.propietario)
+
+        respuesta = self.accion('ocultar', publicacion, nota='Reclamos reiterados por fotos falsas.')
+
+        self.assertEqual(respuesta.data['estado'], 'oculta')
+        self.assertEqual(respuesta.data['motivo_ocultamiento'], 'Reclamos reiterados por fotos falsas.')
+        self.assertEqual(RegistroAuditoria.objects.get().tipo_accion, 'ocultamiento_publicacion')
+        self.assertIn('ocultó tu publicación', self.propietario.notificaciones.get().mensaje)
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(self.detalle(publicacion)).status_code, 404)
+        self.assertEqual(self.client.get(reverse('publicacion-lista')).data['results'], [])
+
+    def test_el_dueno_ve_la_oculta_pero_no_puede_reactivarla_ni_editarla(self):
+        publicacion = crear_publicacion(self.propietario)
+        self.accion('ocultar', publicacion, nota='Motivo')
+        self.client.force_authenticate(self.propietario)
+
+        self.assertEqual(self.client.get(self.detalle(publicacion)).data['motivo_ocultamiento'], 'Motivo')
+        self.assertEqual(
+            self.client.post(reverse('publicacion-estado', args=[publicacion.id]), {'estado': 'activa'}).status_code,
+            400,
+        )
+        self.assertEqual(self.editar(publicacion, {'precio': '1.00'}).status_code, 400)
+        mias = self.client.get(reverse('publicacion-mias')).data['results']
+        self.assertEqual(mias[0]['acciones'], ['eliminar'])
+
+    def test_no_oculta_publicaciones_ya_fuera_del_publico(self):
+        for estado in ('oculta', 'eliminada', 'archivada'):
+            with self.subTest(estado=estado):
+                publicacion = crear_publicacion(self.propietario, estado=estado, ubicacion=estado)
+
+                self.assertEqual(self.accion('ocultar', publicacion, nota='Motivo').status_code, 400)
+
+    def test_ocultar_y_mantener_exigen_nota(self):
+        publicacion = crear_publicacion(self.propietario, estado='observada')
+
+        for accion in ('ocultar', 'mantener-observada'):
+            with self.subTest(accion=accion):
+                self.assertEqual(self.accion(accion, publicacion).status_code, 400)
+
+    def test_volver_a_mostrar_una_oculta(self):
+        publicacion = crear_publicacion(self.propietario)
+        self.accion('ocultar', publicacion, nota='Motivo')
+
+        respuesta = self.accion('mostrar', publicacion)
+
+        self.assertEqual(respuesta.data['estado'], 'activa')
+        self.assertIsNone(respuesta.data['motivo_ocultamiento'])
+        self.assertEqual(
+            list(RegistroAuditoria.objects.order_by('id').values_list('tipo_accion', flat=True)),
+            ['ocultamiento_publicacion', 'restauracion_publicacion'],
+        )
+        self.assertEqual(self.accion('mostrar', publicacion).status_code, 400)
+
+    def test_ocultar_avisa_a_quienes_la_tienen_en_favoritos(self):
+        publicacion = crear_publicacion(self.propietario)
+        Favorito.objects.create(usuario=self.interesado, publicacion=publicacion)
+
+        self.accion('ocultar', publicacion, nota='Motivo')
+
+        self.assertIn('ya no está disponible', self.interesado.notificaciones.get().mensaje)
+
+    def test_solo_el_administrador_accede_a_la_revision(self):
+        publicacion = crear_publicacion(self.propietario)
+        self.client.force_authenticate(self.propietario)
+
+        self.assertEqual(self.client.get(reverse('publicacion-administracion')).status_code, 403)
+        for accion in ('ocultar', 'mostrar', 'mantener-observada'):
+            with self.subTest(accion=accion):
+                self.assertEqual(self.accion(accion, publicacion, nota='Nota').status_code, 403)

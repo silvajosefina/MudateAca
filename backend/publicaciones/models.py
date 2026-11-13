@@ -21,6 +21,8 @@ TIPOS_EVENTO_MODERACION = [
     ('rechazo', 'Rechazada'),
     ('solicitud_modificacion', 'Modificaciones solicitadas'),
     ('moderacion_automatica', 'Observada por la moderación automática'),
+    ('mantener_observada', 'Se mantiene observada'),
+    ('ocultamiento', 'Ocultada por la administración'),
 ]
 
 
@@ -117,7 +119,13 @@ class Publicacion(models.Model):
     def nota_moderacion(self):
         if self.estado.codigo != 'observada':
             return None
-        return self._nota_del_ultimo_evento('solicitud_modificacion', 'moderacion_automatica')
+        return self._nota_del_ultimo_evento('solicitud_modificacion', 'moderacion_automatica', 'mantener_observada')
+
+    @property
+    def motivo_ocultamiento(self):
+        if self.estado.codigo != 'oculta':
+            return None
+        return self._nota_del_ultimo_evento('ocultamiento')
 
 
 class FotoPublicacion(BorradoLogico):

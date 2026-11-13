@@ -12,3 +12,7 @@ class PaginacionMisPublicaciones(PaginacionExplorar):
 
 class PaginacionNotificaciones(PaginacionExplorar):
     page_size = 10
+
+
+class PaginacionAdministracion(PaginacionExplorar):
+    page_size = 10

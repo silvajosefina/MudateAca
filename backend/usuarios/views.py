@@ -15,6 +15,7 @@ from .models import Usuario
 from .serializers import (
     ConfirmarRecuperacionSerializer,
     LoginSerializer,
+    PerfilSerializer,
     RegistroSerializer,
     SolicitarRecuperacionSerializer,
     UsuarioSerializer,
@@ -88,9 +89,16 @@ class RefreshView(APIView):
             refresh = RefreshToken(token_crudo)
             if settings.SIMPLE_JWT['BLACKLIST_AFTER_ROTATION']:
                 refresh.blacklist()
-            nuevo_refresh = RefreshToken.for_user(Usuario.objects.get(id=refresh['user_id']))
+            usuario = Usuario.objects.get(id=refresh['user_id'])
         except (TokenError, Usuario.DoesNotExist):
             return Response({'detail': 'Sesión inválida o vencida.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # RF-20: una cuenta suspendida no puede renovar su sesión.
+        if usuario.esta_suspendido:
+            respuesta = Response({'detail': 'Tu cuenta está suspendida.'}, status=status.HTTP_401_UNAUTHORIZED)
+            _borrar_cookies_tokens(respuesta)
+            return respuesta
+        nuevo_refresh = RefreshToken.for_user(usuario)
 
         respuesta = Response({'detail': 'Token renovado.'})
         _establecer_cookies_tokens(
@@ -115,12 +123,18 @@ class LogoutView(APIView):
         return respuesta
 
 
-class PerfilView(generics.RetrieveAPIView):
+class PerfilView(generics.RetrieveUpdateAPIView):
     serializer_class = UsuarioSerializer
     permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'patch', 'head', 'options']
 
     def get_object(self):
         return self.request.user
+
+    def partial_update(self, request, *args, **kwargs):
+        serializer = PerfilSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        return Response(UsuarioSerializer(serializer.save()).data)
 
 
 class SolicitarRecuperacionView(APIView):

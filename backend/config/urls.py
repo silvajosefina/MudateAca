@@ -9,6 +9,7 @@ from config.excepciones import ruta_inexistente
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('usuarios.urls')),
+    path('api/usuarios/', include('usuarios.urls_administracion')),
     path('api/publicaciones/', include('publicaciones.urls')),
     path('api/busquedas/', include('busquedas.urls')),
     path('api/conversaciones/', include('mensajeria.urls')),

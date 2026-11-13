@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from auditoria.servicios import registrar_accion
-from config.paginacion import PaginacionExplorar, PaginacionMisPublicaciones
+from config.paginacion import PaginacionAdministracion, PaginacionExplorar, PaginacionMisPublicaciones
 from notificaciones.servicios import notificar
 from usuarios.permissions import EsAdministrador
 
@@ -17,6 +17,7 @@ from .estados import (
     ESTADOS_EDITABLES,
     ESTADOS_EN_REVISION,
     ESTADOS_LISTADO_PUBLICO,
+    ESTADOS_OCULTABLES,
     cambiar_estado,
     eliminar_logicamente,
 )
@@ -43,6 +44,11 @@ def respuesta_interna(request, publicacion, **kwargs):
     # Relee la publicación para no devolver relaciones que quedaron viejas tras escribir.
     actualizada = publicaciones_con_relaciones().get(id=publicacion.id)
     return Response(PublicacionSerializer(actualizada, context={'request': request}).data, **kwargs)
+
+
+def totales_por_estado(publicaciones):
+    filas = publicaciones.order_by().values('estado__codigo').annotate(cantidad=Count('id'))
+    return {fila['estado__codigo']: fila['cantidad'] for fila in filas}
 
 
 def obtener_para_moderar(id):
@@ -104,13 +110,7 @@ class MisPublicacionesView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         respuesta = super().list(request, *args, **kwargs)
-        totales = (
-            Publicacion.objects.filter(propietario=request.user)
-            .order_by()
-            .values('estado__codigo')
-            .annotate(cantidad=Count('id'))
-        )
-        respuesta.data['totales'] = {fila['estado__codigo']: fila['cantidad'] for fila in totales}
+        respuesta.data['totales'] = totales_por_estado(Publicacion.objects.filter(propietario=request.user))
         return respuesta
 
 
@@ -173,6 +173,27 @@ class PublicacionPendientesListView(generics.ListAPIView):
         return publicaciones_con_relaciones().filter(estado__codigo__in=ESTADOS_EN_REVISION).order_by('creado_en')
 
 
+class PublicacionesAdministracionView(generics.ListAPIView):
+    # RF-19: el administrador consulta todas las publicaciones, en cualquier estado.
+    serializer_class = PublicacionSerializer
+    permission_classes = [EsAdministrador]
+    pagination_class = PaginacionAdministracion
+
+    def get_queryset(self):
+        return publicaciones_con_relaciones().order_by('-actualizado_en', '-id')
+
+    def filter_queryset(self, queryset):
+        filtro = FiltroMisPublicacionesSerializer(data=self.request.query_params, partial=True)
+        filtro.is_valid(raise_exception=True)
+        estado = filtro.validated_data.get('estado')
+        return queryset.filter(estado=estado) if estado else queryset
+
+    def list(self, request, *args, **kwargs):
+        respuesta = super().list(request, *args, **kwargs)
+        respuesta.data['totales'] = totales_por_estado(Publicacion.objects.all())
+        return respuesta
+
+
 class PublicacionAprobarView(APIView):
     permission_classes = [EsAdministrador]
 
@@ -188,48 +209,88 @@ class PublicacionAprobarView(APIView):
         return respuesta_interna(request, publicacion)
 
 
-class PublicacionRechazarView(APIView):
+class AccionAdministrativaConNotaView(APIView):
+    # Rechazar, pedir cambios, mantener observada u ocultar: exigen nota, quedan en el historial
+    # de moderación y en la auditoría (RF-19, RNF-12) y avisan al dueño.
     permission_classes = [EsAdministrador]
+    estados_permitidos = ESTADOS_EN_REVISION
+    mensaje_estado_invalido = 'Solo se pueden moderar publicaciones en revisión u observadas.'
+    estado_destino = None
+    tipo_evento = None
+    tipo_accion = None
+
+    def aviso(self, nota):
+        raise NotImplementedError
 
     @transaction.atomic
     def post(self, request, id, *args, **kwargs):
-        publicacion = obtener_para_moderar(id)
+        publicacion = generics.get_object_or_404(Publicacion, id=id)
+        if publicacion.estado.codigo not in self.estados_permitidos:
+            raise ValidationError({'detail': self.mensaje_estado_invalido})
         serializer = AccionConNotaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         nota = serializer.validated_data['nota']
 
-        publicacion.estado = EstadoPublicacion.por_codigo('rechazada')
-        publicacion.save(update_fields=['estado', 'actualizado_en'])
+        if self.estado_destino:
+            publicacion.estado = EstadoPublicacion.por_codigo(self.estado_destino)
+            publicacion.save(update_fields=['estado', 'actualizado_en'])
         EventoModeracion.objects.create(
-            publicacion=publicacion, administrador=request.user, tipo='rechazo', nota=nota,
+            publicacion=publicacion, administrador=request.user, tipo=self.tipo_evento, nota=nota,
         )
-        registrar_accion(request.user, 'rechazo_publicacion', publicacion, nota)
-        notificar(
-            [publicacion.propietario], f'Tu publicación fue rechazada. Motivo: {nota}', 'error', publicacion,
-        )
+        registrar_accion(request.user, self.tipo_accion, publicacion, nota)
+        notificar([publicacion.propietario], self.aviso(nota), 'error', publicacion)
         return respuesta_interna(request, publicacion)
 
 
-class PublicacionSolicitarModificacionesView(APIView):
+class PublicacionRechazarView(AccionAdministrativaConNotaView):
+    estado_destino = 'rechazada'
+    tipo_evento = 'rechazo'
+    tipo_accion = 'rechazo_publicacion'
+
+    def aviso(self, nota):
+        return f'Tu publicación fue rechazada. Motivo: {nota}'
+
+
+class PublicacionSolicitarModificacionesView(AccionAdministrativaConNotaView):
+    estado_destino = 'observada'
+    tipo_evento = 'solicitud_modificacion'
+    tipo_accion = 'solicitud_modificaciones'
+
+    def aviso(self, nota):
+        return f'Un administrador solicitó modificaciones en tu publicación. Nota: {nota}'
+
+
+class PublicacionMantenerObservadaView(AccionAdministrativaConNotaView):
+    estados_permitidos = ('observada',)
+    mensaje_estado_invalido = 'Solo se puede mantener observada una publicación observada.'
+    tipo_evento = 'mantener_observada'
+    tipo_accion = 'mantener_observada'
+
+    def aviso(self, nota):
+        return f'Un administrador revisó tu publicación y sigue observada. Nota: {nota}'
+
+
+class PublicacionOcultarView(AccionAdministrativaConNotaView):
+    estados_permitidos = ESTADOS_OCULTABLES
+    mensaje_estado_invalido = 'Esta publicación no se puede ocultar en su estado actual.'
+    estado_destino = 'oculta'
+    tipo_evento = 'ocultamiento'
+    tipo_accion = 'ocultamiento_publicacion'
+
+    def aviso(self, nota):
+        return f'Un administrador ocultó tu publicación. Motivo: {nota}'
+
+
+class PublicacionMostrarView(APIView):
     permission_classes = [EsAdministrador]
 
     @transaction.atomic
     def post(self, request, id, *args, **kwargs):
-        publicacion = obtener_para_moderar(id)
-        serializer = AccionConNotaSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        nota = serializer.validated_data['nota']
-
-        publicacion.estado = EstadoPublicacion.por_codigo('observada')
+        publicacion = generics.get_object_or_404(Publicacion, id=id)
+        if publicacion.estado.codigo != 'oculta':
+            raise ValidationError({'detail': 'Solo se puede volver a mostrar una publicación oculta.'})
+        publicacion.estado = EstadoPublicacion.por_codigo('activa')
         publicacion.save(update_fields=['estado', 'actualizado_en'])
-        EventoModeracion.objects.create(
-            publicacion=publicacion, administrador=request.user, tipo='solicitud_modificacion', nota=nota,
-        )
-        registrar_accion(request.user, 'solicitud_modificaciones', publicacion, nota)
-        notificar(
-            [publicacion.propietario],
-            f'Un administrador solicitó modificaciones en tu publicación. Nota: {nota}',
-            'error',
-            publicacion,
-        )
+        registrar_accion(request.user, 'restauracion_publicacion', publicacion)
+        notificar([publicacion.propietario], 'Tu publicación volvió a estar visible.', referencia=publicacion)
         return respuesta_interna(request, publicacion)
