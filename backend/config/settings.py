@@ -17,6 +17,10 @@ if OSGEO4W_ROOT:
     os.environ['GDAL_DATA'] = str(_osgeo4w / 'apps' / 'gdal' / 'share' / 'gdal')
     os.environ['PROJ_DATA'] = str(_osgeo4w / 'share' / 'proj')
 
+# Alternativa a OSGeo4W: rutas directas, por ejemplo a las bibliotecas que instala PostGIS junto a PostgreSQL.
+GDAL_LIBRARY_PATH = env('GDAL_LIBRARY_PATH', default='') or None
+GEOS_LIBRARY_PATH = env('GEOS_LIBRARY_PATH', default='') or None
+
 SECRET_KEY = env('DJANGO_SECRET_KEY')
 DEBUG = env.bool('DJANGO_DEBUG', default=False)
 ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=[])

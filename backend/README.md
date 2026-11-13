@@ -14,6 +14,13 @@ API REST en Django REST Framework con PostgreSQL y PostGIS. El frontend todavía
 2. Abrir **Application Stack Builder** e instalar PostGIS desde **Spatial Extensions**.
 3. Instalar [OSGeo4W](https://trac.osgeo.org/osgeo4w/) con la opción **Express Install** y el paquete **GDAL**.
 
+Si Windows tiene activado **Smart App Control**, puede bloquear las bibliotecas de OSGeo4W, y el backend no arranca (`WinError 4551`). En ese caso no hace falta OSGeo4W: alcanza con usar las bibliotecas que instala PostGIS. En `.env`, dejá vacío `OSGEO4W_ROOT` y completá:
+
+```bash
+GDAL_LIBRARY_PATH=C:\Program Files\PostgreSQL\18\bin\libgdal-35.dll
+GEOS_LIBRARY_PATH=C:\Program Files\PostgreSQL\18\bin\libgeos_c.dll
+```
+
 ### Linux (Debian o Ubuntu)
 
 ```bash
