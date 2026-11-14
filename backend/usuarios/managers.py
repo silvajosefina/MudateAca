@@ -5,6 +5,10 @@ class UsuarioManager(BaseUserManager):
     def get_queryset(self):
         return super().get_queryset().select_related('rol', 'estado_cuenta')
 
+    def get_by_natural_key(self, correo):
+        # El login acepta el correo con cualquier combinación de mayúsculas.
+        return self.get(correo__iexact=correo)
+
     def _resolver_catalogo(self, campo, valor):
         # Permite pasar el código del catálogo ('propietario') en vez de la instancia.
         if isinstance(valor, str):
@@ -16,7 +20,7 @@ class UsuarioManager(BaseUserManager):
             raise ValueError('El usuario debe tener un correo electrónico.')
         # createsuperuser de Django envía la clave como 'password'; sin esto se guardaría inutilizable.
         contrasena = campos_extra.pop('password', None) or contrasena
-        correo = self.normalize_email(correo)
+        correo = self.normalize_email(correo).lower()
         campos_extra['rol'] = self._resolver_catalogo('rol', campos_extra['rol'])
         campos_extra['estado_cuenta'] = self._resolver_catalogo(
             'estado_cuenta', campos_extra.get('estado_cuenta', 'activo'),

@@ -146,7 +146,7 @@ class SolicitarRecuperacionView(APIView):
         serializer.is_valid(raise_exception=True)
         correo = serializer.validated_data['correo'].lower()
 
-        usuario = Usuario.objects.filter(correo=correo).first()
+        usuario = Usuario.objects.filter(correo__iexact=correo).first()
         if usuario is not None:
             uid = urlsafe_base64_encode(force_bytes(usuario.pk))
             token = default_token_generator.make_token(usuario)
