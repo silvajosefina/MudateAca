@@ -9,3 +9,5 @@ staticfiles/
 .DS_Store
 privado/
 copias_de_seguridad/
+.coverage
+htmlcov/

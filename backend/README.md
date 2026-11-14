@@ -135,6 +135,8 @@ python manage.py test
 
 Las pruebas generales de seguridad, sus resultados y lo pendiente para el despliegue están en [SEGURIDAD.md](SEGURIDAD.md).
 
+Las pruebas unitarias de autenticación y su cobertura están en [PRUEBAS.md](PRUEBAS.md).
+
 ## Publicaciones
 
 Todas las rutas empiezan con `/api/publicaciones/`.

@@ -78,65 +78,6 @@ class RutasProtegidasTests(APITestCase):
                     self.assertEqual(getattr(cliente, metodo)(f'/{ruta}', {}, format='json').status_code, 403)
 
 
-class SesionYContrasenasTests(APITestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.usuario = crear_usuario('ana@mudateaca.com')
-
-    def setUp(self):
-        cache.clear()
-
-    def iniciar_sesion(self, contrasena='Prueba123'):
-        return self.client.post(
-            reverse('login'), {'correo': 'ana@mudateaca.com', 'contrasena': contrasena}, format='json',
-        )
-
-    def test_los_tokens_viajan_en_cookies_httponly_y_nunca_en_el_cuerpo(self):
-        respuesta = self.iniciar_sesion()
-
-        for nombre in ('access_token', 'refresh_token'):
-            with self.subTest(cookie=nombre):
-                cookie = respuesta.cookies[nombre]
-                self.assertTrue(cookie['httponly'])
-                self.assertEqual(cookie['samesite'], 'Lax')
-                self.assertNotIn(cookie.value, respuesta.content.decode())
-
-    @override_settings(JWT_COOKIE_SECURE=True)
-    def test_en_produccion_las_cookies_solo_viajan_por_https(self):
-        respuesta = self.iniciar_sesion()
-
-        self.assertTrue(respuesta.cookies['access_token']['secure'])
-        self.assertTrue(respuesta.cookies['refresh_token']['secure'])
-
-    def test_frena_los_intentos_repetidos_de_login(self):
-        for _ in range(10):
-            self.assertEqual(self.iniciar_sesion('Incorrecta1').status_code, 401)
-
-        respuesta = self.iniciar_sesion()
-
-        self.assertEqual(respuesta.status_code, 429)
-        self.assertTrue(respuesta.data['detail'].startswith('Hiciste demasiados intentos.'))
-        self.assertIn('Retry-After', respuesta)
-
-    def test_un_error_de_login_no_revela_si_el_correo_existe(self):
-        existente = self.iniciar_sesion('Incorrecta1').data
-        cache.clear()
-        inexistente = self.client.post(
-            reverse('login'), {'correo': 'nadie@mudateaca.com', 'contrasena': 'Incorrecta1'}, format='json',
-        ).data
-
-        self.assertEqual(existente, inexistente)
-
-    def test_rechaza_contrasenas_debiles(self):
-        datos = {
-            'nombre': 'Ana', 'apellido': 'Pérez', 'celular': '3411234567', 'correo': 'nueva@mudateaca.com',
-            'rol': 'interesado',
-        }
-        for contrasena in ('corta1A', 'sinnumeros', 'SINMINUSCULA1', '12345678'):
-            with self.subTest(contrasena=contrasena):
-                respuesta = self.client.post(reverse('registro'), {**datos, 'contrasena': contrasena}, format='json')
-
-                self.assertEqual(respuesta.status_code, 400)
 
 
 class InyeccionYCorsTests(APITestCase):

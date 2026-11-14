@@ -9,7 +9,7 @@ python manage.py test config.tests_seguridad
 python manage.py test
 ```
 
-El primer comando ejecuta solo las pruebas de seguridad; el segundo, toda la suite (315 pruebas, todas aprobadas).
+El primer comando ejecuta las pruebas generales de seguridad; el segundo, toda la suite. Las pruebas de autenticación (login, contraseñas, sesión y recuperación de cuenta) están en `usuarios/tests_autenticacion.py` y se detallan en [PRUEBAS.md](PRUEBAS.md).
 
 ## Controles verificados
 
@@ -20,10 +20,10 @@ El primer comando ejecuta solo las pruebas de seguridad; el segundo, toda la sui
 | RNF-05 Autorización | Nadie modifica, elimina ni lee recursos ajenos (publicaciones, búsquedas, favoritos, reclamos, conversaciones, notificaciones) | Pruebas de cada módulo, por ejemplo `test_no_permite_editar_publicaciones_ajenas` |
 | RNF-05 Autorización | No se pueden modificar campos protegidos desde la API, como estado, propietario, rol o correo | `test_el_estado_no_se_edita_por_esta_via`, `test_el_perfil_no_permite_cambiar_rol_correo_ni_estado` |
 | RNF-04 Contraseñas | Se guardan con hash PBKDF2; se rechazan contraseñas débiles | `test_la_contrasena_nunca_se_guarda_en_texto_plano`, `test_rechaza_contrasenas_debiles` |
-| RNF-04 Sesión | Los tokens viajan en cookies `HttpOnly` y `SameSite=Lax`, nunca en el cuerpo; en producción, solo por HTTPS | `SesionYContrasenasTests` |
+| RNF-04 Sesión | Los tokens viajan en cookies `HttpOnly` y `SameSite=Lax`, nunca en el cuerpo; en producción, solo por HTTPS | `LoginTests`, en `usuarios/tests_autenticacion.py` |
 | RNF-04 Sesión | Se limitan los intentos de login y registro a 10 por minuto | `test_frena_los_intentos_repetidos_de_login` |
 | RNF-04 Sesión | Un login fallido no revela si el correo existe | `test_un_error_de_login_no_revela_si_el_correo_existe` |
-| RF-20 Suspensión | Una cuenta suspendida no inicia sesión, pierde la sesión abierta y no puede renovarla | `SuspensionTests` |
+| RF-20 Suspensión | Una cuenta suspendida no inicia sesión, pierde la sesión abierta y no puede renovarla | `LoginTests` y `SesionTests`, en `usuarios/tests_autenticacion.py` |
 | RNF-06 Documentación | Los documentos de verificación quedan fuera de las carpetas públicas y solo los descargan el dueño o un administrador; con Cloudinary, mediante un enlace firmado que vence a los 10 minutos | `DocumentoDeVerificacionTests`, `AlmacenamientoCloudinaryTests` |
 | RNF-08 Validación | Los archivos se validan por contenido, no solo por extensión, con un máximo de 10 MB | `ArchivosSubidosTests` |
 | RNF-08 Validación | Los filtros no permiten inyección SQL | `test_los_filtros_no_permiten_inyeccion_sql` |
