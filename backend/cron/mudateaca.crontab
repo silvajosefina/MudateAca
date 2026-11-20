@@ -1,0 +1,12 @@
+# Tareas automáticas de Mudate Acá, ejecutadas por el cron del servidor (arquitectura, sección 3.2).
+# Instalación: ajustar BACKEND a la carpeta del backend en el servidor y ejecutar
+#   crontab cron/mudateaca.crontab
+# Ojo: ese comando reemplaza las tareas que el usuario ya tuviera en su crontab.
+SHELL=/bin/sh
+BACKEND=/opt/mudateaca/backend
+
+# RF-08: todos los días a las 2:00 archiva las publicaciones alquiladas hace 7 días o más.
+0 2 * * * cd $BACKEND && .venv/bin/python manage.py archivar_publicaciones >> $BACKEND/archivado.log 2>&1
+
+# RNF-11: todos los días a las 3:00 genera la copia de la base, la sube a Cloudinary y borra las de más de 7 días.
+0 3 * * * cd $BACKEND && .venv/bin/python manage.py respaldar_base >> $BACKEND/respaldo.log 2>&1

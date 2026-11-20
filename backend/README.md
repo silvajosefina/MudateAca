@@ -70,6 +70,38 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+## Tareas automáticas (cron)
+
+Dos comandos se ejecutan solos todos los días:
+
+| Hora | Comando | Qué hace |
+|---|---|---|
+| 2:00 | `archivar_publicaciones` | Archiva las publicaciones alquiladas hace 7 días o más (RF-08) |
+| 3:00 | `respaldar_base` | Genera la copia de la base, la sube a Cloudinary y borra las de más de 7 días (RNF-11) |
+
+En el servidor (Linux) se programan con cron, a partir de [`cron/mudateaca.crontab`](cron/mudateaca.crontab). Antes de instalarlo hay que cambiar la variable `BACKEND` por la carpeta del backend en el servidor:
+
+```bash
+crontab cron/mudateaca.crontab
+crontab -l
+```
+
+`crontab -l` muestra las tareas instaladas. El resultado de cada ejecución queda en `archivado.log` y `respaldo.log`, dentro de la carpeta del backend. El comando `crontab` reemplaza las tareas que el usuario ya tuviera: si había otras, hay que sumarlas al archivo antes de instalarlo.
+
+Windows no tiene cron. El equivalente es el Programador de tareas. En PowerShell, desde la carpeta `backend`:
+
+```powershell
+$backend = (Get-Location).Path
+$ajustes = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+foreach ($tarea in @(@('archivado', 'archivar_publicaciones', '20:50'), @('respaldo', 'respaldar_base', '21:00'))) {
+    $nombre, $comando, $hora = $tarea
+    $accion = New-ScheduledTaskAction -Execute 'cmd.exe' -WorkingDirectory $backend -Argument "/c `"`"$backend\.venv\Scripts\python.exe`" `"$backend\manage.py`" $comando >> `"$backend\$nombre.log`" 2>&1`""
+    Register-ScheduledTask -TaskName "Mudate Aca - $nombre diario" -Action $accion -Trigger (New-ScheduledTaskTrigger -Daily -At $hora) -Settings $ajustes
+}
+```
+
+Si la PC está apagada a la hora programada, la tarea se ejecuta apenas se vuelve a prender.
+
 ## Copias de seguridad (RNF-11)
 
 El comando `respaldar_base` hace lo siguiente:
@@ -85,22 +117,7 @@ En Windows, `PG_BIN_DIR` debe apuntar a la carpeta de PostgreSQL, por ejemplo `C
 python manage.py respaldar_base
 ```
 
-Se programa una vez por día. En Linux, con cron:
-
-```bash
-0 3 * * * cd /ruta/al/backend && .venv/bin/python manage.py respaldar_base
-```
-
-En Windows, con el Programador de tareas. En PowerShell, desde la carpeta `backend`:
-
-```powershell
-$backend = (Get-Location).Path
-$accion = New-ScheduledTaskAction -Execute 'cmd.exe' -WorkingDirectory $backend -Argument "/c `"`"$backend\.venv\Scripts\python.exe`" `"$backend\manage.py`" respaldar_base >> `"$backend\copias_de_seguridad\respaldo.log`" 2>&1`""
-$ajustes = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-Register-ScheduledTask -TaskName 'Mudate Aca - respaldo diario' -Action $accion -Trigger (New-ScheduledTaskTrigger -Daily -At '21:00') -Settings $ajustes
-```
-
-Si la PC está apagada a la hora programada, la copia se hace apenas se vuelve a prender. El resultado de cada ejecución queda en `copias_de_seguridad/respaldo.log`.
+Se ejecuta automáticamente todos los días: ver [Tareas automáticas](#tareas-automáticas-cron).
 
 Para restaurar una copia en una base vacía:
 
@@ -259,11 +276,7 @@ Las rutas de administración empiezan con `/api/usuarios/` y son solo para admin
 
 ## Archivado automático
 
-El comando `archivar_publicaciones` archiva las publicaciones alquiladas hace 7 días o más. En producción se programa con el cron del servidor, por ejemplo todos los días a las 3:00:
-
-```bash
-0 3 * * * cd /ruta/al/backend && .venv/bin/python manage.py archivar_publicaciones
-```
+El comando `archivar_publicaciones` archiva las publicaciones alquiladas hace 7 días o más. Se ejecuta automáticamente todos los días: ver [Tareas automáticas](#tareas-automáticas-cron).
 
 Para ejecutarlo a mano:
 

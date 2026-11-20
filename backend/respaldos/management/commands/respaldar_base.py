@@ -11,8 +11,7 @@ from respaldos.servicios import (
 
 
 class Command(BaseCommand):
-    # RNF-11: se programa una vez por día. En el servidor, por ejemplo con cron a las 3:00:
-    # 0 3 * * * cd /ruta/al/backend && .venv/bin/python manage.py respaldar_base
+    # Se ejecuta con el cron del servidor (RNF-11): ver cron/mudateaca.crontab.
     help = 'Genera una copia verificada de la base, la sube a Cloudinary y borra las de más de 7 días.'
 
     def handle(self, *args, **opciones):

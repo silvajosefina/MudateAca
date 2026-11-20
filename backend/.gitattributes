@@ -1,0 +1,2 @@
+# cron en Linux no acepta saltos de línea de Windows.
+cron/*.crontab text eol=lf
