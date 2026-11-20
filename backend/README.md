@@ -70,6 +70,19 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+## Despliegue en producción
+
+El backend se publica en un servidor Ubuntu con Gunicorn detrás de Nginx, en la carpeta `/srv/mudateaca`. Los archivos de configuración están en el repositorio:
+
+| Archivo | Para qué sirve |
+|---|---|
+| [`.env.produccion.example`](.env.produccion.example) | Variables del servidor, que se copian como `.env` y se completan |
+| [`deploy/mudateaca.service`](deploy/mudateaca.service) | Servicio de systemd que mantiene Gunicorn funcionando |
+| [`deploy/nginx.conf`](deploy/nginx.conf) | Sitio de Nginx: pasa `/api/` y `/admin/` a Gunicorn y sirve los estilos y el frontend |
+| [`cron/mudateaca.crontab`](cron/mudateaca.crontab) | Tareas diarias de archivado y backups |
+
+El paso a paso completo está en el manual técnico.
+
 ## Tareas automáticas (cron)
 
 Dos comandos se ejecutan solos todos los días:

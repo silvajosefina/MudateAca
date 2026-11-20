@@ -109,6 +109,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+# `collectstatic` reúne acá los estilos del panel de administración; en producción los sirve Nginx.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -187,6 +189,16 @@ if not DEBUG:
 
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 CORS_ALLOW_CREDENTIALS = True
+# Detrás de HTTPS, el login del panel de administración necesita conocer el dominio público.
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[])
+
+# Registro de errores: en el servidor, systemd guarda esta salida (journalctl -u mudateaca).
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'consola': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['consola'], 'level': 'ERROR'},
+}
 
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
 

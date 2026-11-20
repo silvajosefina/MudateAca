@@ -1,0 +1,15 @@
+# Servicio de systemd que mantiene el backend funcionando con Gunicorn y lo reinicia si se cae.
+# Instalación: sudo cp deploy/mudateaca.service /etc/systemd/system/
+[Unit]
+Description=Mudate Acá - backend (Gunicorn)
+After=network.target postgresql.service
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/srv/mudateaca/backend
+ExecStart=/srv/mudateaca/backend/.venv/bin/gunicorn config.wsgi:application --bind 127.0.0.1:8000 --workers 3 --timeout 60
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
