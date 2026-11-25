@@ -6,7 +6,7 @@ import RutaPrivada from './components/RutaPrivada'
 import ToastViewport from './components/ToastViewport'
 import ScrollAlTope from './components/ScrollAlTope'
 import BotonAyuda from './components/BotonAyuda'
-import { useSesion, validarSesion } from './servicios/sesion'
+import { useSesion, useSesionValidada, validarSesion } from './servicios/sesion'
 import { rutaDeInicio } from './utils/rutas'
 
 // Cada pantalla se descarga recién cuando se abre; Login y Explorar, las de entrada, van en el paquete inicial.
@@ -34,20 +34,26 @@ const ROLES_ANUNCIANTE = ['propietario', 'inmobiliaria'] as const
 function App() {
   // Redibuja la aplicación cuando la sesión se inicia, se cierra o vence.
   // Con la sesión abierta, la raíz, el login y el registro llevan a la pantalla de inicio del rol.
+  // Hasta confirmar la sesión con el backend no se redirige por rol: el perfil guardado
+  // puede ser de una sesión vencida y llevaría a una pantalla privada que termina en el login.
   const sesion = useSesion()
+  const sesionValidada = useSesionValidada()
 
   useEffect(() => {
     validarSesion()
   }, [])
 
+  const cargando = <p className="text-sm text-muted text-center py-16">Cargando…</p>
+  const inicio = <Navigate to={rutaDeInicio(sesion?.rol)} replace />
+
   return (
     <>
       <ScrollAlTope />
-      <Suspense fallback={<p className="text-sm text-muted text-center py-16">Cargando…</p>}>
+      <Suspense fallback={cargando}>
       <Routes>
-        <Route path="/" element={<Navigate to={rutaDeInicio(sesion?.rol)} replace />} />
-        <Route path="/login" element={sesion ? <Navigate to={rutaDeInicio(sesion.rol)} replace /> : <Login />} />
-        <Route path="/registro" element={sesion ? <Navigate to={rutaDeInicio(sesion.rol)} replace /> : <Registro />} />
+        <Route path="/" element={sesionValidada ? inicio : cargando} />
+        <Route path="/login" element={!sesionValidada ? cargando : sesion ? inicio : <Login />} />
+        <Route path="/registro" element={!sesionValidada ? cargando : sesion ? inicio : <Registro />} />
         <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
         <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
         <Route path="/explorar" element={<Explorar />} />

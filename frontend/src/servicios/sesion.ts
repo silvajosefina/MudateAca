@@ -61,14 +61,21 @@ export async function cerrarSesion() {
     }
 }
 
+// Indica si ya se confirmó con el backend la sesión guardada al abrir la aplicación.
+// Mientras tanto, el perfil de localStorage puede ser de una sesión que ya venció.
+let sesionValidada = false
+
 // Al abrir la aplicación, confirma con el backend que la sesión guardada sigue vigente
 // y trae los datos actualizados del perfil (por ejemplo, si el administrador la suspendió).
 export async function validarSesion() {
-    if (!obtenerSesion()) return
     try {
+        if (!obtenerSesion()) return
         guardar(await obtenerPerfil())
     } catch (error) {
         if (isAxiosError(error) && error.response?.status === 401) guardar(null)
+    } finally {
+        sesionValidada = true
+        avisarCambio()
     }
 }
 
@@ -88,4 +95,10 @@ function suscribir(avisar: () => void) {
 export function useSesion() {
     useSyncExternalStore(suscribir, leerCrudo)
     return obtenerSesion()
+}
+
+// Devuelve true cuando terminó la validación inicial; antes de eso no conviene decidir
+// a qué pantalla llevar al usuario según su rol.
+export function useSesionValidada() {
+    return useSyncExternalStore(suscribir, () => sesionValidada)
 }
