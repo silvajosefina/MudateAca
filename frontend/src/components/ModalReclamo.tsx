@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Flag, X } from 'lucide-react'
 import { crearReclamo, existeReclamoPendiente } from '../mocks/reclamos'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import type { MotivoReclamo, TipoObjetivoReclamo } from '../types/reclamo'
 

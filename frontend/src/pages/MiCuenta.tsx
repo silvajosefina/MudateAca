@@ -2,18 +2,19 @@ import { useState, type SubmitEvent } from 'react'
 import { User } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import PanelLayout from '../layouts/PanelLayout'
-import { obtenerSesion, actualizarUsuarioSesion } from '../mocks/sesion'
-import { actualizarUsuario, MOCK_USUARIOS } from '../mocks/usuarios'
+import { obtenerSesion, iniciarSesion } from '../servicios/sesion'
+import { actualizarPerfil } from '../servicios/usuarios'
+import { erroresDeCampos, mensajeDeError } from '../servicios/errores'
 import { mostrarToast } from '../mocks/toast'
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const CELULAR_REGEX = /^[0-9+\s-]{8,20}$/
 
 interface Errores {
     nombre?: string
     apellido?: string
     celular?: string
-    correo?: string
+    razonSocial?: string
+    general?: string
 }
 
 function MiCuenta() {
@@ -21,14 +22,16 @@ function MiCuenta() {
     const [nombre, setNombre] = useState(sesion?.nombre ?? '')
     const [apellido, setApellido] = useState(sesion?.apellido ?? '')
     const [celular, setCelular] = useState(sesion?.celular ?? '')
-    const [correo, setCorreo] = useState(sesion?.correo ?? '')
+    const [razonSocial, setRazonSocial] = useState(sesion?.razonSocial ?? '')
     const [errores, setErrores] = useState<Errores>({})
+    const [enviando, setEnviando] = useState(false)
 
     if (!sesion) return null
 
     const Layout = sesion.rol === 'interesado' ? PublicoLayout : PanelLayout
+    const esInmobiliaria = sesion.rol === 'inmobiliaria'
 
-    function handleSubmit(e: SubmitEvent) {
+    async function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
         const nuevosErrores: Errores = {}
 
@@ -41,26 +44,36 @@ function MiCuenta() {
             nuevosErrores.celular = 'Ingresá un número de celular válido.'
         }
 
-        if (!correo.trim()) {
-            nuevosErrores.correo = 'Ingresá tu correo electrónico.'
-        } else if (!EMAIL_REGEX.test(correo)) {
-            nuevosErrores.correo = 'Ingresá un correo electrónico válido.'
-        } else if (MOCK_USUARIOS.some((u) => u.id !== sesion!.id && u.correo === correo.trim().toLowerCase())) {
-            nuevosErrores.correo = 'Este correo ya está en uso por otra cuenta.'
+        if (esInmobiliaria && !razonSocial.trim()) {
+            nuevosErrores.razonSocial = 'Indicá la razón social de la inmobiliaria.'
         }
 
         setErrores(nuevosErrores)
         if (Object.keys(nuevosErrores).length > 0) return
 
-        const cambios = {
-            nombre: nombre.trim(),
-            apellido: apellido.trim(),
-            celular: celular.trim(),
-            correo: correo.trim().toLowerCase(),
+        setEnviando(true)
+        try {
+            const usuario = await actualizarPerfil({
+                nombre: nombre.trim(),
+                apellido: apellido.trim(),
+                celular: celular.trim(),
+                razonSocial: esInmobiliaria ? razonSocial.trim() : undefined,
+            })
+            iniciarSesion(usuario)
+            mostrarToast('Tus datos se actualizaron correctamente.')
+        } catch (error) {
+            const campos = erroresDeCampos(error)
+            const errorDelServidor: Errores = {
+                nombre: campos.nombre,
+                apellido: campos.apellido,
+                celular: campos.celular,
+                razonSocial: campos.razon_social,
+            }
+            const hayErrorDeCampo = Object.values(errorDelServidor).some(Boolean)
+            setErrores(hayErrorDeCampo ? errorDelServidor : { general: mensajeDeError(error) })
+        } finally {
+            setEnviando(false)
         }
-        actualizarUsuario(sesion!.id, cambios)
-        actualizarUsuarioSesion(cambios)
-        mostrarToast('Tus datos se actualizaron correctamente.')
     }
 
     return (
@@ -116,18 +129,34 @@ function MiCuenta() {
                         <label className="text-xs font-semibold text-muted">Correo electrónico</label>
                         <input
                             type="email"
-                            value={correo}
-                            onChange={(e) => setCorreo(e.target.value)}
-                            className={`w-full border rounded-lg px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-primary ${errores.correo ? 'border-danger' : 'border-border'
-                                }`}
+                            value={sesion.correo}
+                            disabled
+                            className="w-full border border-border rounded-lg px-3 py-2 mt-1 bg-surface-hover text-muted cursor-not-allowed"
                         />
-                        {errores.correo && <p className="text-xs text-danger mt-1">{errores.correo}</p>}
+                        <p className="text-xs text-muted mt-1">El correo identifica tu cuenta y no se puede cambiar.</p>
                     </div>
                 </div>
 
+                {esInmobiliaria && (
+                    <div>
+                        <label className="text-xs font-semibold text-muted">Razón social</label>
+                        <input
+                            type="text"
+                            value={razonSocial}
+                            onChange={(e) => setRazonSocial(e.target.value)}
+                            className={`w-full border rounded-lg px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-primary ${errores.razonSocial ? 'border-danger' : 'border-border'
+                                }`}
+                        />
+                        {errores.razonSocial && <p className="text-xs text-danger mt-1">{errores.razonSocial}</p>}
+                    </div>
+                )}
+
+                {errores.general && <p className="text-xs text-danger">{errores.general}</p>}
+
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 mt-2 transition-colors cursor-pointer"
+                    disabled={enviando}
+                    className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 mt-2 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                 >
                     Guardar cambios
                 </button>

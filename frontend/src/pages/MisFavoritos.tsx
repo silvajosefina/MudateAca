@@ -4,7 +4,7 @@ import PublicoLayout from '../layouts/PublicoLayout'
 import TarjetaPublicacion from '../components/TarjetaPublicacion'
 import Paginacion from '../components/Paginacion'
 import { obtenerFavoritosDeUsuario } from '../mocks/favoritos'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
 import type { Publicacion } from '../types/publicacion'
 

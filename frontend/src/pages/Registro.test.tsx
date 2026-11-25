@@ -2,19 +2,34 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import Registro from './Registro'
-import { MOCK_USUARIOS } from '../mocks/usuarios'
-import type { Usuario } from '../types/usuario'
+import { iniciarSesion } from '../servicios/sesion'
+import { ingresar, registrar } from '../servicios/usuarios'
+import type { SesionUsuario } from '../types/usuario'
 
-jest.mock('../mocks/usuarios', () => ({ MOCK_USUARIOS: [] }))
+const mockNavigate = jest.fn()
 
-const usuarioExistente: Usuario = {
-    id: 'u1',
+jest.mock('react-router', () => ({
+    ...jest.requireActual('react-router'),
+    useNavigate: () => mockNavigate,
+}))
+
+jest.mock('../servicios/sesion', () => ({ iniciarSesion: jest.fn() }))
+jest.mock('../servicios/usuarios', () => ({ ingresar: jest.fn(), registrar: jest.fn() }))
+
+const mockRegistrar = registrar as jest.MockedFunction<typeof registrar>
+const mockIngresar = ingresar as jest.MockedFunction<typeof ingresar>
+
+function errorDeApi(status: number, data: unknown) {
+    return Object.assign(new Error(`HTTP ${status}`), { isAxiosError: true, response: { status, data } })
+}
+
+const usuarioCreado: SesionUsuario = {
+    id: '7',
     nombre: 'Ana',
     apellido: 'Gómez',
-    celular: '2392400000',
-    correo: 'ya.registrado@mudateaca.com',
-    contrasena: 'Clave123',
-    rol: 'interesado',
+    celular: '2392400001',
+    correo: 'nueva@mudateaca.com',
+    rol: 'propietario',
     estadoCuenta: 'activo',
 }
 
@@ -52,13 +67,8 @@ const DATOS_VALIDOS: Required<DatosFormulario> = {
     contrasena: 'Clave123',
 }
 
-beforeEach(() => {
-    MOCK_USUARIOS.length = 0
-    MOCK_USUARIOS.push(usuarioExistente)
-})
-
 afterEach(() => {
-    jest.restoreAllMocks()
+    jest.clearAllMocks()
 })
 
 describe('Registro', () => {
@@ -98,10 +108,12 @@ describe('Registro', () => {
         await user.click(screen.getByRole('button', { name: 'Registrarme' }))
         expect(await screen.findByText('Ingresá tu correo electrónico.')).toBeInTheDocument()
 
+        mockRegistrar.mockRejectedValue(errorDeApi(400, { correo: ['Este correo ya está registrado.'] }))
         await user.clear(screen.getByPlaceholderText('Correo electrónico'))
-        user = await completarFormulario({ correo: 'ya.registrado@mudateaca.com' })
+        user = await completarFormulario({ correo: 'ya.registrado@mudateaca.com', contrasena: 'Clave123' })
         await user.click(screen.getByRole('button', { name: 'Registrarme' }))
         expect(await screen.findByText('Este correo ya está registrado.')).toBeInTheDocument()
+        expect(iniciarSesion).not.toHaveBeenCalled()
     })
 
     test.each([
@@ -164,18 +176,37 @@ describe('Registro', () => {
         expect(select.value).toBe('propietario')
     })
 
-    test('con todos los datos válidos no muestra errores y envía los datos', async () => {
-        const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined)
+    test('pide la razón social cuando el rol es inmobiliaria', async () => {
+        renderRegistro()
+        const user = await completarFormulario(DATOS_VALIDOS)
+        await user.selectOptions(screen.getByRole('combobox'), 'inmobiliaria')
+        await user.click(screen.getByRole('button', { name: 'Registrarme' }))
+        expect(await screen.findByText('Indicá la razón social de la inmobiliaria.')).toBeInTheDocument()
+        expect(mockRegistrar).not.toHaveBeenCalled()
+    })
+
+    test('con todos los datos válidos crea la cuenta, inicia sesión y navega al panel', async () => {
+        mockRegistrar.mockResolvedValue(usuarioCreado)
+        mockIngresar.mockResolvedValue(usuarioCreado)
         renderRegistro()
         const user = await completarFormulario(DATOS_VALIDOS)
         await user.selectOptions(screen.getByRole('combobox'), 'propietario')
         await user.click(screen.getByRole('button', { name: 'Registrarme' }))
 
-        expect(screen.queryByText('Ingresá tu nombre.')).not.toBeInTheDocument()
-        expect(screen.queryByText('Ingresá un correo electrónico válido.')).not.toBeInTheDocument()
-        expect(screen.queryByText('La contraseña no cumple los requisitos.')).not.toBeInTheDocument()
-        expect(logSpy).toHaveBeenCalledWith(
-            expect.objectContaining({ ...DATOS_VALIDOS, rol: 'propietario' }),
+        expect(mockRegistrar).toHaveBeenCalledWith(
+            expect.objectContaining({ ...DATOS_VALIDOS, rol: 'propietario', razonSocial: undefined }),
         )
+        expect(mockIngresar).toHaveBeenCalledWith(DATOS_VALIDOS.correo, DATOS_VALIDOS.contrasena)
+        expect(iniciarSesion).toHaveBeenCalledWith(usuarioCreado)
+        expect(mockNavigate).toHaveBeenCalledWith('/mis-publicaciones')
+    })
+
+    test('muestra un mensaje general si el servidor no responde', async () => {
+        mockRegistrar.mockRejectedValue(Object.assign(new Error('Network Error'), { isAxiosError: true }))
+        renderRegistro()
+        const user = await completarFormulario(DATOS_VALIDOS)
+        await user.click(screen.getByRole('button', { name: 'Registrarme' }))
+        expect(await screen.findByText('No se pudo conectar con el servidor. Revisá tu conexión.')).toBeInTheDocument()
+        expect(mockNavigate).not.toHaveBeenCalled()
     })
 })

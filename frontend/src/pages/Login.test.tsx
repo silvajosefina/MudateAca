@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import Login from './Login'
-import { MOCK_USUARIOS } from '../mocks/usuarios'
-import { iniciarSesion } from '../mocks/sesion'
-import type { Usuario } from '../types/usuario'
+import { iniciarSesion } from '../servicios/sesion'
+import { ingresar } from '../servicios/usuarios'
+import type { SesionUsuario } from '../types/usuario'
 
 const mockNavigate = jest.fn()
 
@@ -13,33 +13,28 @@ jest.mock('react-router', () => ({
     useNavigate: () => mockNavigate,
 }))
 
-jest.mock('../mocks/usuarios', () => ({ MOCK_USUARIOS: [] }))
-jest.mock('../mocks/sesion', () => ({ iniciarSesion: jest.fn() }))
+jest.mock('../servicios/sesion', () => ({ iniciarSesion: jest.fn() }))
+jest.mock('../servicios/usuarios', () => ({ ingresar: jest.fn() }))
 
-function crearUsuario(overrides: Partial<Usuario>): Usuario {
+const mockIngresar = ingresar as jest.MockedFunction<typeof ingresar>
+
+function crearUsuario(overrides: Partial<SesionUsuario>): SesionUsuario {
     return {
-        id: 'u1',
+        id: '1',
         nombre: 'Ana',
         apellido: 'Gómez',
         celular: '2392400000',
         correo: 'ana@mudateaca.com',
-        contrasena: 'Clave123',
         rol: 'interesado',
         estadoCuenta: 'activo',
         ...overrides,
     }
 }
 
-const usuarioInteresado = crearUsuario({ id: 'u1', correo: 'interesado@mudateaca.com', rol: 'interesado' })
-const usuarioPropietario = crearUsuario({ id: 'u2', correo: 'propietario@mudateaca.com', rol: 'propietario' })
-const usuarioInmobiliaria = crearUsuario({ id: 'u3', correo: 'inmobiliaria@mudateaca.com', rol: 'inmobiliaria' })
-const usuarioAdmin = crearUsuario({ id: 'u4', correo: 'admin@mudateaca.com', rol: 'administrador' })
-const usuarioSuspendido = crearUsuario({
-    id: 'u5',
-    correo: 'suspendido@mudateaca.com',
-    estadoCuenta: 'suspendido',
-    motivoSuspension: 'Reportes reiterados de otros usuarios.',
-})
+// Error con la forma que devuelve axios cuando la API responde con un código de error.
+function errorDeApi(status: number, data: unknown) {
+    return Object.assign(new Error(`HTTP ${status}`), { isAxiosError: true, response: { status, data } })
+}
 
 function renderLogin() {
     return render(
@@ -57,11 +52,6 @@ async function completarYEnviar(correo: string, contrasena: string) {
     await user.click(screen.getByRole('button', { name: 'Ingresar' }))
 }
 
-beforeEach(() => {
-    MOCK_USUARIOS.length = 0
-    MOCK_USUARIOS.push(usuarioInteresado, usuarioPropietario, usuarioInmobiliaria, usuarioAdmin, usuarioSuspendido)
-})
-
 afterEach(() => {
     jest.clearAllMocks()
 })
@@ -78,6 +68,7 @@ describe('Login', () => {
         await completarYEnviar('', '')
         expect(await screen.findByText('Ingresá tu correo electrónico.')).toBeInTheDocument()
         expect(screen.getByText('Ingresá tu contraseña.')).toBeInTheDocument()
+        expect(mockIngresar).not.toHaveBeenCalled()
         expect(mockNavigate).not.toHaveBeenCalled()
     })
 
@@ -93,6 +84,7 @@ describe('Login', () => {
     })
 
     test('muestra "Usuario o contraseña incorrectos" con credenciales que no coinciden', async () => {
+        mockIngresar.mockRejectedValue(errorDeApi(401, { detail: 'Usuario o contraseña incorrectos.' }))
         await completarYEnviar('interesado@mudateaca.com', 'ClaveIncorrecta1')
         expect(await screen.findByText('Usuario o contraseña incorrectos.')).toBeInTheDocument()
         expect(iniciarSesion).not.toHaveBeenCalled()
@@ -100,6 +92,11 @@ describe('Login', () => {
     })
 
     test('muestra el motivo de suspensión y no inicia sesión si la cuenta está suspendida', async () => {
+        mockIngresar.mockRejectedValue(
+            errorDeApi(400, {
+                non_field_errors: ['Tu cuenta está suspendida. Motivo: Reportes reiterados de otros usuarios.'],
+            }),
+        )
         await completarYEnviar('suspendido@mudateaca.com', 'Clave123')
         expect(
             await screen.findByText(/Tu cuenta está suspendida\. Motivo: Reportes reiterados de otros usuarios\./),
@@ -108,14 +105,24 @@ describe('Login', () => {
         expect(mockNavigate).not.toHaveBeenCalled()
     })
 
+    test('avisa cuando no se puede conectar con el servidor', async () => {
+        mockIngresar.mockRejectedValue(Object.assign(new Error('Network Error'), { isAxiosError: true }))
+        await completarYEnviar('interesado@mudateaca.com', 'Clave123')
+        expect(await screen.findByText('No se pudo conectar con el servidor. Revisá tu conexión.')).toBeInTheDocument()
+        expect(iniciarSesion).not.toHaveBeenCalled()
+    })
+
     test.each([
-        ['interesado@mudateaca.com', '/explorar'],
-        ['propietario@mudateaca.com', '/mis-publicaciones'],
-        ['inmobiliaria@mudateaca.com', '/mis-publicaciones'],
-        ['admin@mudateaca.com', '/panel-administracion'],
-    ])('con credenciales válidas (%s) inicia sesión y navega a %s', async (correo, rutaEsperada) => {
-        await completarYEnviar(correo, 'Clave123')
-        expect(iniciarSesion).toHaveBeenCalledTimes(1)
+        ['interesado', '/explorar'],
+        ['propietario', '/mis-publicaciones'],
+        ['inmobiliaria', '/mis-publicaciones'],
+        ['administrador', '/panel-administracion'],
+    ] as const)('con credenciales válidas de %s inicia sesión y navega a %s', async (rol, rutaEsperada) => {
+        const usuario = crearUsuario({ correo: `${rol}@mudateaca.com`, rol })
+        mockIngresar.mockResolvedValue(usuario)
+        await completarYEnviar(usuario.correo, 'Clave123')
+        expect(mockIngresar).toHaveBeenCalledWith(usuario.correo, 'Clave123')
+        expect(iniciarSesion).toHaveBeenCalledWith(usuario)
         expect(mockNavigate).toHaveBeenCalledWith(rutaEsperada)
     })
 })

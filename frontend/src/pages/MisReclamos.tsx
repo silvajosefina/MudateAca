@@ -4,7 +4,7 @@ import { ChevronRight, Flag, X } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import PanelLayout from '../layouts/PanelLayout'
 import { obtenerNombreObjetivoReclamo, obtenerReclamosPorUsuario } from '../mocks/reclamos'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { ETIQUETAS_ESTADO_RECLAMO, ETIQUETAS_MOTIVO_RECLAMO, type Reclamo } from '../types/reclamo'
 import { formatearFechaHora } from '../utils/formato'
 

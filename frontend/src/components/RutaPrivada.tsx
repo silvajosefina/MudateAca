@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router'
-import { obtenerSesion } from '../mocks/sesion'
+import { useSesion } from '../servicios/sesion'
 import type { Rol } from '../types/usuario'
 
 interface RutaPrivadaProps {
@@ -9,7 +9,7 @@ interface RutaPrivadaProps {
 }
 
 function RutaPrivada({ children, rolesPermitidos }: RutaPrivadaProps) {
-    const sesion = obtenerSesion()
+    const sesion = useSesion()
 
     if (!sesion) {
         return <Navigate to="/login" replace />

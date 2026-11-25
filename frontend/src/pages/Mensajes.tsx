@@ -11,7 +11,7 @@ import {
     marcarConversacionComoLeida,
 } from '../mocks/mensajes'
 import { obtenerPublicacionPorId } from '../mocks/publicaciones'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { obtenerUsuarioPorId } from '../mocks/usuarios'
 import { formatearPrecio } from '../utils/formato'
 import type { Conversacion } from '../types/mensaje'

@@ -5,7 +5,7 @@ import SubidaFotos from './SubidaFotos'
 import ConfirmDialog from './ConfirmDialog'
 import Mapa from './Mapa'
 import { actualizarPublicacion, crearPublicacion } from '../mocks/publicaciones'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearMiles, quitarFormatoMiles } from '../utils/formato'
 import type {

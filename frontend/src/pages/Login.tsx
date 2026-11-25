@@ -2,8 +2,10 @@ import { useState, type SubmitEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import AuthLayout from '../layouts/AuthLayout'
 import InputContrasena from '../components/InputContrasena'
-import { MOCK_USUARIOS } from '../mocks/usuarios'
-import { iniciarSesion } from '../mocks/sesion'
+import { isAxiosError } from 'axios'
+import { iniciarSesion } from '../servicios/sesion'
+import { ingresar } from '../servicios/usuarios'
+import { mensajeDeError } from '../servicios/errores'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -11,7 +13,7 @@ interface Errores {
     correo?: string
     contrasena?: string
     credencialesInvalidas?: boolean
-    cuentaSuspendida?: string
+    general?: string
 }
 
 function Login() {
@@ -20,8 +22,9 @@ function Login() {
     const [contrasena, setContrasena] = useState('')
     const [errores, setErrores] = useState<Errores>({})
     const [rolSinPanel, setRolSinPanel] = useState(false)
+    const [enviando, setEnviando] = useState(false)
 
-    function handleSubmit(e: SubmitEvent) {
+    async function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
         const nuevosErrores: Errores = {}
 
@@ -35,35 +38,38 @@ function Login() {
             nuevosErrores.contrasena = 'Ingresá tu contraseña.'
         }
 
-        const usuario = MOCK_USUARIOS.find((u) => u.correo === correo.toLowerCase())
-
-        if (!nuevosErrores.correo && !nuevosErrores.contrasena) {
-            if (!usuario || usuario.contrasena !== contrasena) {
-                nuevosErrores.credencialesInvalidas = true
-            } else if (usuario.estadoCuenta === 'suspendido') {
-                nuevosErrores.cuentaSuspendida =
-                    usuario.motivoSuspension ?? 'Contactate con la administración para más información.'
-            }
-        }
-
         setErrores(nuevosErrores)
-        if (Object.keys(nuevosErrores).length > 0 || !usuario) return
+        if (Object.keys(nuevosErrores).length > 0) return
 
-        iniciarSesion(usuario)
+        setEnviando(true)
+        try {
+            const usuario = await ingresar(correo.trim(), contrasena)
+            iniciarSesion(usuario)
 
-        if (usuario.rol === 'propietario' || usuario.rol === 'inmobiliaria') {
-            navigate('/mis-publicaciones')
-        } else if (usuario.rol === 'interesado') {
-            navigate('/explorar')
-        } else if (usuario.rol === 'administrador') {
-            navigate('/panel-administracion')
-        } else {
-            setRolSinPanel(true)
+            if (usuario.rol === 'propietario' || usuario.rol === 'inmobiliaria') {
+                navigate('/mis-publicaciones')
+            } else if (usuario.rol === 'interesado') {
+                navigate('/explorar')
+            } else if (usuario.rol === 'administrador') {
+                navigate('/panel-administracion')
+            } else {
+                setRolSinPanel(true)
+            }
+        } catch (error) {
+            // 401: correo o contraseña incorrectos. Otros casos (cuenta suspendida, demasiados
+            // intentos, servidor caído) llegan con su propio mensaje.
+            if (isAxiosError(error) && error.response?.status === 401) {
+                setErrores({ credencialesInvalidas: true })
+            } else {
+                setErrores({ general: mensajeDeError(error) })
+            }
+        } finally {
+            setEnviando(false)
         }
     }
 
-    const correoConError = Boolean(errores.correo || errores.credencialesInvalidas || errores.cuentaSuspendida)
-    const contrasenaConError = Boolean(errores.contrasena || errores.credencialesInvalidas || errores.cuentaSuspendida)
+    const correoConError = Boolean(errores.correo || errores.credencialesInvalidas || errores.general)
+    const contrasenaConError = Boolean(errores.contrasena || errores.credencialesInvalidas || errores.general)
 
     return (
         <AuthLayout title="Iniciar sesión">
@@ -91,11 +97,7 @@ function Login() {
                     {errores.credencialesInvalidas && (
                         <p className="text-xs text-danger mt-1">Usuario o contraseña incorrectos.</p>
                     )}
-                    {errores.cuentaSuspendida && (
-                        <p className="text-xs text-danger mt-1">
-                            Tu cuenta está suspendida. Motivo: {errores.cuentaSuspendida}
-                        </p>
-                    )}
+                    {errores.general && <p className="text-xs text-danger mt-1">{errores.general}</p>}
                 </div>
 
                 {rolSinPanel && (
@@ -113,7 +115,8 @@ function Login() {
 
                 <button
                     type="submit"
-                    className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer"
+                    disabled={enviando}
+                    className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                 >
                     Ingresar
                 </button>

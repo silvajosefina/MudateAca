@@ -26,7 +26,7 @@ import {
     obtenerBusquedasDeUsuario,
     obtenerCoincidenciasDeBusqueda,
 } from '../mocks/busquedasActivas'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearMiles, formatearPrecio, quitarFormatoMiles } from '../utils/formato'
 import type { BusquedaActiva, BusquedaFormData } from '../types/busqueda'

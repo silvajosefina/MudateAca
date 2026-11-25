@@ -28,7 +28,17 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // Sin conexión abre la aplicación, pero los datos siempre se piden al servidor.
+        // La API y el panel de Django nunca deben recibir el index.html del frontend.
+        navigateFallbackDenylist: [/^\/api\//, /^\/admin\//, /^\/static\//],
       },
     }),
   ],
+  server: {
+    // En desarrollo, el frontend y la API comparten origen como en producción,
+    // así las cookies httpOnly de la sesión funcionan igual.
+    proxy: {
+      '/api': 'http://localhost:8000',
+    },
+  },
 })

@@ -11,7 +11,7 @@ import {
     obtenerPublicacionesDeUsuario,
 } from '../mocks/publicaciones'
 import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearPrecio } from '../utils/formato'
 import { ETIQUETAS_TIPO_INMUEBLE, type EstadoPublicacion, type Publicacion } from '../types/publicacion'

@@ -2,7 +2,7 @@ import type { EstadoPublicacion, Publicacion, PublicacionFormData } from '../typ
 import { esFavorito } from './favoritos'
 import { crearNotificacion } from './notificaciones'
 import { registrarEventoModeracion } from './historialModeracion'
-import { obtenerSesion } from './sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from './toast'
 
 const ETIQUETAS_ESTADO_NOTIFICACION: Partial<Record<EstadoPublicacion, string>> = {

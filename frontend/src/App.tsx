@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router'
 import Registro from './pages/Registro'
 import Login from './pages/Login'
 import RecuperarContrasena from './pages/RecuperarContrasena'
+import RestablecerContrasena from './pages/RestablecerContrasena'
 import MisPublicaciones from './pages/MisPublicaciones'
 import PublicacionNueva from './pages/PublicacionNueva'
 import PublicacionEditar from './pages/PublicacionEditar'
@@ -22,10 +24,18 @@ import RutaPrivada from './components/RutaPrivada'
 import ToastViewport from './components/ToastViewport'
 import ScrollAlTope from './components/ScrollAlTope'
 import BotonAyuda from './components/BotonAyuda'
+import { useSesion, validarSesion } from './servicios/sesion'
 
 const ROLES_ANUNCIANTE = ['propietario', 'inmobiliaria'] as const
 
 function App() {
+  // Redibuja la aplicación cuando la sesión se inicia, se cierra o vence.
+  useSesion()
+
+  useEffect(() => {
+    validarSesion()
+  }, [])
+
   return (
     <>
       <ScrollAlTope />
@@ -34,6 +44,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
+        <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
         <Route path="/explorar" element={<Explorar />} />
         <Route path="/explorar/:id" element={<PublicacionDetalle />} />
 

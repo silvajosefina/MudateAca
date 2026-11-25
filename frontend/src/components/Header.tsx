@@ -16,7 +16,7 @@ import {
     UserPlus,
     X,
 } from 'lucide-react'
-import { cerrarSesion, obtenerSesion } from '../mocks/sesion'
+import { cerrarSesion, useSesion } from '../servicios/sesion'
 import { useMensajesNoLeidos } from '../hooks/useMensajesNoLeidos'
 import MenuUsuario from './MenuUsuario'
 import MenuNotificaciones from './MenuNotificaciones'
@@ -50,7 +50,7 @@ const ENLACES_POR_ROL: Record<Rol, EnlaceNav[]> = {
 }
 
 function Header() {
-    const sesion = obtenerSesion()
+    const sesion = useSesion()
     const navigate = useNavigate()
     const location = useLocation()
     const noLeidos = useMensajesNoLeidos(sesion?.id)
@@ -59,9 +59,9 @@ function Header() {
     const enlaces = sesion ? ENLACES_POR_ROL[sesion.rol] : []
     const mostrarMensajes = sesion && sesion.rol !== 'administrador'
 
-    function handleCerrarSesion() {
+    async function handleCerrarSesion() {
         setMenuAbierto(false)
-        cerrarSesion()
+        await cerrarSesion()
         navigate('/login')
     }
 

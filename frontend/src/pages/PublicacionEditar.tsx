@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router'
 import PanelLayout from '../layouts/PanelLayout'
 import PublicacionForm from '../components/PublicacionForm'
 import { obtenerPublicacionPorId } from '../mocks/publicaciones'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 
 function PublicacionEditar() {
     const { id } = useParams<{ id: string }>()

@@ -1,6 +1,8 @@
 import { useState, type SubmitEvent } from 'react'
 import { Link } from 'react-router'
 import AuthLayout from '../layouts/AuthLayout'
+import { solicitarRecuperacion } from '../servicios/usuarios'
+import { mensajeDeError } from '../servicios/errores'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -8,8 +10,9 @@ function RecuperarContrasena() {
     const [correo, setCorreo] = useState('')
     const [enviado, setEnviado] = useState(false)
     const [error, setError] = useState('')
+    const [enviando, setEnviando] = useState(false)
 
-    function handleSubmit(e: SubmitEvent) {
+    async function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
 
         if (!correo) {
@@ -23,8 +26,15 @@ function RecuperarContrasena() {
         }
 
         setError('')
-        console.log({ correo })
-        setEnviado(true)
+        setEnviando(true)
+        try {
+            await solicitarRecuperacion(correo.trim())
+            setEnviado(true)
+        } catch (err) {
+            setError(mensajeDeError(err))
+        } finally {
+            setEnviando(false)
+        }
     }
 
     return (
@@ -34,7 +44,8 @@ function RecuperarContrasena() {
         >
             {enviado ? (
                 <p className="text-center text-foreground">
-                    Si el correo está registrado, vas a recibir un enlace en breve.
+                    Si el correo está registrado, vas a recibir un enlace en breve. Revisá también la
+                    carpeta de correo no deseado.
                 </p>
             ) : (
                 <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
@@ -52,7 +63,8 @@ function RecuperarContrasena() {
 
                     <button
                         type="submit"
-                        className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer"
+                        disabled={enviando}
+                        className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                     >
                         Enviar enlace
                     </button>

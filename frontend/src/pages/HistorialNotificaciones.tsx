@@ -11,7 +11,7 @@ import {
     obtenerNotificacionesDeUsuario,
     type Notificacion,
 } from '../mocks/notificaciones'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearFechaHora } from '../utils/formato'
 

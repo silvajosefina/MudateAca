@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import Explorar from './Explorar'
 import { obtenerPublicacionesActivas } from '../mocks/publicaciones'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 import { obtenerVistaListado } from '../mocks/preferenciasVista'
 import type { Publicacion } from '../types/publicacion'
 
@@ -13,7 +13,7 @@ jest.mock('../components/TarjetaPublicacion', () => ({ publicacion }: { publicac
     <div>{publicacion.descripcion}</div>
 ))
 jest.mock('../mocks/publicaciones', () => ({ obtenerPublicacionesActivas: jest.fn() }))
-jest.mock('../mocks/sesion', () => ({ obtenerSesion: jest.fn() }))
+jest.mock('../servicios/sesion', () => ({ obtenerSesion: jest.fn() }))
 jest.mock('../mocks/busquedasActivas', () => ({ crearBusqueda: jest.fn() }))
 jest.mock('../mocks/preferenciasVista', () => ({
     obtenerVistaListado: jest.fn(),

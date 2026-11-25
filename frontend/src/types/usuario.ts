@@ -21,6 +21,8 @@ export interface Usuario {
     correo: string
     contrasena: string
     rol: Rol
+    // Solo las inmobiliarias: sus publicaciones se muestran con este nombre (RF-21).
+    razonSocial?: string
     estadoCuenta: EstadoCuenta
     motivoSuspension?: string
 }

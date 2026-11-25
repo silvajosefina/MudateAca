@@ -9,7 +9,7 @@ jest.mock('../mocks/publicaciones', () => ({
     actualizarPublicacion: jest.fn(() => ({ estado: 'activa' })),
     crearPublicacion: jest.fn(),
 }))
-jest.mock('../mocks/sesion', () => ({ obtenerSesion: () => ({ id: 'u2', rol: 'propietario' }) }))
+jest.mock('../servicios/sesion', () => ({ obtenerSesion: () => ({ id: 'u2', rol: 'propietario' }) }))
 jest.mock('../mocks/toast', () => ({ mostrarToast: jest.fn() }))
 jest.mock('./Mapa', () => ({
     __esModule: true,

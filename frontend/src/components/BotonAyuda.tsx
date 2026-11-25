@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation } from 'react-router'
 import { HelpCircle, Mail, X } from 'lucide-react'
-import { obtenerSesion } from '../mocks/sesion'
+import { obtenerSesion } from '../servicios/sesion'
 
 function BotonAyuda() {
     // useLocation fuerza un nuevo render en cada navegación (incluida la de
