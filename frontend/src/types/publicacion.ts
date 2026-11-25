@@ -18,6 +18,7 @@ export type EstadoPublicacion =
     | 'alquilada'
     | 'archivada'
     | 'eliminada'
+    | 'oculta'
 
 export const ETIQUETAS_ESTADO_PUBLICACION: Record<EstadoPublicacion, { texto: string; clase: string }> = {
     pendiente_moderacion: { texto: 'En revisión', clase: 'bg-warning-subtle text-warning' },
@@ -29,6 +30,7 @@ export const ETIQUETAS_ESTADO_PUBLICACION: Record<EstadoPublicacion, { texto: st
     alquilada: { texto: 'Alquilada', clase: 'bg-highlight text-on-accent' },
     archivada: { texto: 'Archivada', clase: 'bg-surface-hover text-muted' },
     eliminada: { texto: 'Eliminada', clase: 'bg-danger-subtle text-danger' },
+    oculta: { texto: 'Oculta', clase: 'bg-danger-subtle text-danger' },
 }
 
 export type TipoDocumentoVerificacionPublicacion =
@@ -48,11 +50,31 @@ export const ETIQUETAS_DOCUMENTO_VERIFICACION: Record<TipoDocumentoVerificacionP
     poder_representacion: 'Poder o autorización de representación del propietario',
 }
 
-export type TipoEventoModeracion = 'rechazo' | 'solicitud_modificacion'
+export type TipoEventoModeracion =
+    | 'rechazo'
+    | 'solicitud_modificacion'
+    | 'moderacion_automatica'
+    | 'mantener_observada'
+    | 'ocultamiento'
 
 export const ETIQUETAS_EVENTO_MODERACION: Record<TipoEventoModeracion, { texto: string; clase: string }> = {
     rechazo: { texto: 'Rechazada', clase: 'bg-danger-subtle text-danger' },
     solicitud_modificacion: { texto: 'Modificaciones solicitadas', clase: 'bg-warning-subtle text-warning' },
+    moderacion_automatica: { texto: 'Observada por la moderación automática', clase: 'bg-warning-subtle text-warning' },
+    mantener_observada: { texto: 'Se mantiene observada', clase: 'bg-warning-subtle text-warning' },
+    ocultamiento: { texto: 'Ocultada por la administración', clase: 'bg-danger-subtle text-danger' },
+}
+
+// RF-10: el backend decide qué acciones admite cada estado y el panel solo las muestra.
+export type AccionPublicacion = 'editar' | 'pausar' | 'reactivar' | 'reservar' | 'marcar_alquilada' | 'eliminar'
+
+// RF-21: quién publica, sin datos de contacto (el contacto es por el chat interno).
+export interface Anunciante {
+    id: string
+    nombre: string
+    apellido: string
+    razonSocial?: string
+    rol: 'propietario' | 'inmobiliaria' | 'interesado' | 'administrador'
 }
 
 export interface EventoModeracion {
@@ -78,24 +100,42 @@ export interface Publicacion {
     disponibleDesde: string
     disponibleHasta?: string
     fotos: string[]
+    // Mismo orden que fotos: permite indicar cuáles quitar al editar.
+    idsFotos?: string[]
     expensas?: number
     serviciosIncluidos: boolean
     amueblado: boolean
     aceptaMascotas: boolean
     aptoEstudiantes: boolean
     requisitos?: string
-    duracionMinima?: string
+    duracionMinimaDias?: number
     estado: EstadoPublicacion
+    anunciante?: Anunciante
     tipoDocumentoVerificacion?: TipoDocumentoVerificacionPublicacion
     nombreArchivoVerificacion?: string
     urlArchivoVerificacion?: string
     motivoRechazoVerificacion?: string
     notaModeracion?: string
+    motivoOcultamiento?: string
+    alquiladaEn?: string
+    eventosModeracion?: EventoModeracion[]
+    acciones?: AccionPublicacion[]
     creadaEn: string
     actualizadaEn: string
 }
 
 export type PublicacionFormData = Omit<
     Publicacion,
-    'id' | 'propietarioId' | 'estado' | 'creadaEn' | 'actualizadaEn' | 'motivoRechazoVerificacion'
->
+    | 'id'
+    | 'propietarioId'
+    | 'estado'
+    | 'creadaEn'
+    | 'actualizadaEn'
+    | 'motivoRechazoVerificacion'
+    | 'anunciante'
+    | 'eventosModeracion'
+    | 'acciones'
+> & {
+    // Documento nuevo elegido en el formulario; el ya guardado se conserva si no se cambia.
+    archivoVerificacion?: File
+}

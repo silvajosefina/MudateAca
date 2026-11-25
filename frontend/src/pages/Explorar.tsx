@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import {
     ArrowRight,
@@ -17,13 +17,15 @@ import PublicoLayout from '../layouts/PublicoLayout'
 import TarjetaPublicacion from '../components/TarjetaPublicacion'
 import Paginacion from '../components/Paginacion'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
-import { obtenerPublicacionesActivas, obtenerPublicacionesDeUsuario } from '../mocks/publicaciones'
+import { useConsulta } from '../hooks/useConsulta'
+import { listarMisPublicaciones, listarPublicaciones } from '../servicios/publicaciones'
+import { mensajeDeError } from '../servicios/errores'
 import { crearBusqueda } from '../mocks/busquedasActivas'
 import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
 import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearMiles, quitarFormatoMiles } from '../utils/formato'
-import { coincideConFiltros, FILTROS_INICIALES, filtrosDesdeQuery, type Filtros } from '../utils/filtrosExplorar'
+import { FILTROS_INICIALES, filtrosDesdeQuery, type Filtros } from '../utils/filtrosExplorar'
 import type { Publicacion } from '../types/publicacion'
 
 const OPCIONES_MINIMO = [0, 1, 2, 3, 4, 5]
@@ -50,7 +52,8 @@ function guardarBannerCerrado() {
 function Explorar() {
     const sesion = obtenerSesion()
     const [searchParams] = useSearchParams()
-    const [publicaciones] = useState<Publicacion[]>(() => obtenerPublicacionesActivas())
+    const [totalActivas, setTotalActivas] = useState<number | null>(null)
+    const [tienePublicacionesPropias, setTienePublicacionesPropias] = useState(true)
     const [filtros, setFiltros] = useState<Filtros>(() =>
         searchParams.toString() ? filtrosDesdeQuery(searchParams) : FILTROS_INICIALES,
     )
@@ -101,27 +104,38 @@ function Explorar() {
         [filtros, ubicacionDebounced, precioMinDebounced, precioMaxDebounced],
     )
 
-    const resultados = useMemo(
-        () => publicaciones.filter((p) => coincideConFiltros(p, filtrosParaBuscar)),
-        [publicaciones, filtrosParaBuscar],
+    // El backend filtra y pagina (RF-11): cada cambio de filtros o de página es una consulta.
+    const consulta = useConsulta(JSON.stringify([filtrosParaBuscar, paginaActual]), () =>
+        listarPublicaciones(filtrosParaBuscar, paginaActual),
     )
+    const cargando = consulta.cargando
+    const errorCarga = consulta.error ? mensajeDeError(consulta.error, 'No se pudieron cargar las publicaciones.') : ''
+    const resultados: Publicacion[] = errorCarga ? [] : (consulta.datos?.results ?? [])
+    const totalResultados = errorCarga ? 0 : (consulta.datos?.count ?? 0)
+
+    // Total de publicaciones activas para el banner, sin filtros.
+    useEffect(() => {
+        listarPublicaciones(FILTROS_INICIALES, 1)
+            .then((pagina) => setTotalActivas(pagina.count))
+            .catch(() => setTotalActivas(null))
+    }, [])
+
+    const esAnunciante = sesion?.rol === 'propietario' || sesion?.rol === 'inmobiliaria'
+    useEffect(() => {
+        if (!esAnunciante) return
+        listarMisPublicaciones(null, 1)
+            .then((pagina) => setTienePublicacionesPropias(pagina.count > 0))
+            .catch(() => setTienePublicacionesPropias(true))
+    }, [esAnunciante])
 
     const hayFiltrosActivos = JSON.stringify(filtros) !== JSON.stringify(FILTROS_INICIALES)
 
     // El banner de "publicá gratis" solo tiene sentido para quien todavía puede
     // publicar: visitantes (para que se registren) o propietarios/inmobiliarias
     // que todavía no crearon ninguna publicación.
-    const mostrarBannerPublicar =
-        !sesion ||
-        ((sesion.rol === 'propietario' || sesion.rol === 'inmobiliaria') &&
-            obtenerPublicacionesDeUsuario(sesion.id).length === 0)
+    const mostrarBannerPublicar = !sesion || (esAnunciante && !tienePublicacionesPropias)
 
-    const totalPaginas = Math.max(1, Math.ceil(resultados.length / RESULTADOS_POR_PAGINA))
-    const paginaSegura = Math.min(paginaActual, totalPaginas)
-    const resultadosPagina = resultados.slice(
-        (paginaSegura - 1) * RESULTADOS_POR_PAGINA,
-        paginaSegura * RESULTADOS_POR_PAGINA,
-    )
+    const totalPaginas = Math.max(1, Math.ceil(totalResultados / RESULTADOS_POR_PAGINA))
 
     return (
         <PublicoLayout>
@@ -156,7 +170,7 @@ function Explorar() {
                         <div className="flex flex-wrap gap-x-6 gap-y-2 mt-6 text-sm">
                             <span className="inline-flex items-center gap-1.5 font-semibold">
                                 <Home className="w-4 h-4" aria-hidden="true" />
-                                {publicaciones.length} publicaciones activas
+                                {totalActivas ?? '—'} publicaciones activas
                             </span>
                             <span className="inline-flex items-center gap-1.5 font-semibold">
                                 <ShieldCheck className="w-4 h-4" aria-hidden="true" />
@@ -328,6 +342,23 @@ function Explorar() {
                                 className="w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                             />
                         </div>
+                        <div className="sm:col-span-2">
+                            <label className="block text-sm font-semibold text-foreground mb-1">
+                                Duración de la estadía (noches)
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                placeholder="Sin indicar"
+                                value={filtros.duracionEstadia || ''}
+                                onChange={(e) => actualizarFiltro('duracionEstadia', Math.max(0, Number(e.target.value) || 0))}
+                                className="w-full sm:w-1/2 border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                            <p className="text-xs text-muted mt-1">
+                                Se muestran las publicaciones disponibles durante toda la estadía y cuya duración
+                                mínima no la supere.
+                            </p>
+                        </div>
                     </div>
                 )}
 
@@ -393,11 +424,17 @@ function Explorar() {
 
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <h2 className="text-sm font-semibold text-foreground">
-                    {hayFiltrosActivos
-                        ? resultados.length === 0
-                            ? 'No se encontraron publicaciones con esos filtros.'
-                            : `${resultados.length} publicación(es) encontrada(s).`
-                        : 'Publicaciones disponibles'}
+                    {cargando
+                        ? 'Buscando publicaciones…'
+                        : errorCarga
+                            ? errorCarga
+                            : hayFiltrosActivos
+                                ? totalResultados === 0
+                                    ? 'No se encontraron publicaciones con esos filtros.'
+                                    : `${totalResultados} publicación(es) encontrada(s).`
+                                : totalResultados === 0
+                                    ? 'Todavía no hay publicaciones activas.'
+                                    : 'Publicaciones disponibles'}
                 </h2>
 
                 <div className="flex gap-1 rounded-lg border border-border p-1 bg-surface shrink-0">
@@ -425,7 +462,7 @@ function Explorar() {
             </div>
 
             <div className={vista === 'grilla' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'flex flex-col gap-4'}>
-                {resultadosPagina.map((publicacion) => (
+                {resultados.map((publicacion) => (
                     <TarjetaPublicacion
                         key={publicacion.id}
                         publicacion={publicacion}
@@ -435,7 +472,7 @@ function Explorar() {
                 ))}
             </div>
 
-            <Paginacion paginaActual={paginaSegura} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
+            <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
 
             {mostrarBannerPublicar && (
                 <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-banner-cta-from)] to-[var(--color-banner-cta-to)] px-6 py-8 sm:px-10 sm:py-10 mt-8 flex flex-wrap items-center justify-between gap-6">

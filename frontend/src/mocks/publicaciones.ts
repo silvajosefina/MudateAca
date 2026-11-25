@@ -89,7 +89,7 @@ const PUBLICACIONES_INICIALES: Publicacion[] = [
         dormitorios: 1,
         disponibleDesde: '2026-09-15',
         disponibleHasta: '2026-12-15',
-        duracionMinima: '7 noches',
+        duracionMinimaDias: 7,
         fotos: [
             urlFotoUnsplash('1552558636-f6a8f071c2b3'),
             urlFotoUnsplash('1612152605347-f93296cb657d'),

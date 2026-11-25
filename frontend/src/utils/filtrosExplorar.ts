@@ -1,4 +1,4 @@
-import type { ModalidadAlquiler, Publicacion, TipoInmueble } from '../types/publicacion'
+import type { ModalidadAlquiler, TipoInmueble } from '../types/publicacion'
 
 export interface Filtros {
     ubicacion: string
@@ -14,6 +14,8 @@ export interface Filtros {
     aptoEstudiantes: boolean
     fechaDeseadaDesde: string
     fechaDeseadaHasta: string
+    // Noches de estadía buscadas (0 = sin indicar). Solo aplica a alquileres temporarios.
+    duracionEstadia: number
 }
 
 export const FILTROS_INICIALES: Filtros = {
@@ -30,6 +32,7 @@ export const FILTROS_INICIALES: Filtros = {
     aptoEstudiantes: false,
     fechaDeseadaDesde: '',
     fechaDeseadaHasta: '',
+    duracionEstadia: 0,
 }
 
 export function filtrosDesdeQuery(params: URLSearchParams): Filtros {
@@ -52,39 +55,6 @@ export function filtrosDesdeQuery(params: URLSearchParams): Filtros {
         aptoEstudiantes: params.get('aptoEstudiantes') === '1',
         fechaDeseadaDesde: params.get('fechaDeseadaDesde') ?? '',
         fechaDeseadaHasta: params.get('fechaDeseadaHasta') ?? '',
+        duracionEstadia: Number(params.get('duracionEstadia')) || 0,
     }
-}
-
-export function coincideConFiltros(publicacion: Publicacion, filtros: Filtros): boolean {
-    if (
-        filtros.ubicacion.trim() &&
-        !publicacion.ubicacion.toLowerCase().includes(filtros.ubicacion.trim().toLowerCase())
-    ) {
-        return false
-    }
-    if (filtros.modalidad !== 'todas' && publicacion.modalidad !== filtros.modalidad) return false
-    if (filtros.tipoInmueble !== 'todos' && publicacion.tipoInmueble !== filtros.tipoInmueble) return false
-    if (filtros.precioMin && publicacion.precio < filtros.precioMin) return false
-    if (filtros.precioMax && publicacion.precio > filtros.precioMax) return false
-    if (filtros.ambientesMin && publicacion.ambientes < filtros.ambientesMin) return false
-    if (filtros.dormitoriosMin && publicacion.dormitorios < filtros.dormitoriosMin) return false
-    if (filtros.amueblado && !publicacion.amueblado) return false
-    if (filtros.serviciosIncluidos && !publicacion.serviciosIncluidos) return false
-    if (filtros.aceptaMascotas && !publicacion.aceptaMascotas) return false
-    if (filtros.aptoEstudiantes && !publicacion.aptoEstudiantes) return false
-
-    if (publicacion.modalidad === 'temporario' && (filtros.fechaDeseadaDesde || filtros.fechaDeseadaHasta)) {
-        if (
-            filtros.fechaDeseadaDesde &&
-            publicacion.disponibleHasta &&
-            filtros.fechaDeseadaDesde > publicacion.disponibleHasta
-        ) {
-            return false
-        }
-        if (filtros.fechaDeseadaHasta && publicacion.disponibleDesde > filtros.fechaDeseadaHasta) {
-            return false
-        }
-    }
-
-    return true
 }

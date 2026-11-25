@@ -2,11 +2,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import PublicacionForm from './PublicacionForm'
-import { actualizarPublicacion } from '../mocks/publicaciones'
+import { actualizarPublicacion } from '../servicios/publicaciones'
 import type { Publicacion } from '../types/publicacion'
 
-jest.mock('../mocks/publicaciones', () => ({
-    actualizarPublicacion: jest.fn(() => ({ estado: 'activa' })),
+jest.mock('../servicios/publicaciones', () => ({
+    actualizarPublicacion: jest.fn(async () => ({ estado: 'activa' })),
     crearPublicacion: jest.fn(),
 }))
 jest.mock('../servicios/sesion', () => ({ obtenerSesion: () => ({ id: 'u2', rol: 'propietario' }) }))

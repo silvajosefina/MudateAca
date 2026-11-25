@@ -4,7 +4,8 @@ import { Save, Send, ShieldCheck, X } from 'lucide-react'
 import SubidaFotos from './SubidaFotos'
 import ConfirmDialog from './ConfirmDialog'
 import Mapa from './Mapa'
-import { actualizarPublicacion, crearPublicacion } from '../mocks/publicaciones'
+import { actualizarPublicacion, crearPublicacion } from '../servicios/publicaciones'
+import { erroresDeCampos, mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearMiles, quitarFormatoMiles } from '../utils/formato'
@@ -17,6 +18,24 @@ import type {
 } from '../types/publicacion'
 
 const EXTENSIONES_ADMITIDAS = ['application/pdf', 'image/jpeg', 'image/png']
+// Mismo límite que valida el backend para cada archivo.
+const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024
+
+// Nombres de los campos de la API -> campos del formulario, para mostrar sus errores.
+const CAMPOS_DE_LA_API: Record<string, keyof Errores> = {
+    descripcion: 'descripcion',
+    precio: 'precio',
+    ubicacion: 'ubicacion',
+    ambientes: 'ambientes',
+    dormitorios: 'dormitorios',
+    disponible_desde: 'disponibleDesde',
+    disponible_hasta: 'disponibleHasta',
+    duracion_minima_dias: 'duracionMinima',
+    fotos: 'fotos',
+    fotos_a_eliminar: 'fotos',
+    archivo_verificacion: 'archivoVerificacion',
+    tipo_documento_verificacion: 'archivoVerificacion',
+}
 
 const OPCIONES_DOCUMENTO_PROPIETARIO: { valor: TipoDocumentoVerificacionPublicacion; etiqueta: string }[] = [
     { valor: 'factura_servicio', etiqueta: 'Factura de un servicio asociada al domicilio' },
@@ -46,6 +65,7 @@ interface Errores {
     duracionMinima?: string
     fotos?: string
     archivoVerificacion?: string
+    general?: string
 }
 
 const MENSAJE_ANIO_INVALIDO = 'El año de la fecha no puede tener más de 4 dígitos.'
@@ -77,7 +97,7 @@ function valorInicial(publicacion?: Publicacion): PublicacionFormData {
         aceptaMascotas: publicacion?.aceptaMascotas ?? false,
         aptoEstudiantes: publicacion?.aptoEstudiantes ?? false,
         requisitos: publicacion?.requisitos ?? '',
-        duracionMinima: publicacion?.duracionMinima ?? '',
+        duracionMinimaDias: publicacion?.duracionMinimaDias,
         tipoDocumentoVerificacion: publicacion?.tipoDocumentoVerificacion,
         nombreArchivoVerificacion: publicacion?.nombreArchivoVerificacion,
         urlArchivoVerificacion: publicacion?.urlArchivoVerificacion,
@@ -90,6 +110,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
     const [datos, setDatos] = useState<PublicacionFormData>(valorInicial(publicacionExistente))
     const [errores, setErrores] = useState<Errores>({})
     const [mostrarConfirmCancelar, setMostrarConfirmCancelar] = useState(false)
+    const [enviando, setEnviando] = useState(false)
     const valoresIniciales = useRef(valorInicial(publicacionExistente)).current
 
     if (!sesion) return null
@@ -114,17 +135,18 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
             setErrores((prev) => ({ ...prev, archivoVerificacion: 'Formato no admitido. Subí un archivo PDF, JPG, JPEG o PNG.' }))
             return
         }
+        if (seleccionado.size > TAMANO_MAXIMO_BYTES) {
+            setErrores((prev) => ({ ...prev, archivoVerificacion: 'El archivo supera los 10 MB permitidos.' }))
+            return
+        }
 
         setErrores((prev) => {
             const siguiente = { ...prev }
             delete siguiente.archivoVerificacion
             return siguiente
         })
-        if (datos.urlArchivoVerificacion) {
-            URL.revokeObjectURL(datos.urlArchivoVerificacion)
-        }
         actualizarCampo('nombreArchivoVerificacion', seleccionado.name)
-        actualizarCampo('urlArchivoVerificacion', URL.createObjectURL(seleccionado))
+        actualizarCampo('archivoVerificacion', seleccionado)
     }
 
     function manejarCambioFecha(campo: 'disponibleDesde' | 'disponibleHasta', valor: string) {
@@ -152,9 +174,9 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
         }
     }
 
-    function handleSubmit(e: SubmitEvent) {
+    async function handleSubmit(e: SubmitEvent) {
         e.preventDefault()
-        if (!sesion) return
+        if (!sesion || enviando) return
 
         const nuevosErrores: Errores = {}
 
@@ -176,7 +198,7 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
 
         if (datos.fotos.length < 3) nuevosErrores.fotos = `Subí como mínimo 3 fotografías (${datos.fotos.length}/3).`
 
-        if (datos.modalidad === 'temporario' && !datos.duracionMinima?.trim()) {
+        if (datos.modalidad === 'temporario' && !datos.duracionMinimaDias) {
             nuevosErrores.duracionMinima = 'Indicá la duración mínima de la estadía.'
         }
 
@@ -191,23 +213,34 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
             ? { ...datos, tipoDocumentoVerificacion: datos.tipoDocumentoVerificacion ?? opcionesDocumento[0].valor }
             : datos
 
-        if (modo === 'crear') {
-            const creada = crearPublicacion(datosAEnviar, sesion.id)
-            mostrarToast(
-                creada.estado === 'pendiente_moderacion'
-                    ? 'Publicación enviada. Tu documentación está en revisión.'
-                    : 'Publicación creada correctamente.',
-            )
-        } else if (publicacionExistente) {
-            const actualizada = actualizarPublicacion(publicacionExistente.id, datosAEnviar, sesion.id)
-            mostrarToast(
-                actualizada?.estado === 'pendiente_moderacion'
-                    ? 'Cambios guardados. Tu documentación vuelve a estar en revisión.'
-                    : 'Cambios guardados correctamente.',
-            )
+        setEnviando(true)
+        try {
+            if (modo === 'crear') {
+                await crearPublicacion(datosAEnviar)
+                mostrarToast('Publicación enviada. Un administrador la revisará antes de publicarla.')
+            } else if (publicacionExistente) {
+                const actualizada = await actualizarPublicacion(publicacionExistente, datosAEnviar, requiereDocumentacion)
+                mostrarToast(
+                    actualizada.estado === 'pendiente_moderacion'
+                        ? 'Cambios guardados. La publicación vuelve a estar en revisión.'
+                        : actualizada.estado === 'observada'
+                            ? 'Cambios guardados. La moderación automática marcó la publicación para revisión.'
+                            : 'Cambios guardados correctamente.',
+                )
+            }
+            navigate('/mis-publicaciones')
+        } catch (error) {
+            const campos = erroresDeCampos(error)
+            const delServidor: Errores = {}
+            for (const [campoApi, mensaje] of Object.entries(campos)) {
+                const campo = CAMPOS_DE_LA_API[campoApi]
+                if (campo) delServidor[campo] ??= mensaje
+            }
+            if (Object.keys(delServidor).length === 0) delServidor.general = mensajeDeError(error)
+            setErrores(delServidor)
+        } finally {
+            setEnviando(false)
         }
-
-        navigate('/mis-publicaciones')
     }
 
     return (
@@ -373,12 +406,15 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
 
             {datos.modalidad === 'temporario' && (
                 <div className="bg-surface-hover rounded-lg p-4">
-                    <label className="block text-sm font-semibold text-foreground mb-1">Duración mínima</label>
+                    <label className="block text-sm font-semibold text-foreground mb-1">
+                        Duración mínima (noches)
+                    </label>
                     <input
-                        type="text"
-                        placeholder="Ej: 7 noches"
-                        value={datos.duracionMinima}
-                        onChange={(e) => actualizarCampo('duracionMinima', e.target.value)}
+                        type="number"
+                        min={1}
+                        placeholder="Ej: 7"
+                        value={datos.duracionMinimaDias ?? ''}
+                        onChange={(e) => actualizarCampo('duracionMinimaDias', Number(e.target.value) || undefined)}
                         className={`w-full sm:w-1/3 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.duracionMinima ? 'border-danger' : 'border-border'
                             }`}
                     />
@@ -523,17 +559,24 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                 </div>
             )}
 
+            {errores.general && (
+                <p className="text-sm text-danger bg-danger-subtle border border-danger/20 rounded-lg px-3 py-2">
+                    {errores.general}
+                </p>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-3 mt-2">
                 <button
                     type="submit"
-                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
+                    disabled={enviando}
+                    className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                 >
                     {modo === 'crear' ? (
                         <Send className="w-4 h-4" aria-hidden="true" />
                     ) : (
                         <Save className="w-4 h-4" aria-hidden="true" />
                     )}
-                    {modo === 'crear' ? 'Publicar' : 'Guardar cambios'}
+                    {enviando ? 'Enviando…' : modo === 'crear' ? 'Publicar' : 'Guardar cambios'}
                 </button>
                 <button
                     type="button"

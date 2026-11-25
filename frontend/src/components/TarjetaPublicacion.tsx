@@ -3,10 +3,10 @@ import { Link } from 'react-router'
 import { BedDouble, DoorOpen, Heart, MapPin, User } from 'lucide-react'
 import { agregarFavorito, esFavorito, quitarFavorito } from '../mocks/favoritos'
 import { obtenerSesion } from '../servicios/sesion'
-import { obtenerUsuarioPorId } from '../mocks/usuarios'
 import { mostrarToast } from '../mocks/toast'
 import { formatearPrecio } from '../utils/formato'
 import { ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
+import { nombreDelAnunciante } from '../utils/formato'
 
 interface TarjetaPublicacionProps {
     publicacion: Publicacion
@@ -17,7 +17,7 @@ interface TarjetaPublicacionProps {
 function TarjetaPublicacion({ publicacion, onFavoritoCambiado, vista = 'grilla' }: TarjetaPublicacionProps) {
     const enLista = vista === 'lista'
     const sesion = obtenerSesion()
-    const publicador = obtenerUsuarioPorId(publicacion.propietarioId)
+    const publicador = publicacion.anunciante
     const puedeGuardarFavorito = sesion?.rol === 'interesado'
     const favorita = puedeGuardarFavorito && esFavorito(sesion!.id, publicacion.id)
 
@@ -97,7 +97,7 @@ function TarjetaPublicacion({ publicacion, onFavoritoCambiado, vista = 'grilla' 
                 {publicador && (
                     <p className="text-xs text-muted flex items-center gap-1 mt-1 pt-2 border-t border-border">
                         <User className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                        {publicador.nombre} {publicador.apellido} ·{' '}
+                        {nombreDelAnunciante(publicador)} ·{' '}
                         {publicador.rol === 'inmobiliaria' ? 'Inmobiliaria' : 'Propietario'}
                     </p>
                 )}

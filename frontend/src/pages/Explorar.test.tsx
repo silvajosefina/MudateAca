@@ -3,16 +3,20 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import Explorar from './Explorar'
-import { obtenerPublicacionesActivas } from '../mocks/publicaciones'
+import { listarMisPublicaciones, listarPublicaciones } from '../servicios/publicaciones'
 import { obtenerSesion } from '../servicios/sesion'
 import { obtenerVistaListado } from '../mocks/preferenciasVista'
 import type { Publicacion } from '../types/publicacion'
+import type { Filtros } from '../utils/filtrosExplorar'
 
 jest.mock('../layouts/PublicoLayout', () => ({ children }: { children: ReactNode }) => children)
 jest.mock('../components/TarjetaPublicacion', () => ({ publicacion }: { publicacion: Publicacion }) => (
     <div>{publicacion.descripcion}</div>
 ))
-jest.mock('../mocks/publicaciones', () => ({ obtenerPublicacionesActivas: jest.fn() }))
+jest.mock('../servicios/publicaciones', () => ({
+    listarPublicaciones: jest.fn(),
+    listarMisPublicaciones: jest.fn(),
+}))
 jest.mock('../servicios/sesion', () => ({ obtenerSesion: jest.fn() }))
 jest.mock('../mocks/busquedasActivas', () => ({ crearBusqueda: jest.fn() }))
 jest.mock('../mocks/preferenciasVista', () => ({
@@ -81,8 +85,20 @@ function renderExplorar() {
     )
 }
 
+// Simula el filtrado que hace el backend con los mismos criterios que usa cada prueba.
+async function listarComoLaApi(filtros: Filtros) {
+    const resultados = [depto, casa, habitacionTemporaria].filter(
+        (p) =>
+            (filtros.modalidad === 'todas' || p.modalidad === filtros.modalidad) &&
+            (filtros.tipoInmueble === 'todos' || p.tipoInmueble === filtros.tipoInmueble) &&
+            p.ubicacion.toLowerCase().includes(filtros.ubicacion.trim().toLowerCase()),
+    )
+    return { count: resultados.length, next: null, previous: null, results: resultados }
+}
+
 beforeEach(() => {
-    jest.mocked(obtenerPublicacionesActivas).mockReturnValue([depto, casa, habitacionTemporaria])
+    jest.mocked(listarPublicaciones).mockImplementation(listarComoLaApi)
+    jest.mocked(listarMisPublicaciones).mockResolvedValue({ count: 0, next: null, previous: null, results: [], totales: {} })
     jest.mocked(obtenerSesion).mockReturnValue(null)
     jest.mocked(obtenerVistaListado).mockReturnValue('grilla')
 })
@@ -93,9 +109,9 @@ afterEach(() => {
 })
 
 describe('Explorar - filtros de búsqueda', () => {
-    test('renderiza el listado completo de publicaciones activas sin filtros', () => {
+    test('renderiza el listado completo de publicaciones activas sin filtros', async () => {
         renderExplorar()
-        expect(screen.getByText('Departamento Centro')).toBeInTheDocument()
+        expect(await screen.findByText('Departamento Centro')).toBeInTheDocument()
         expect(screen.getByText('Casa Barrio Norte')).toBeInTheDocument()
         expect(screen.getByText('Habitación Zona Terminal')).toBeInTheDocument()
         expect(screen.getByText('Publicaciones disponibles')).toBeInTheDocument()
@@ -106,27 +122,33 @@ describe('Explorar - filtros de búsqueda', () => {
         const user = userEvent.setup({ delay: null })
         renderExplorar()
 
+        expect(await screen.findByText('Casa Barrio Norte')).toBeInTheDocument()
         await user.type(screen.getByPlaceholderText('Barrio, ciudad'), 'Centro')
 
-        // Antes de que venza el debounce, el listado completo sigue visible.
+        // Antes de que venza el debounce no se consulta a la API con el texto nuevo.
         expect(screen.getByText('Casa Barrio Norte')).toBeInTheDocument()
+        expect(listarPublicaciones).not.toHaveBeenCalledWith(expect.objectContaining({ ubicacion: 'Centro' }), 1)
 
-        act(() => {
+        await act(async () => {
             jest.advanceTimersByTime(300)
         })
 
+        expect(listarPublicaciones).toHaveBeenCalledWith(expect.objectContaining({ ubicacion: 'Centro' }), 1)
+        expect(await screen.findByText('1 publicación(es) encontrada(s).')).toBeInTheDocument()
         expect(screen.getByText('Departamento Centro')).toBeInTheDocument()
         expect(screen.queryByText('Casa Barrio Norte')).not.toBeInTheDocument()
         expect(screen.queryByText('Habitación Zona Terminal')).not.toBeInTheDocument()
-        expect(screen.getByText('1 publicación(es) encontrada(s).')).toBeInTheDocument()
     })
 
     test('seleccionar un tipo de inmueble filtra el listado al instante', async () => {
         const user = userEvent.setup()
         renderExplorar()
 
+        await screen.findByText('Departamento Centro')
         await user.selectOptions(obtenerSelectTipoInmueble(), 'casa')
 
+        expect(listarPublicaciones).toHaveBeenLastCalledWith(expect.objectContaining({ tipoInmueble: 'casa' }), 1)
+        expect(await screen.findByText('1 publicación(es) encontrada(s).')).toBeInTheDocument()
         expect(screen.getByText('Casa Barrio Norte')).toBeInTheDocument()
         expect(screen.queryByText('Departamento Centro')).not.toBeInTheDocument()
         expect(screen.queryByText('Habitación Zona Terminal')).not.toBeInTheDocument()
@@ -136,8 +158,10 @@ describe('Explorar - filtros de búsqueda', () => {
         const user = userEvent.setup()
         renderExplorar()
 
+        await screen.findByText('Habitación Zona Terminal')
         await user.click(screen.getByRole('button', { name: 'Residencial' }))
 
+        expect(await screen.findByText('2 publicación(es) encontrada(s).')).toBeInTheDocument()
         expect(screen.getByText('Departamento Centro')).toBeInTheDocument()
         expect(screen.getByText('Casa Barrio Norte')).toBeInTheDocument()
         expect(screen.queryByText('Habitación Zona Terminal')).not.toBeInTheDocument()
@@ -147,13 +171,39 @@ describe('Explorar - filtros de búsqueda', () => {
         const user = userEvent.setup()
         renderExplorar()
 
+        await screen.findByText('Departamento Centro')
         await user.selectOptions(obtenerSelectTipoInmueble(), 'casa')
+        expect(await screen.findByText('1 publicación(es) encontrada(s).')).toBeInTheDocument()
         expect(screen.queryByText('Departamento Centro')).not.toBeInTheDocument()
 
         await user.click(screen.getByRole('button', { name: /Limpiar filtros/ }))
 
-        expect(screen.getByText('Departamento Centro')).toBeInTheDocument()
+        expect(await screen.findByText('Departamento Centro')).toBeInTheDocument()
         expect(screen.getByText('Casa Barrio Norte')).toBeInTheDocument()
         expect(screen.getByText('Habitación Zona Terminal')).toBeInTheDocument()
+    })
+
+    test('muestra el error de la API si no puede cargar las publicaciones', async () => {
+        jest.mocked(listarPublicaciones).mockRejectedValue(
+            Object.assign(new Error('Network Error'), { isAxiosError: true }),
+        )
+        renderExplorar()
+        expect(
+            await screen.findByText('No se pudo conectar con el servidor. Revisá tu conexión.'),
+        ).toBeInTheDocument()
+    })
+
+    test('en temporario muestra la duración de la estadía y la envía como filtro', async () => {
+        const user = userEvent.setup()
+        renderExplorar()
+        await screen.findByText('Departamento Centro')
+
+        await user.click(screen.getByRole('button', { name: 'Temporario' }))
+        await user.type(screen.getByPlaceholderText('Sin indicar'), '7')
+
+        expect(listarPublicaciones).toHaveBeenLastCalledWith(
+            expect.objectContaining({ modalidad: 'temporario', duracionEstadia: 7 }),
+            1,
+        )
     })
 })

@@ -24,28 +24,42 @@ import GaleriaMosaico from '../components/GaleriaMosaico'
 import ModalGaleria from '../components/ModalGaleria'
 import ModalReclamo from '../components/ModalReclamo'
 import Mapa from '../components/Mapa'
-import { obtenerPublicacionPorId } from '../mocks/publicaciones'
-import { obtenerUsuarioPorId } from '../mocks/usuarios'
+import { obtenerPublicacion } from '../servicios/publicaciones'
+import { useConsulta } from '../hooks/useConsulta'
 import { obtenerSesion } from '../servicios/sesion'
 import { agregarFavorito, esFavorito, quitarFavorito } from '../mocks/favoritos'
 import { obtenerOCrearConversacion } from '../mocks/mensajes'
 import { mostrarToast } from '../mocks/toast'
-import { formatearFecha, formatearPrecio } from '../utils/formato'
-import { ETIQUETAS_TIPO_INMUEBLE } from '../types/publicacion'
+import { formatearFecha, formatearPrecio, nombreDelAnunciante } from '../utils/formato'
+import { ETIQUETAS_ESTADO_PUBLICACION, ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
+
+// RF-15: se puede consultar por una publicación activa o reservada, no por una ya alquilada.
+const ESTADOS_QUE_ADMITEN_CONTACTO = ['activa', 'reservada']
 
 function PublicacionDetalle() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
     const location = useLocation()
     const sesion = obtenerSesion()
-    const publicacion = id ? obtenerPublicacionPorId(id) : undefined
+    // El backend decide qué puede ver cada usuario: el público solo ve publicaciones activas,
+    // reservadas o alquiladas; el dueño y el administrador ven todas (404 en otro caso).
+    const consulta = useConsulta(id ?? '', () => obtenerPublicacion(id ?? ''))
+    const cargando = consulta.cargando
+    const publicacion: Publicacion | null = consulta.error ? null : (consulta.datos ?? null)
     const [, forzarActualizacion] = useState(0)
     const [galeriaAbierta, setGaleriaAbierta] = useState<number | null>(null)
     const [reclamoAbierto, setReclamoAbierto] = useState<'publicacion' | 'usuario' | null>(null)
     const esDueño = Boolean(sesion && publicacion && sesion.id === publicacion.propietarioId)
-    const esAdministrador = sesion?.rol === 'administrador'
 
-    if (!publicacion || (publicacion.estado !== 'activa' && !esDueño && !esAdministrador)) {
+    if (cargando && !publicacion) {
+        return (
+            <PublicoLayout>
+                <p className="text-sm text-muted text-center py-12">Cargando publicación…</p>
+            </PublicoLayout>
+        )
+    }
+
+    if (!publicacion) {
         return (
             <PublicoLayout>
                 <div className="bg-surface rounded-2xl shadow-card p-6 sm:p-8 text-center">
@@ -66,7 +80,8 @@ function PublicacionDetalle() {
         )
     }
 
-    const publicador = obtenerUsuarioPorId(publicacion.propietarioId)
+    const publicador = publicacion.anunciante
+    const admiteContacto = ESTADOS_QUE_ADMITEN_CONTACTO.includes(publicacion.estado)
     const puedeGuardarFavorito = sesion?.rol === 'interesado'
     const favorita = Boolean(puedeGuardarFavorito && esFavorito(sesion!.id, publicacion.id))
 
@@ -130,6 +145,13 @@ function PublicacionDetalle() {
                                 {ETIQUETAS_TIPO_INMUEBLE[publicacion.tipoInmueble]}
                             </span>
                             <span className="text-xs text-muted capitalize">{publicacion.modalidad}</span>
+                            {publicacion.estado !== 'activa' && (
+                                <span
+                                    className={`text-xs font-semibold rounded-full px-2.5 py-1 ${ETIQUETAS_ESTADO_PUBLICACION[publicacion.estado].clase}`}
+                                >
+                                    {ETIQUETAS_ESTADO_PUBLICACION[publicacion.estado].texto}
+                                </span>
+                            )}
                         </div>
 
                         <p className="text-sm text-foreground whitespace-pre-line">{publicacion.descripcion}</p>
@@ -149,8 +171,11 @@ function PublicacionDetalle() {
                             )}
                         </div>
 
-                        {publicacion.modalidad === 'temporario' && publicacion.duracionMinima && (
-                            <p className="text-sm text-muted">Duración mínima: {publicacion.duracionMinima}</p>
+                        {publicacion.modalidad === 'temporario' && publicacion.duracionMinimaDias && (
+                            <p className="text-sm text-muted">
+                                Duración mínima: {publicacion.duracionMinimaDias}{' '}
+                                {publicacion.duracionMinimaDias === 1 ? 'noche' : 'noches'}
+                            </p>
                         )}
 
                         {caracteristicas.length > 0 && (
@@ -223,6 +248,7 @@ function PublicacionDetalle() {
                             </>
                         ) : sesion?.rol === 'interesado' ? (
                             <>
+                                {admiteContacto ? (
                                 <button
                                     type="button"
                                     onClick={handleContactar}
@@ -231,6 +257,11 @@ function PublicacionDetalle() {
                                     <MessageCircle className="w-4 h-4" aria-hidden="true" />
                                     Contactar
                                 </button>
+                                ) : (
+                                    <p className="text-xs text-muted bg-surface-hover rounded-lg px-3 py-2">
+                                        Esta publicación ya fue alquilada y no recibe consultas.
+                                    </p>
+                                )}
                                 <button
                                     type="button"
                                     onClick={handleFavorito}
@@ -269,7 +300,7 @@ function PublicacionDetalle() {
                                 <User className="w-4 h-4" aria-hidden="true" />
                             </span>
                             <p className="text-sm text-foreground min-w-0 flex-1">
-                                <span className="font-semibold block truncate">{publicador.nombre} {publicador.apellido}</span>
+                                <span className="font-semibold block truncate">{nombreDelAnunciante(publicador)}</span>
                                 <span className="text-muted text-xs">
                                     {publicador.rol === 'inmobiliaria' ? 'Inmobiliaria' : 'Propietario'}
                                 </span>
@@ -311,7 +342,7 @@ function PublicacionDetalle() {
                 <ModalReclamo
                     objetivoTipo="usuario"
                     objetivoId={publicador.id}
-                    nombreObjetivo={`${publicador.nombre} ${publicador.apellido}`}
+                    nombreObjetivo={nombreDelAnunciante(publicador)}
                     onClose={() => setReclamoAbierto(null)}
                 />
             )}

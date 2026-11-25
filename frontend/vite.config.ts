@@ -39,6 +39,8 @@ export default defineConfig({
     // así las cookies httpOnly de la sesión funcionan igual.
     proxy: {
       '/api': 'http://localhost:8000',
+      // Archivos subidos cuando el backend local no usa Cloudinary.
+      '/media': 'http://localhost:8000',
     },
   },
 })

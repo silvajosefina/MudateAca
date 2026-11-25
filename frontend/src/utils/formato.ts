@@ -34,3 +34,14 @@ export function formatearFechaCorta(iso: string): string {
         minute: '2-digit',
     })
 }
+
+// RF-21: una inmobiliaria se muestra con su razón social; un particular, con su nombre.
+export function nombreDelAnunciante(anunciante: {
+    nombre: string
+    apellido: string
+    razonSocial?: string
+    rol: string
+}): string {
+    if (anunciante.rol === 'inmobiliaria' && anunciante.razonSocial) return anunciante.razonSocial
+    return `${anunciante.nombre} ${anunciante.apellido}`
+}

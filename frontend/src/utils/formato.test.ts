@@ -5,6 +5,7 @@ import {
     formatearMiles,
     formatearPrecio,
     quitarFormatoMiles,
+    nombreDelAnunciante,
 } from './formato'
 
 describe('formatearMiles', () => {
@@ -96,5 +97,18 @@ describe('formatearFechaCorta', () => {
         expect(resultado).not.toContain('2026')
         expect(resultado).toMatch(/\d{1,2}\/\d{1,2}/)
         expect(resultado).toMatch(/\d{2}:\d{2}/)
+    })
+})
+
+describe('nombreDelAnunciante', () => {
+    test('una inmobiliaria se muestra con su razón social', () => {
+        expect(
+            nombreDelAnunciante({ nombre: 'Ana', apellido: 'Gómez', razonSocial: 'Gómez Propiedades', rol: 'inmobiliaria' }),
+        ).toBe('Gómez Propiedades')
+    })
+
+    test('un propietario, o una inmobiliaria sin razón social, se muestra con nombre y apellido', () => {
+        expect(nombreDelAnunciante({ nombre: 'Ana', apellido: 'Gómez', rol: 'propietario' })).toBe('Ana Gómez')
+        expect(nombreDelAnunciante({ nombre: 'Ana', apellido: 'Gómez', rol: 'inmobiliaria' })).toBe('Ana Gómez')
     })
 })
