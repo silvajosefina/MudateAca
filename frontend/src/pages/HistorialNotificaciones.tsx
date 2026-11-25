@@ -8,10 +8,12 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import {
     eliminarNotificacion,
     eliminarTodasLasNotificaciones,
-    obtenerNotificacionesDeUsuario,
-    type Notificacion,
-} from '../mocks/notificaciones'
+    listarNotificaciones,
+} from '../servicios/notificaciones'
+import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
+import { useConsulta } from '../hooks/useConsulta'
+import { actualizarContadores } from '../hooks/useContador'
 import { mostrarToast } from '../mocks/toast'
 import { formatearFechaHora } from '../utils/formato'
 
@@ -19,40 +21,41 @@ const RESULTADOS_POR_PAGINA = 10
 
 function HistorialNotificaciones() {
     const sesion = obtenerSesion()
-    const [notificaciones, setNotificaciones] = useState<Notificacion[]>(() =>
-        sesion ? obtenerNotificacionesDeUsuario(sesion.id) : [],
-    )
     const [paginaActual, setPaginaActual] = useState(1)
     const [confirmarVaciado, setConfirmarVaciado] = useState(false)
+    const consulta = useConsulta(String(paginaActual), () => listarNotificaciones(paginaActual))
+    const notificaciones = consulta.datos?.results ?? []
+    const refrescar = consulta.recargar
 
     if (!sesion) return null
 
     const Layout = sesion.rol === 'interesado' ? PublicoLayout : PanelLayout
 
-    function refrescar() {
-        setNotificaciones(obtenerNotificacionesDeUsuario(sesion!.id))
+    async function handleEliminar(id: string) {
+        try {
+            await eliminarNotificacion(id)
+            mostrarToast('Notificación eliminada.')
+            refrescar()
+            actualizarContadores()
+        } catch (error) {
+            mostrarToast(mensajeDeError(error), 'error')
+        }
     }
 
-    function handleEliminar(id: string) {
-        eliminarNotificacion(id)
-        mostrarToast('Notificación eliminada.')
-        refrescar()
-    }
-
-    function handleVaciarHistorial() {
-        eliminarTodasLasNotificaciones(sesion!.id)
-        mostrarToast('Historial de notificaciones vaciado.')
+    async function handleVaciarHistorial() {
         setConfirmarVaciado(false)
-        setPaginaActual(1)
-        refrescar()
+        try {
+            await eliminarTodasLasNotificaciones()
+            mostrarToast('Historial de notificaciones vaciado.')
+            setPaginaActual(1)
+            refrescar()
+            actualizarContadores()
+        } catch (error) {
+            mostrarToast(mensajeDeError(error), 'error')
+        }
     }
 
-    const totalPaginas = Math.max(1, Math.ceil(notificaciones.length / RESULTADOS_POR_PAGINA))
-    const paginaSegura = Math.min(paginaActual, totalPaginas)
-    const notificacionesPagina = notificaciones.slice(
-        (paginaSegura - 1) * RESULTADOS_POR_PAGINA,
-        paginaSegura * RESULTADOS_POR_PAGINA,
-    )
+    const totalPaginas = Math.max(1, Math.ceil((consulta.datos?.count ?? 0) / RESULTADOS_POR_PAGINA))
 
     return (
         <Layout>
@@ -73,13 +76,21 @@ function HistorialNotificaciones() {
                 )}
             </div>
 
-            {notificaciones.length === 0 ? (
+            {consulta.cargando && notificaciones.length === 0 ? (
+                <div className="bg-surface rounded-2xl shadow-lg p-8 text-center text-sm text-muted">
+                    Cargando notificaciones…
+                </div>
+            ) : consulta.error ? (
+                <div className="bg-surface rounded-2xl shadow-lg p-8 text-center text-sm text-danger">
+                    {mensajeDeError(consulta.error, 'No se pudieron cargar las notificaciones.')}
+                </div>
+            ) : notificaciones.length === 0 ? (
                 <div className="bg-surface rounded-2xl shadow-lg p-8 text-center text-sm text-muted">
                     No tenés notificaciones todavía.
                 </div>
             ) : (
                 <div className="bg-surface rounded-2xl shadow-lg overflow-hidden">
-                    {notificacionesPagina.map((n) => {
+                    {notificaciones.map((n) => {
                         const contenido = (
                             <>
                                 {n.tipo === 'error' ? (
@@ -123,7 +134,7 @@ function HistorialNotificaciones() {
                 </div>
             )}
 
-            <Paginacion paginaActual={paginaSegura} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
+            <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
 
             {confirmarVaciado && (
                 <ConfirmDialog

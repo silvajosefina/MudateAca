@@ -20,7 +20,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { useConsulta } from '../hooks/useConsulta'
 import { listarMisPublicaciones, listarPublicaciones } from '../servicios/publicaciones'
 import { mensajeDeError } from '../servicios/errores'
-import { crearBusqueda } from '../mocks/busquedasActivas'
+import { crearBusqueda } from '../servicios/busquedas'
 import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
 import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
@@ -73,18 +73,19 @@ function Explorar() {
         guardarVistaListado(nuevaVista)
     }
 
-    function handleGuardarBusqueda() {
+    async function handleGuardarBusqueda() {
         if (!sesion) return
         if (!hayFiltrosActivos) {
             mostrarToast('Aplicá al menos un filtro antes de guardar la búsqueda.', 'error')
             return
         }
-        crearBusqueda(
-            { ...filtros, nombre: nombreBusqueda.trim() || 'Búsqueda sin nombre' },
-            sesion.id,
-        )
-        mostrarToast('Búsqueda guardada en "Mis búsquedas".')
-        setNombreBusqueda('')
+        try {
+            await crearBusqueda({ ...filtros, nombre: nombreBusqueda })
+            mostrarToast('Búsqueda guardada en "Mis búsquedas".')
+            setNombreBusqueda('')
+        } catch (error) {
+            mostrarToast(mensajeDeError(error, 'No se pudo guardar la búsqueda.'), 'error')
+        }
     }
 
     const ubicacionDebounced = useDebouncedValue(filtros.ubicacion, DEBOUNCE_BUSQUEDA_MS)

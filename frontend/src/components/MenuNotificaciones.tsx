@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Bell, CheckCircle2, XCircle } from 'lucide-react'
-import {
-    obtenerNotificacionesDeUsuario,
-    marcarNotificacionesComoLeidas,
-    type Notificacion,
-} from '../mocks/notificaciones'
+import { listarNotificaciones, marcarNotificacionesLeidas, type Notificacion } from '../servicios/notificaciones'
 import { useNotificacionesNoLeidas } from '../hooks/useNotificacionesNoLeidas'
+import { actualizarContadores } from '../hooks/useContador'
 import { formatearFechaCorta } from '../utils/formato'
 
 interface MenuNotificacionesProps {
@@ -15,7 +12,7 @@ interface MenuNotificacionesProps {
 
 function MenuNotificaciones({ usuarioId }: MenuNotificacionesProps) {
     const [abierto, setAbierto] = useState(false)
-    const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
+    const [notificaciones, setNotificaciones] = useState<Notificacion[] | null>(null)
     const noLeidas = useNotificacionesNoLeidas(usuarioId)
     const contenedorRef = useRef<HTMLDivElement>(null)
 
@@ -33,8 +30,15 @@ function MenuNotificaciones({ usuarioId }: MenuNotificacionesProps) {
         const abrira = !abierto
         setAbierto(abrira)
         if (abrira) {
-            setNotificaciones(obtenerNotificacionesDeUsuario(usuarioId))
-            marcarNotificacionesComoLeidas(usuarioId)
+            setNotificaciones(null)
+            // Muestra las últimas y después las marca como leídas, como hacía el panel.
+            listarNotificaciones(1)
+                .then((pagina) => {
+                    setNotificaciones(pagina.results)
+                    return marcarNotificacionesLeidas()
+                })
+                .then(actualizarContadores)
+                .catch(() => setNotificaciones([]))
         }
     }
 
@@ -62,7 +66,9 @@ function MenuNotificaciones({ usuarioId }: MenuNotificacionesProps) {
                         <p className="text-sm font-semibold text-foreground">Notificaciones</p>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
-                        {notificaciones.length === 0 ? (
+                        {notificaciones === null ? (
+                            <p className="text-sm text-muted text-center px-4 py-6">Cargando…</p>
+                        ) : notificaciones.length === 0 ? (
                             <p className="text-sm text-muted text-center px-4 py-6">No tenés notificaciones todavía.</p>
                         ) : (
                             notificaciones.map((n) => {

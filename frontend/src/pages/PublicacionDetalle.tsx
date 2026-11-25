@@ -27,8 +27,9 @@ import Mapa from '../components/Mapa'
 import { obtenerPublicacion } from '../servicios/publicaciones'
 import { useConsulta } from '../hooks/useConsulta'
 import { obtenerSesion } from '../servicios/sesion'
-import { agregarFavorito, esFavorito, quitarFavorito } from '../mocks/favoritos'
-import { obtenerOCrearConversacion } from '../mocks/mensajes'
+import { agregarFavorito, quitarFavorito, useFavoritos } from '../servicios/favoritos'
+import { iniciarConversacion } from '../servicios/mensajes'
+import { mensajeDeError } from '../servicios/errores'
 import { mostrarToast } from '../mocks/toast'
 import { formatearFecha, formatearPrecio, nombreDelAnunciante } from '../utils/formato'
 import { ETIQUETAS_ESTADO_PUBLICACION, ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
@@ -46,7 +47,8 @@ function PublicacionDetalle() {
     const consulta = useConsulta(id ?? '', () => obtenerPublicacion(id ?? ''))
     const cargando = consulta.cargando
     const publicacion: Publicacion | null = consulta.error ? null : (consulta.datos ?? null)
-    const [, forzarActualizacion] = useState(0)
+    const esFavorito = useFavoritos(sesion?.rol === 'interesado' ? sesion.id : undefined)
+    const [contactando, setContactando] = useState(false)
     const [galeriaAbierta, setGaleriaAbierta] = useState<number | null>(null)
     const [reclamoAbierto, setReclamoAbierto] = useState<'publicacion' | 'usuario' | null>(null)
     const esDueño = Boolean(sesion && publicacion && sesion.id === publicacion.propietarioId)
@@ -83,18 +85,21 @@ function PublicacionDetalle() {
     const publicador = publicacion.anunciante
     const admiteContacto = ESTADOS_QUE_ADMITEN_CONTACTO.includes(publicacion.estado)
     const puedeGuardarFavorito = sesion?.rol === 'interesado'
-    const favorita = Boolean(puedeGuardarFavorito && esFavorito(sesion!.id, publicacion.id))
+    const favorita = Boolean(puedeGuardarFavorito && esFavorito(publicacion.id))
 
-    function handleFavorito() {
+    async function handleFavorito() {
         if (!sesion) return
-        if (favorita) {
-            quitarFavorito(sesion.id, publicacion!.id)
-            mostrarToast('Publicación quitada de favoritos.')
-        } else {
-            agregarFavorito(sesion.id, publicacion!.id)
-            mostrarToast('Publicación agregada a favoritos.')
+        try {
+            if (favorita) {
+                await quitarFavorito(publicacion!.id)
+                mostrarToast('Publicación quitada de favoritos.')
+            } else {
+                await agregarFavorito(publicacion!.id)
+                mostrarToast('Publicación agregada a favoritos.')
+            }
+        } catch (error) {
+            mostrarToast(mensajeDeError(error), 'error')
         }
-        forzarActualizacion((n) => n + 1)
     }
 
     function handleVolver() {
@@ -105,10 +110,16 @@ function PublicacionDetalle() {
         }
     }
 
-    function handleContactar() {
-        if (!sesion) return
-        const conversacion = obtenerOCrearConversacion(publicacion!.id, sesion.id, publicacion!.propietarioId)
-        navigate(`/mensajes?conversacion=${conversacion.id}`)
+    async function handleContactar() {
+        if (!sesion || contactando) return
+        setContactando(true)
+        try {
+            const conversacion = await iniciarConversacion(publicacion!.id)
+            navigate(`/mensajes?conversacion=${conversacion.id}`)
+        } catch (error) {
+            mostrarToast(mensajeDeError(error, 'No se pudo iniciar la conversación.'), 'error')
+            setContactando(false)
+        }
     }
 
     const caracteristicas = [
@@ -251,6 +262,7 @@ function PublicacionDetalle() {
                                 {admiteContacto ? (
                                 <button
                                     type="button"
+                                    disabled={contactando}
                                     onClick={handleContactar}
                                     className="inline-flex items-center justify-center gap-1.5 bg-primary hover:bg-primary-hover text-surface text-sm font-semibold rounded-lg px-3 py-2.5 transition-colors cursor-pointer"
                                 >

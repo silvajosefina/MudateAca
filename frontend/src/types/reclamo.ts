@@ -1,5 +1,5 @@
 export type TipoObjetivoReclamo = 'publicacion' | 'usuario'
-export type EstadoReclamo = 'pendiente' | 'resuelto' | 'descartado'
+export type EstadoReclamo = 'pendiente' | 'en_revision' | 'resuelto' | 'descartado'
 
 export type MotivoReclamoPublicacion =
     | 'enganosa'
@@ -29,6 +29,7 @@ export const ETIQUETAS_MOTIVO_RECLAMO: Record<MotivoReclamo, string> = {
 
 export const ETIQUETAS_ESTADO_RECLAMO: Record<EstadoReclamo, { texto: string; clase: string }> = {
     pendiente: { texto: 'Pendiente', clase: 'bg-warning-subtle text-warning' },
+    en_revision: { texto: 'En revisión', clase: 'bg-primary-subtle text-primary' },
     resuelto: { texto: 'Resuelto', clase: 'bg-accent-subtle text-accent' },
     descartado: { texto: 'Descartado', clase: 'bg-surface-hover text-muted' },
 }
@@ -42,6 +43,8 @@ export interface Reclamo {
     descripcion: string
     estado: EstadoReclamo
     notaAdmin?: string
+    // Lo arma la API: descripción breve de la publicación o nombre del usuario reportado.
+    nombreObjetivo?: string
     creadoEn: string
     actualizadoEn: string
 }

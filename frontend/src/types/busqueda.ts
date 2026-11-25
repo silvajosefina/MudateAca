@@ -19,12 +19,16 @@ export interface BusquedaActiva {
     aptoEstudiantes: boolean
     fechaDeseadaDesde: string
     fechaDeseadaHasta: string
+    // Noches de estadía (0 = sin indicar). Solo aplica a alquileres temporarios.
+    duracionEstadia: number
     estado: EstadoBusqueda
+    // Publicaciones compatibles que la API calculó para esta búsqueda (RF-13).
+    cantidadCoincidencias?: number
     creadaEn: string
     actualizadaEn: string
 }
 
 export type BusquedaFormData = Omit<
     BusquedaActiva,
-    'id' | 'usuarioId' | 'estado' | 'creadaEn' | 'actualizadaEn'
+    'id' | 'usuarioId' | 'estado' | 'creadaEn' | 'actualizadaEn' | 'cantidadCoincidencias'
 >

@@ -1,7 +1,8 @@
 import type { MouseEvent } from 'react'
 import { Link } from 'react-router'
 import { BedDouble, DoorOpen, Heart, MapPin, User } from 'lucide-react'
-import { agregarFavorito, esFavorito, quitarFavorito } from '../mocks/favoritos'
+import { agregarFavorito, quitarFavorito, useFavoritos } from '../servicios/favoritos'
+import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import { formatearPrecio } from '../utils/formato'
@@ -19,20 +20,25 @@ function TarjetaPublicacion({ publicacion, onFavoritoCambiado, vista = 'grilla' 
     const sesion = obtenerSesion()
     const publicador = publicacion.anunciante
     const puedeGuardarFavorito = sesion?.rol === 'interesado'
-    const favorita = puedeGuardarFavorito && esFavorito(sesion!.id, publicacion.id)
+    const esFavorito = useFavoritos(puedeGuardarFavorito ? sesion.id : undefined)
+    const favorita = puedeGuardarFavorito && esFavorito(publicacion.id)
 
-    function handleFavorito(e: MouseEvent) {
+    async function handleFavorito(e: MouseEvent) {
         e.preventDefault()
         e.stopPropagation()
         if (!sesion) return
-        if (favorita) {
-            quitarFavorito(sesion.id, publicacion.id)
-            mostrarToast('Publicación quitada de favoritos.')
-        } else {
-            agregarFavorito(sesion.id, publicacion.id)
-            mostrarToast('Publicación agregada a favoritos.')
+        try {
+            if (favorita) {
+                await quitarFavorito(publicacion.id)
+                mostrarToast('Publicación quitada de favoritos.')
+            } else {
+                await agregarFavorito(publicacion.id)
+                mostrarToast('Publicación agregada a favoritos.')
+            }
+            onFavoritoCambiado?.()
+        } catch (error) {
+            mostrarToast(mensajeDeError(error), 'error')
         }
-        onFavoritoCambiado?.()
     }
 
     return (

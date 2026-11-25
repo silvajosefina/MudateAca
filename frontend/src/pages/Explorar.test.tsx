@@ -18,7 +18,7 @@ jest.mock('../servicios/publicaciones', () => ({
     listarMisPublicaciones: jest.fn(),
 }))
 jest.mock('../servicios/sesion', () => ({ obtenerSesion: jest.fn() }))
-jest.mock('../mocks/busquedasActivas', () => ({ crearBusqueda: jest.fn() }))
+jest.mock('../servicios/busquedas', () => ({ crearBusqueda: jest.fn() }))
 jest.mock('../mocks/preferenciasVista', () => ({
     obtenerVistaListado: jest.fn(),
     guardarVistaListado: jest.fn(),

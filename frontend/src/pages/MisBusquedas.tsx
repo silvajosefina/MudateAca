@@ -23,10 +23,12 @@ import {
     cambiarEstadoBusqueda,
     crearBusqueda,
     eliminarBusqueda,
-    obtenerBusquedasDeUsuario,
-    obtenerCoincidenciasDeBusqueda,
-} from '../mocks/busquedasActivas'
+    listarBusquedas,
+    listarCoincidencias,
+} from '../servicios/busquedas'
+import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
+import { useConsulta } from '../hooks/useConsulta'
 import { mostrarToast } from '../mocks/toast'
 import { formatearMiles, formatearPrecio, quitarFormatoMiles } from '../utils/formato'
 import type { BusquedaActiva, BusquedaFormData } from '../types/busqueda'
@@ -52,6 +54,7 @@ function valorInicial(busqueda?: BusquedaActiva): BusquedaFormData {
         aptoEstudiantes: busqueda?.aptoEstudiantes ?? false,
         fechaDeseadaDesde: busqueda?.fechaDeseadaDesde ?? '',
         fechaDeseadaHasta: busqueda?.fechaDeseadaHasta ?? '',
+        duracionEstadia: busqueda?.duracionEstadia ?? 0,
     }
 }
 
@@ -69,7 +72,8 @@ function tieneCriterios(datos: BusquedaFormData): boolean {
         datos.aceptaMascotas ||
         datos.aptoEstudiantes ||
         datos.fechaDeseadaDesde ||
-        datos.fechaDeseadaHasta,
+        datos.fechaDeseadaHasta ||
+        datos.duracionEstadia,
     )
 }
 
@@ -82,25 +86,8 @@ function resumenCriterios(busqueda: BusquedaActiva): string {
     if (busqueda.precioMax) partes.push(`hasta ${formatearPrecio(busqueda.precioMax)}`)
     if (busqueda.ambientesMin) partes.push(`${busqueda.ambientesMin}+ amb.`)
     if (busqueda.dormitoriosMin) partes.push(`${busqueda.dormitoriosMin}+ dorm.`)
+    if (busqueda.duracionEstadia) partes.push(`${busqueda.duracionEstadia} noches`)
     return partes.length > 0 ? partes.join(' · ') : 'Sin filtros específicos'
-}
-
-function criteriosDeFiltro(datos: BusquedaFormData) {
-    return {
-        modalidad: datos.modalidad,
-        tipoInmueble: datos.tipoInmueble,
-        precioMin: datos.precioMin,
-        precioMax: datos.precioMax,
-        ambientesMin: datos.ambientesMin,
-        dormitoriosMin: datos.dormitoriosMin,
-        ubicacion: datos.ubicacion,
-        amueblado: datos.amueblado,
-        serviciosIncluidos: datos.serviciosIncluidos,
-        aceptaMascotas: datos.aceptaMascotas,
-        aptoEstudiantes: datos.aptoEstudiantes,
-        fechaDeseadaDesde: datos.fechaDeseadaDesde,
-        fechaDeseadaHasta: datos.fechaDeseadaHasta,
-    }
 }
 
 function construirQueryExplorar(busqueda: BusquedaActiva): string {
@@ -118,28 +105,87 @@ function construirQueryExplorar(busqueda: BusquedaActiva): string {
     if (busqueda.aptoEstudiantes) params.set('aptoEstudiantes', '1')
     if (busqueda.fechaDeseadaDesde) params.set('fechaDeseadaDesde', busqueda.fechaDeseadaDesde)
     if (busqueda.fechaDeseadaHasta) params.set('fechaDeseadaHasta', busqueda.fechaDeseadaHasta)
+    if (busqueda.duracionEstadia) params.set('duracionEstadia', String(busqueda.duracionEstadia))
     return params.toString()
+}
+
+// RF-13: las coincidencias se piden a la API recién cuando se despliega la búsqueda.
+function ListaCoincidencias({ busqueda }: { busqueda: BusquedaActiva }) {
+    const consulta = useConsulta(`${busqueda.id}-${busqueda.actualizadaEn}`, () => listarCoincidencias(busqueda.id))
+    const coincidencias = consulta.datos ?? []
+
+    if (consulta.cargando && coincidencias.length === 0) {
+        return <p className="text-sm text-muted">Buscando publicaciones compatibles…</p>
+    }
+    if (consulta.error) {
+        return <p className="text-sm text-danger">{mensajeDeError(consulta.error, 'No se pudieron cargar las coincidencias.')}</p>
+    }
+    if (coincidencias.length === 0) {
+        return <p className="text-sm text-muted">Todavía no hay publicaciones compatibles con esta búsqueda.</p>
+    }
+
+    return (
+        <>
+            {coincidencias.slice(0, COINCIDENCIAS_VISIBLES).map(({ publicacion, nivelCompatibilidad }) => (
+                <Link
+                    key={publicacion.id}
+                    to={`/explorar/${publicacion.id}`}
+                    className="flex items-center gap-3 rounded-lg border border-border p-3 hover:border-primary transition-colors cursor-pointer"
+                >
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-hover shrink-0">
+                        {publicacion.fotos[0] && (
+                            <img src={publicacion.fotos[0]} alt={publicacion.descripcion} className="w-full h-full object-cover" />
+                        )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{formatearPrecio(publicacion.precio)}</p>
+                        <p className="text-xs text-muted flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
+                            {publicacion.ubicacion}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted">
+                            <span className="flex items-center gap-1">
+                                <DoorOpen className="w-3 h-3" aria-hidden="true" />
+                                {publicacion.ambientes}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <BedDouble className="w-3 h-3" aria-hidden="true" />
+                                {publicacion.dormitorios}
+                            </span>
+                        </div>
+                    </div>
+                    <span className="text-sm font-heading font-semibold text-accent shrink-0">{nivelCompatibilidad}%</span>
+                </Link>
+            ))}
+            {coincidencias.length > COINCIDENCIAS_VISIBLES && (
+                <Link
+                    to={`/explorar?${construirQueryExplorar(busqueda)}`}
+                    className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary transition-colors cursor-pointer self-start"
+                >
+                    Ver todas en Explorar
+                    <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                </Link>
+            )}
+        </>
+    )
 }
 
 function MisBusquedas() {
     const sesion = obtenerSesion()
-    const [busquedas, setBusquedas] = useState<BusquedaActiva[]>(() =>
-        sesion ? obtenerBusquedasDeUsuario(sesion.id) : [],
-    )
+    const consulta = useConsulta('busquedas', listarBusquedas)
+    const busquedas = consulta.datos ?? []
+    const refrescar = consulta.recargar
     const [editando, setEditando] = useState<BusquedaActiva | null>(null)
     const [mostrarFormulario, setMostrarFormulario] = useState(false)
     const [datos, setDatos] = useState<BusquedaFormData>(valorInicial())
     const [expandida, setExpandida] = useState<string | null>(null)
     const [aEliminar, setAEliminar] = useState<BusquedaActiva | null>(null)
     const [errorCriterios, setErrorCriterios] = useState(false)
-    const [errorDuplicado, setErrorDuplicado] = useState(false)
+    const [errorGuardado, setErrorGuardado] = useState('')
+    const [guardando, setGuardando] = useState(false)
     const [paginaActual, setPaginaActual] = useState(1)
 
     if (!sesion) return null
-
-    function refrescar() {
-        setBusquedas(obtenerBusquedasDeUsuario(sesion!.id))
-    }
 
     function actualizarCampo<K extends keyof BusquedaFormData>(campo: K, valor: BusquedaFormData[K]) {
         setDatos((prev) => ({ ...prev, [campo]: valor }))
@@ -149,7 +195,7 @@ function MisBusquedas() {
         setEditando(null)
         setDatos(valorInicial())
         setErrorCriterios(false)
-        setErrorDuplicado(false)
+        setErrorGuardado('')
         setMostrarFormulario(true)
     }
 
@@ -157,62 +203,61 @@ function MisBusquedas() {
         setEditando(busqueda)
         setDatos(valorInicial(busqueda))
         setErrorCriterios(false)
-        setErrorDuplicado(false)
+        setErrorGuardado('')
         setMostrarFormulario(true)
     }
 
-    function hayDuplicado(datosAGuardar: BusquedaFormData, idAExcluir?: string): boolean {
-        const criteriosNuevos = JSON.stringify(criteriosDeFiltro(datosAGuardar))
-        return busquedas.some(
-            (b) => b.id !== idAExcluir && JSON.stringify(criteriosDeFiltro(b)) === criteriosNuevos,
-        )
-    }
-
-    function handleGuardar(e: SubmitEvent) {
+    async function handleGuardar(e: SubmitEvent) {
         e.preventDefault()
+        if (guardando) return
 
         if (!tieneCriterios(datos)) {
             setErrorCriterios(true)
             return
         }
         setErrorCriterios(false)
+        setErrorGuardado('')
 
-        if (hayDuplicado(datos, editando?.id)) {
-            setErrorDuplicado(true)
-            return
+        // El backend rechaza una búsqueda con exactamente los mismos filtros que otra (RF-12).
+        setGuardando(true)
+        try {
+            if (editando) {
+                await actualizarBusqueda(editando.id, datos)
+                mostrarToast('Búsqueda actualizada.')
+            } else {
+                await crearBusqueda(datos)
+                mostrarToast('Búsqueda creada correctamente.')
+            }
+            setMostrarFormulario(false)
+            refrescar()
+        } catch (error) {
+            setErrorGuardado(mensajeDeError(error, 'No se pudo guardar la búsqueda.'))
+        } finally {
+            setGuardando(false)
         }
-        setErrorDuplicado(false)
+    }
 
-        const nombreFinal = { ...datos, nombre: datos.nombre.trim() || 'Búsqueda sin nombre' }
-        if (editando) {
-            actualizarBusqueda(editando.id, nombreFinal, sesion!.id)
-            mostrarToast('Búsqueda actualizada.')
-        } else {
-            crearBusqueda(nombreFinal, sesion!.id)
-            mostrarToast('Búsqueda creada correctamente.')
+    async function cambiarEstado(busqueda: BusquedaActiva, estado: 'activa' | 'pausada') {
+        try {
+            await cambiarEstadoBusqueda(busqueda.id, estado)
+            mostrarToast(estado === 'pausada' ? 'Búsqueda pausada.' : 'Búsqueda reactivada.')
+            refrescar()
+        } catch (error) {
+            mostrarToast(mensajeDeError(error), 'error')
         }
-        setMostrarFormulario(false)
-        refrescar()
     }
 
-    function handlePausar(busqueda: BusquedaActiva) {
-        cambiarEstadoBusqueda(busqueda.id, sesion!.id, 'pausada')
-        mostrarToast('Búsqueda pausada.')
-        refrescar()
-    }
-
-    function handleReactivar(busqueda: BusquedaActiva) {
-        cambiarEstadoBusqueda(busqueda.id, sesion!.id, 'activa')
-        mostrarToast('Búsqueda reactivada.')
-        refrescar()
-    }
-
-    function confirmarEliminar() {
+    async function confirmarEliminar() {
         if (!aEliminar) return
-        eliminarBusqueda(aEliminar.id, sesion!.id)
-        mostrarToast('Búsqueda eliminada.')
+        const busqueda = aEliminar
         setAEliminar(null)
-        refrescar()
+        try {
+            await eliminarBusqueda(busqueda.id)
+            mostrarToast('Búsqueda eliminada.')
+            refrescar()
+        } catch (error) {
+            mostrarToast(mensajeDeError(error), 'error')
+        }
     }
 
     const totalPaginas = Math.max(1, Math.ceil(busquedas.length / RESULTADOS_POR_PAGINA))
@@ -239,7 +284,15 @@ function MisBusquedas() {
                 </button>
             </div>
 
-            {busquedas.length === 0 ? (
+            {consulta.cargando && busquedas.length === 0 ? (
+                <div className="bg-surface rounded-2xl shadow-lg p-8 text-center text-sm text-muted">
+                    Cargando tus búsquedas…
+                </div>
+            ) : consulta.error ? (
+                <div className="bg-surface rounded-2xl shadow-lg p-8 text-center text-sm text-danger">
+                    {mensajeDeError(consulta.error, 'No se pudieron cargar tus búsquedas.')}
+                </div>
+            ) : busquedas.length === 0 ? (
                 <div className="bg-surface rounded-2xl shadow-lg p-8 text-center text-sm text-muted">
                     Todavía no guardaste ninguna búsqueda. Creá una para que te avisemos cuando aparezca
                     una propiedad compatible.
@@ -247,7 +300,6 @@ function MisBusquedas() {
             ) : (
                 <div className="flex flex-col gap-4">
                     {busquedasPagina.map((busqueda) => {
-                        const coincidencias = obtenerCoincidenciasDeBusqueda(busqueda)
                         const expandido = expandida === busqueda.id
 
                         return (
@@ -255,7 +307,9 @@ function MisBusquedas() {
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <h2 className="font-heading font-semibold text-foreground">{busqueda.nombre}</h2>
+                                            <h2 className="font-heading font-semibold text-foreground">
+                                                {busqueda.nombre || 'Búsqueda sin nombre'}
+                                            </h2>
                                             <span
                                                 className={`text-xs font-semibold rounded-full px-2.5 py-1 ${busqueda.estado === 'activa' ? 'bg-accent-subtle text-accent' : 'bg-warning-subtle text-warning'
                                                     }`}
@@ -273,7 +327,7 @@ function MisBusquedas() {
                                             aria-expanded={expandido}
                                             className="inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary transition-colors cursor-pointer whitespace-nowrap"
                                         >
-                                            {coincidencias.length} coincidencia(s)
+                                            {busqueda.cantidadCoincidencias ?? 0} coincidencia(s)
                                             {expandido ? (
                                                 <ChevronUp className="w-4 h-4" aria-hidden="true" />
                                             ) : (
@@ -291,7 +345,7 @@ function MisBusquedas() {
                                         {busqueda.estado === 'activa' ? (
                                             <button
                                                 type="button"
-                                                onClick={() => handlePausar(busqueda)}
+                                                onClick={() => cambiarEstado(busqueda, 'pausada')}
                                                 className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary transition-colors cursor-pointer"
                                             >
                                                 <Pause className="w-4 h-4" aria-hidden="true" />
@@ -300,7 +354,7 @@ function MisBusquedas() {
                                         ) : (
                                             <button
                                                 type="button"
-                                                onClick={() => handleReactivar(busqueda)}
+                                                onClick={() => cambiarEstado(busqueda, 'activa')}
                                                 className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary transition-colors cursor-pointer"
                                             >
                                                 <Play className="w-4 h-4" aria-hidden="true" />
@@ -320,60 +374,7 @@ function MisBusquedas() {
 
                                 {expandido && (
                                     <div className="mt-4 pt-4 border-t border-border flex flex-col gap-2">
-                                        {coincidencias.length === 0 ? (
-                                            <p className="text-sm text-muted">
-                                                Todavía no hay publicaciones compatibles con esta búsqueda.
-                                            </p>
-                                        ) : (
-                                            coincidencias.slice(0, COINCIDENCIAS_VISIBLES).map(({ publicacion, porcentaje }) => (
-                                                <Link
-                                                    key={publicacion.id}
-                                                    to={`/explorar/${publicacion.id}`}
-                                                    className="flex items-center gap-3 rounded-lg border border-border p-3 hover:border-primary transition-colors cursor-pointer"
-                                                >
-                                                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-hover shrink-0">
-                                                        {publicacion.fotos[0] && (
-                                                            <img
-                                                                src={publicacion.fotos[0]}
-                                                                alt={publicacion.descripcion}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-semibold text-foreground">
-                                                            {formatearPrecio(publicacion.precio)}
-                                                        </p>
-                                                        <p className="text-xs text-muted flex items-center gap-1 truncate">
-                                                            <MapPin className="w-3 h-3 shrink-0" aria-hidden="true" />
-                                                            {publicacion.ubicacion}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 text-xs text-muted">
-                                                            <span className="flex items-center gap-1">
-                                                                <DoorOpen className="w-3 h-3" aria-hidden="true" />
-                                                                {publicacion.ambientes}
-                                                            </span>
-                                                            <span className="flex items-center gap-1">
-                                                                <BedDouble className="w-3 h-3" aria-hidden="true" />
-                                                                {publicacion.dormitorios}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <span className="text-sm font-heading font-semibold text-accent shrink-0">
-                                                        {porcentaje}%
-                                                    </span>
-                                                </Link>
-                                            ))
-                                        )}
-                                        {coincidencias.length > COINCIDENCIAS_VISIBLES && (
-                                            <Link
-                                                to={`/explorar?${construirQueryExplorar(busqueda)}`}
-                                                className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary transition-colors cursor-pointer self-start"
-                                            >
-                                                Ver todas en Explorar
-                                                <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                                            </Link>
-                                        )}
+                                        <ListaCoincidencias busqueda={busqueda} />
                                     </div>
                                 )}
                             </div>
@@ -527,6 +528,19 @@ function MisBusquedas() {
                                         className="w-full border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                                     />
                                 </div>
+                                <div className="sm:col-span-2">
+                                    <label className="block text-sm font-semibold text-foreground mb-1">
+                                        Duración de la estadía (noches)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        placeholder="Sin indicar"
+                                        value={datos.duracionEstadia || ''}
+                                        onChange={(e) => actualizarCampo('duracionEstadia', Math.max(0, Number(e.target.value) || 0))}
+                                        className="w-full sm:w-1/2 border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                                    />
+                                </div>
                             </div>
                         )}
 
@@ -576,16 +590,17 @@ function MisBusquedas() {
                             </p>
                         )}
 
-                        {errorDuplicado && (
+                        {errorGuardado && (
                             <p className="text-sm text-danger bg-danger-subtle border border-danger/20 rounded-lg px-3 py-2">
-                                Ya tenés una búsqueda guardada con exactamente estos mismos filtros.
+                                {errorGuardado}
                             </p>
                         )}
 
                         <div className="flex flex-col sm:flex-row gap-3 mt-2">
                             <button
                                 type="submit"
-                                className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
+                                disabled={guardando}
+                                className="bg-primary hover:bg-primary-hover text-surface font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-wait"
                             >
                                 {editando ? 'Guardar cambios' : 'Crear búsqueda'}
                             </button>
@@ -604,7 +619,7 @@ function MisBusquedas() {
             {aEliminar && (
                 <ConfirmDialog
                     titulo="Eliminar búsqueda"
-                    mensaje={`¿Eliminar la búsqueda "${aEliminar.nombre}"? Ya no se generarán coincidencias para ella.`}
+                    mensaje={`¿Eliminar la búsqueda "${aEliminar.nombre || 'Búsqueda sin nombre'}"? Ya no se generarán coincidencias para ella.`}
                     textoConfirmar="Eliminar"
                     peligroso
                     onConfirmar={confirmarEliminar}

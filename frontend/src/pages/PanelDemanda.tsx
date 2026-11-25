@@ -3,24 +3,12 @@ import { BarChart3, CalendarRange, Download, Home, ListChecks, MapPin, SlidersHo
 import PanelLayout from '../layouts/PanelLayout'
 import GraficoBarras from '../components/GraficoBarras'
 import GraficoTendencia from '../components/GraficoTendencia'
-import { calcularCompatibilidad, obtenerTodasLasBusquedasActivas } from '../mocks/busquedasActivas'
-import { obtenerPublicacionesDeUsuario } from '../mocks/publicaciones'
+import { obtenerDemanda, type Demanda } from '../servicios/demanda'
+import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
+import { useConsulta } from '../hooks/useConsulta'
 import { generarReporteDemandaPDF } from '../utils/pdf'
 import { ETIQUETAS_TIPO_INMUEBLE, type TipoInmueble } from '../types/publicacion'
-import type { BusquedaActiva } from '../types/busqueda'
-import type { Publicacion } from '../types/publicacion'
-
-const RANGOS_PRECIO = [
-    { etiqueta: 'Menos de $100.000', min: 0, max: 100000 },
-    { etiqueta: '$100.000 a $200.000', min: 100000, max: 200000 },
-    { etiqueta: '$200.000 a $300.000', min: 200000, max: 300000 },
-    { etiqueta: 'Más de $300.000', min: 300000, max: Infinity },
-]
-
-const SEMANAS = ['Hace 4 semanas', 'Hace 3 semanas', 'Hace 2 semanas', 'Esta semana']
-
-const MAX_ZONAS_MOSTRADAS = 8
 
 type PeriodoPreset = 'todos' | '30d' | '3m' | '1a' | 'personalizado'
 
@@ -32,59 +20,47 @@ const OPCIONES_PERIODO: { valor: PeriodoPreset; etiqueta: string }[] = [
     { valor: 'personalizado', etiqueta: 'Rango personalizado' },
 ]
 
-function usuariosCompatibles(publicacion: Publicacion, busquedas: BusquedaActiva[]): number {
-    const usuarios = new Set(
-        busquedas.filter((b) => calcularCompatibilidad(b, publicacion) >= 50).map((b) => b.usuarioId),
-    )
-    return usuarios.size
+const SIN_DATOS: Demanda = {
+    busquedasActivas: 0,
+    usuariosBuscando: 0,
+    porTipo: [],
+    porRangoPrecio: [],
+    porZona: [],
+    caracteristicas: [],
+    tendenciaSemanal: [],
+    coincidenciasPorPublicacion: [],
+    zonasDisponibles: [],
 }
 
-function precioPromedio(busqueda: BusquedaActiva): number | null {
-    const valores = [busqueda.precioMin, busqueda.precioMax].filter((v) => v > 0)
-    if (valores.length === 0) return null
-    return valores.reduce((a, b) => a + b, 0) / valores.length
+function fechaISO(fecha: Date): string {
+    const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000)
+    return local.toISOString().slice(0, 10)
 }
 
-function semanaDesdeCreacion(creadaEn: string): number {
-    const dias = Math.floor((Date.now() - new Date(creadaEn).getTime()) / 86400000)
-    return Math.min(3, Math.max(0, Math.floor(dias / 7)))
-}
-
-function barrioDesdeUbicacion(ubicacion: string): string {
-    const primerSegmento = ubicacion.split(',')[0]?.trim()
-    return primerSegmento || 'Sin especificar'
-}
-
-function limitesPeriodo(
-    periodo: PeriodoPreset,
-    fechaDesde: string,
-    fechaHasta: string,
-): { desde: Date | null; hasta: Date | null } {
+// Traduce el período elegido a las fechas "desde" y "hasta" que filtra la API.
+function limitesPeriodo(periodo: PeriodoPreset, fechaDesde: string, fechaHasta: string): { desde?: string; hasta?: string } {
     const ahora = new Date()
     switch (periodo) {
         case '30d':
-            return { desde: new Date(ahora.getTime() - 30 * 86400000), hasta: null }
+            return { desde: fechaISO(new Date(ahora.getTime() - 30 * 86400000)) }
         case '3m': {
             const desde = new Date(ahora)
             desde.setMonth(desde.getMonth() - 3)
-            return { desde, hasta: null }
+            return { desde: fechaISO(desde) }
         }
         case '1a': {
             const desde = new Date(ahora)
             desde.setFullYear(desde.getFullYear() - 1)
-            return { desde, hasta: null }
+            return { desde: fechaISO(desde) }
         }
         case 'personalizado':
-            return {
-                desde: fechaDesde ? new Date(fechaDesde) : null,
-                hasta: fechaHasta ? new Date(fechaHasta) : null,
-            }
+            return { desde: fechaDesde || undefined, hasta: fechaHasta || undefined }
         default:
-            return { desde: null, hasta: null }
+            return {}
     }
 }
 
-const HOY = new Date().toISOString().slice(0, 10)
+const HOY = fechaISO(new Date())
 
 function PanelDemanda() {
     const sesion = obtenerSesion()
@@ -94,94 +70,37 @@ function PanelDemanda() {
     const [zonaFiltro, setZonaFiltro] = useState('todas')
     const [tipoFiltro, setTipoFiltro] = useState<TipoInmueble | 'todos'>('todos')
 
+    const filtros = {
+        ...limitesPeriodo(periodo, fechaDesde, fechaHasta),
+        zona: zonaFiltro === 'todas' ? undefined : zonaFiltro,
+        tipoInmueble: tipoFiltro === 'todos' ? undefined : tipoFiltro,
+    }
+    const consulta = useConsulta(JSON.stringify(filtros), () => obtenerDemanda(filtros))
+    const demanda = consulta.datos ?? SIN_DATOS
+
     if (!sesion) return null
 
-    const todasLasBusquedas = obtenerTodasLasBusquedasActivas()
-    const misPublicaciones = obtenerPublicacionesDeUsuario(sesion.id).filter((p) => p.estado === 'activa')
-
-    const barriosDisponibles = Array.from(
-        new Set(
-            todasLasBusquedas
-                .filter((b) => b.ubicacion.trim())
-                .map((b) => barrioDesdeUbicacion(b.ubicacion)),
-        ),
-    ).sort((a, b) => a.localeCompare(b))
-
-    function coincideConZonaYTipo(b: BusquedaActiva): boolean {
-        if (zonaFiltro !== 'todas' && barrioDesdeUbicacion(b.ubicacion) !== zonaFiltro) return false
-        if (tipoFiltro !== 'todos' && b.tipoInmueble !== tipoFiltro) return false
-        return true
-    }
-
-    const { desde, hasta } = limitesPeriodo(periodo, fechaDesde, fechaHasta)
-    const busquedas = todasLasBusquedas.filter((b) => {
-        if (!coincideConZonaYTipo(b)) return false
-        const creada = new Date(b.creadaEn)
-        if (desde && creada < desde) return false
-        if (hasta) {
-            const hastaFin = new Date(hasta)
-            hastaFin.setHours(23, 59, 59, 999)
-            if (creada > hastaFin) return false
-        }
-        return true
-    })
-
-    const conteoTipos: Partial<Record<TipoInmueble, number>> = {}
-    busquedas.forEach((b) => {
-        if (b.tipoInmueble !== 'todos') conteoTipos[b.tipoInmueble] = (conteoTipos[b.tipoInmueble] ?? 0) + 1
-    })
-    const datosTipos = (Object.entries(conteoTipos) as [TipoInmueble, number][])
-        .map(([tipo, cantidad]) => ({ etiqueta: ETIQUETAS_TIPO_INMUEBLE[tipo], valor: cantidad }))
-        .sort((a, b) => b.valor - a.valor)
-    const tipoMasBuscado = datosTipos[0]?.etiqueta
-
-    const datosPrecios = RANGOS_PRECIO.map((rango) => ({
-        etiqueta: rango.etiqueta,
-        valor: busquedas.filter((b) => {
-            const promedio = precioPromedio(b)
-            return promedio !== null && promedio >= rango.min && promedio < rango.max
-        }).length,
-    }))
-    const rangoMasSolicitado = [...datosPrecios].sort((a, b) => b.valor - a.valor)[0]
-
-    const conteoZonas: Record<string, number> = {}
-    busquedas.forEach((b) => {
-        if (!b.ubicacion.trim()) return
-        const barrio = barrioDesdeUbicacion(b.ubicacion)
-        conteoZonas[barrio] = (conteoZonas[barrio] ?? 0) + 1
-    })
-    const datosZonas = Object.entries(conteoZonas)
-        .map(([etiqueta, valor]) => ({ etiqueta, valor }))
-        .sort((a, b) => b.valor - a.valor)
-        .slice(0, MAX_ZONAS_MOSTRADAS)
-
-    const caracteristicas = [
-        { etiqueta: 'Acepta mascotas', valor: busquedas.filter((b) => b.aceptaMascotas).length },
-        { etiqueta: 'Amueblado', valor: busquedas.filter((b) => b.amueblado).length },
-        { etiqueta: 'Apto estudiantes', valor: busquedas.filter((b) => b.aptoEstudiantes).length },
-        { etiqueta: 'Servicios incluidos', valor: busquedas.filter((b) => b.serviciosIncluidos).length },
-    ].sort((a, b) => b.valor - a.valor)
-
-    // La tendencia semanal se mantiene siempre sobre las últimas 4 semanas: el
-    // selector de período no la afecta (52 barras semanales para "último año"
-    // dejarían de ser legibles). Sí respeta los filtros de zona y tipo.
-    const busquedasParaTendencia = todasLasBusquedas.filter(coincideConZonaYTipo)
-    const tendencia = SEMANAS.map((etiqueta, indice) => ({
-        etiqueta,
-        valor: busquedasParaTendencia.filter((b) => semanaDesdeCreacion(b.creadaEn) === indice).length,
-    }))
-
-    const coincidenciasPorPublicacion = misPublicaciones
-        .map((p) => ({ etiqueta: p.descripcion, valor: usuariosCompatibles(p, busquedas), href: `/explorar/${p.id}` }))
-        .sort((a, b) => b.valor - a.valor)
+    const datosTipos = demanda.porTipo
+    const datosPrecios = demanda.porRangoPrecio
+    const datosZonas = demanda.porZona
+    const caracteristicas = demanda.caracteristicas
+    // La tendencia mira siempre las últimas cuatro semanas, más allá del período elegido.
+    const tendencia = demanda.tendenciaSemanal
+    const coincidenciasPorPublicacion = demanda.coincidenciasPorPublicacion
+    const tipoMasBuscado = demanda.tipoMasBuscado
+    const rangoMasSolicitado = demanda.rangoMasSolicitado
+    // Si la zona elegida deja de tener búsquedas, igual se mantiene en el selector.
+    const barriosDisponibles = zonaFiltro !== 'todas' && !demanda.zonasDisponibles.includes(zonaFiltro)
+        ? [...demanda.zonasDisponibles, zonaFiltro]
+        : demanda.zonasDisponibles
 
     function handleDescargarReporte() {
         generarReporteDemandaPDF({
             fecha: new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' }),
             periodo: OPCIONES_PERIODO.find((o) => o.valor === periodo)?.etiqueta ?? 'Todo el historial',
-            busquedasActivas: busquedas.length,
+            busquedasActivas: demanda.busquedasActivas,
             tipoMasBuscado: tipoMasBuscado ?? 'Sin datos aún',
-            rangoMasSolicitado: rangoMasSolicitado && rangoMasSolicitado.valor > 0 ? rangoMasSolicitado.etiqueta : 'Sin datos aún',
+            rangoMasSolicitado: rangoMasSolicitado ?? 'Sin datos aún',
             datosTipos,
             datosPrecios,
             datosZonas,
@@ -211,6 +130,11 @@ function PanelDemanda() {
                 Información agregada y anónima sobre las búsquedas activas de la plataforma. No se
                 muestran datos personales de los usuarios que buscan.
             </p>
+            {consulta.error ? (
+                <p className="text-sm text-danger bg-danger-subtle border border-danger/20 rounded-lg px-3 py-2 mb-6">
+                    {mensajeDeError(consulta.error, 'No se pudo cargar la demanda.')}
+                </p>
+            ) : null}
 
             <div className="bg-surface rounded-2xl shadow-card p-4 sm:p-5 mb-6 flex flex-col gap-3">
                 <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -308,7 +232,9 @@ function PanelDemanda() {
                         <Users className="w-5 h-5" aria-hidden="true" />
                     </span>
                     <div>
-                        <p className="text-2xl font-heading font-semibold text-foreground">{busquedas.length}</p>
+                        <p className="text-2xl font-heading font-semibold text-foreground">
+                            {consulta.cargando && !consulta.datos ? '…' : demanda.busquedasActivas}
+                        </p>
                         <p className="text-xs text-muted">Búsquedas activas en el período</p>
                     </div>
                 </div>
@@ -331,7 +257,7 @@ function PanelDemanda() {
                     </span>
                     <div>
                         <p className="text-lg font-heading font-semibold text-foreground">
-                            {rangoMasSolicitado && rangoMasSolicitado.valor > 0 ? rangoMasSolicitado.etiqueta : 'Sin datos aún'}
+                            {rangoMasSolicitado ?? 'Sin datos aún'}
                         </p>
                         <p className="text-xs text-muted">Rango de precios más solicitado</p>
                     </div>
@@ -350,7 +276,7 @@ function PanelDemanda() {
 
                 <div className="bg-surface rounded-2xl shadow-card p-5">
                     <h2 className="font-heading font-semibold text-foreground mb-4">Demanda por rango de precio</h2>
-                    {busquedas.length === 0 ? (
+                    {datosPrecios.every((rango) => rango.valor === 0) ? (
                         <p className="text-sm text-muted">Todavía no hay búsquedas activas con precio definido.</p>
                     ) : (
                         <GraficoBarras datos={datosPrecios} color="bg-warning" />
@@ -390,7 +316,7 @@ function PanelDemanda() {
                     <ListChecks className="w-4 h-4 text-primary" aria-hidden="true" />
                     Coincidencias con tus publicaciones activas
                 </h2>
-                {misPublicaciones.length === 0 ? (
+                {coincidenciasPorPublicacion.length === 0 ? (
                     <p className="text-sm text-muted">No tenés publicaciones activas para comparar.</p>
                 ) : (
                     <GraficoBarras datos={coincidenciasPorPublicacion} color="bg-accent" anchoEtiqueta="w-40 sm:w-64" />

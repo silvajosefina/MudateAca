@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Flag, X } from 'lucide-react'
-import { crearReclamo, existeReclamoPendiente } from '../mocks/reclamos'
+import { crearReclamo } from '../servicios/reclamos'
+import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../mocks/toast'
 import type { MotivoReclamo, TipoObjetivoReclamo } from '../types/reclamo'
@@ -33,30 +34,32 @@ function ModalReclamo({ objetivoTipo, objetivoId, nombreObjetivo, onClose }: Mod
     const [motivo, setMotivo] = useState<MotivoReclamo>(opciones[0].valor)
     const [descripcion, setDescripcion] = useState('')
     const [error, setError] = useState('')
+    const [enviando, setEnviando] = useState(false)
+    // El backend controla si ya hay un reclamo abierto sobre lo mismo (RF-16).
+    const [yaTieneReclamoPendiente, setYaTieneReclamoPendiente] = useState(false)
 
     if (!sesion) return null
 
-    const yaTieneReclamoPendiente = existeReclamoPendiente(sesion.id, objetivoTipo, objetivoId)
-
-    function handleEnviar() {
+    async function handleEnviar() {
         if (!descripcion.trim()) {
             setError('Contanos un poco más para que podamos revisarlo.')
             return
         }
-        const creado = crearReclamo({
-            reclamanteId: sesion!.id,
-            objetivoTipo,
-            objetivoId,
-            motivo,
-            descripcion: descripcion.trim(),
-        })
-        if (!creado) {
-            mostrarToast('Ya tenés un reclamo pendiente sobre esto. Esperá a que se resuelva.', 'error')
+        setEnviando(true)
+        try {
+            await crearReclamo({ objetivoTipo, objetivoId, motivo, descripcion: descripcion.trim() })
+            mostrarToast('Gracias, recibimos tu reclamo y lo vamos a revisar.')
             onClose()
-            return
+        } catch (err) {
+            const mensaje = mensajeDeError(err, 'No se pudo enviar el reclamo.')
+            if (mensaje.startsWith('Ya tenés un reclamo pendiente')) {
+                setYaTieneReclamoPendiente(true)
+            } else {
+                mostrarToast(mensaje, 'error')
+            }
+        } finally {
+            setEnviando(false)
         }
-        mostrarToast('Gracias, recibimos tu reclamo y lo vamos a revisar.')
-        onClose()
     }
 
     return (
@@ -143,6 +146,7 @@ function ModalReclamo({ objetivoTipo, objetivoId, nombreObjetivo, onClose }: Mod
                             <button
                                 type="button"
                                 onClick={handleEnviar}
+                                disabled={enviando}
                                 className="inline-flex items-center justify-center gap-1.5 bg-danger text-white hover:opacity-90 font-heading font-semibold rounded-lg py-2 px-6 transition-colors cursor-pointer"
                             >
                                 <Flag className="w-4 h-4" aria-hidden="true" />

@@ -1,7 +1,6 @@
 import { Link } from 'react-router'
 import { ChevronRight, Download, Eye, FileText, History, Pencil, X } from 'lucide-react'
 import CarruselFotos from './CarruselFotos'
-import { obtenerHistorialDePublicacion } from '../mocks/historialModeracion'
 import { formatearFechaHora, formatearPrecio } from '../utils/formato'
 import {
     ETIQUETAS_DOCUMENTO_VERIFICACION,
@@ -29,7 +28,8 @@ function PublicacionPreviewModal({
     const iniciales = propietario
         ? `${propietario.nombre.charAt(0)}${propietario.apellido.charAt(0)}`.toUpperCase()
         : ''
-    const historial = !permitirEditar ? obtenerHistorialDePublicacion(publicacion.id) : []
+    // El historial de moderación solo llega de la API para el dueño y los administradores.
+    const historial = !permitirEditar ? (publicacion.eventosModeracion ?? []) : []
     return (
         <div
             className="fixed inset-0 z-[75] flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4"

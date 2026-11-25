@@ -3,8 +3,10 @@ import { Link } from 'react-router'
 import { ChevronRight, Flag, X } from 'lucide-react'
 import PublicoLayout from '../layouts/PublicoLayout'
 import PanelLayout from '../layouts/PanelLayout'
-import { obtenerNombreObjetivoReclamo, obtenerReclamosPorUsuario } from '../mocks/reclamos'
+import { listarMisReclamos } from '../servicios/reclamos'
+import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
+import { useConsulta } from '../hooks/useConsulta'
 import { ETIQUETAS_ESTADO_RECLAMO, ETIQUETAS_MOTIVO_RECLAMO, type Reclamo } from '../types/reclamo'
 import { formatearFechaHora } from '../utils/formato'
 
@@ -45,10 +47,10 @@ function ModalDetalleMiReclamo({ reclamo, onClose }: { reclamo: Reclamo; onClose
                         {ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]} ·{' '}
                         {reclamo.objetivoTipo === 'publicacion' ? (
                             <Link to={`/explorar/${reclamo.objetivoId}`} className="text-primary hover:underline">
-                                {obtenerNombreObjetivoReclamo(reclamo)}
+                                {reclamo.nombreObjetivo}
                             </Link>
                         ) : (
-                            obtenerNombreObjetivoReclamo(reclamo)
+                            reclamo.nombreObjetivo
                         )}
                     </p>
                     <p className="text-sm text-muted mt-1">{reclamo.descripcion}</p>
@@ -72,11 +74,12 @@ function ModalDetalleMiReclamo({ reclamo, onClose }: { reclamo: Reclamo; onClose
 function MisReclamos() {
     const sesion = obtenerSesion()
     const [reclamoActivo, setReclamoActivo] = useState<Reclamo | null>(null)
+    const consulta = useConsulta('mis-reclamos', listarMisReclamos)
+    const misReclamos = consulta.datos ?? []
 
     if (!sesion) return null
 
     const Layout = sesion.rol === 'interesado' ? PublicoLayout : PanelLayout
-    const misReclamos = obtenerReclamosPorUsuario(sesion.id)
 
     return (
         <Layout>
@@ -86,7 +89,11 @@ function MisReclamos() {
             </h1>
 
             <div className="bg-surface rounded-2xl shadow-lg p-6 max-w-md">
-                {misReclamos.length === 0 ? (
+                {consulta.cargando && misReclamos.length === 0 ? (
+                    <p className="text-sm text-muted">Cargando tus reclamos…</p>
+                ) : consulta.error ? (
+                    <p className="text-sm text-danger">{mensajeDeError(consulta.error, 'No se pudieron cargar tus reclamos.')}</p>
+                ) : misReclamos.length === 0 ? (
                     <p className="text-sm text-muted">No presentaste ningún reclamo todavía.</p>
                 ) : (
                     <div className="flex flex-col gap-2">
@@ -109,7 +116,7 @@ function MisReclamos() {
                                             </span>
                                         </div>
                                         <p className="text-sm font-semibold text-foreground truncate">
-                                            {ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]} · {obtenerNombreObjetivoReclamo(reclamo)}
+                                            {ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]} · {reclamo.nombreObjetivo}
                                         </p>
                                     </div>
                                     <ChevronRight className="w-4 h-4 text-muted shrink-0" aria-hidden="true" />
