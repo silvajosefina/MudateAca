@@ -90,6 +90,13 @@ function resumenCriterios(busqueda: BusquedaActiva): string {
     return partes.length > 0 ? partes.join(' · ') : 'Sin filtros específicos'
 }
 
+// Sin nombre, la búsqueda se titula con sus filtros para distinguirla de las demás.
+function tituloBusqueda(busqueda: BusquedaActiva): string {
+    if (busqueda.nombre.trim()) return busqueda.nombre
+    const resumen = resumenCriterios(busqueda)
+    return resumen.charAt(0).toUpperCase() + resumen.slice(1)
+}
+
 function construirQueryExplorar(busqueda: BusquedaActiva): string {
     const params = new URLSearchParams()
     if (busqueda.ubicacion.trim()) params.set('ubicacion', busqueda.ubicacion.trim())
@@ -308,7 +315,7 @@ function MisBusquedas() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <h2 className="font-heading font-semibold text-foreground">
-                                                {busqueda.nombre || 'Búsqueda sin nombre'}
+                                                {tituloBusqueda(busqueda)}
                                             </h2>
                                             <span
                                                 className={`text-xs font-semibold rounded-full px-2.5 py-1 ${busqueda.estado === 'activa' ? 'bg-accent-subtle text-accent' : 'bg-warning-subtle text-warning'
@@ -317,7 +324,9 @@ function MisBusquedas() {
                                                 {busqueda.estado === 'activa' ? 'Activa' : 'Pausada'}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-muted mt-1">{resumenCriterios(busqueda)}</p>
+                                        {busqueda.nombre.trim() && (
+                                            <p className="text-sm text-muted mt-1">{resumenCriterios(busqueda)}</p>
+                                        )}
                                     </div>
 
                                     <div className="flex flex-wrap gap-2 shrink-0">
@@ -619,7 +628,7 @@ function MisBusquedas() {
             {aEliminar && (
                 <ConfirmDialog
                     titulo="Eliminar búsqueda"
-                    mensaje={`¿Eliminar la búsqueda "${aEliminar.nombre || 'Búsqueda sin nombre'}"? Ya no se generarán coincidencias para ella.`}
+                    mensaje={`¿Eliminar la búsqueda "${tituloBusqueda(aEliminar)}"? Ya no se generarán coincidencias para ella.`}
                     textoConfirmar="Eliminar"
                     peligroso
                     onConfirmar={confirmarEliminar}

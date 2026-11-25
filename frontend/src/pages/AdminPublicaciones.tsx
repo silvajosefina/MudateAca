@@ -8,6 +8,7 @@ import Paginacion from '../components/Paginacion'
 import { listarPublicacionesAdministracion } from '../servicios/administracion'
 import { mensajeDeError } from '../servicios/errores'
 import { useConsulta } from '../hooks/useConsulta'
+import { etiquetaNotaModeracion } from '../utils/moderacion'
 import { formatearPrecio, nombreDelAnunciante } from '../utils/formato'
 import {
     ETIQUETAS_DOCUMENTO_VERIFICACION,
@@ -120,7 +121,7 @@ function AdminPublicaciones() {
                                         )}
                                         {publicacion.notaModeracion && (
                                             <p className="text-xs text-foreground bg-surface-hover rounded-lg px-2 py-1 mt-1">
-                                                Nota: {publicacion.notaModeracion}
+                                                {etiquetaNotaModeracion(publicacion)}: {publicacion.notaModeracion}
                                             </p>
                                         )}
                                         {publicacion.estado === 'rechazada' && publicacion.motivoRechazoVerificacion && (

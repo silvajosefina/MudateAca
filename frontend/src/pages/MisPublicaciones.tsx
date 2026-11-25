@@ -12,6 +12,7 @@ import { guardarVistaListado, obtenerVistaListado } from '../utils/preferenciasV
 import { obtenerSesion } from '../servicios/sesion'
 import { mostrarToast } from '../utils/toast'
 import { formatearPrecio } from '../utils/formato'
+import { etiquetaNotaModeracion } from '../utils/moderacion'
 import {
     ETIQUETAS_ESTADO_PUBLICACION,
     ETIQUETAS_TIPO_INMUEBLE,
@@ -240,7 +241,7 @@ function MisPublicaciones() {
                                         )}
                                         {publicacion.estado === 'observada' && publicacion.notaModeracion && (
                                             <p className="text-xs text-warning bg-warning-subtle border border-warning/20 rounded-lg px-2 py-1 mt-1">
-                                                Nota del administrador: {publicacion.notaModeracion}
+                                                {etiquetaNotaModeracion(publicacion)}: {publicacion.notaModeracion}
                                             </p>
                                         )}
                                         {publicacion.estado === 'oculta' && publicacion.motivoOcultamiento && (

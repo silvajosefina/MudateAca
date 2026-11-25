@@ -70,6 +70,8 @@ interface Errores {
 
 const MENSAJE_ANIO_INVALIDO = 'El año de la fecha no puede tener más de 4 dígitos.'
 const OPCIONES_CANTIDAD = [1, 2, 3, 4, 5]
+// Mismo mínimo que controla la moderación automática del backend.
+const LARGO_MINIMO_DESCRIPCION = 20
 
 function anioExcedeCuatroDigitos(valorFecha: string): boolean {
     const [anio] = valorFecha.split('-')
@@ -286,7 +288,17 @@ function PublicacionForm({ modo, publicacionExistente }: PublicacionFormProps) {
                     className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary ${errores.descripcion ? 'border-danger' : 'border-border'
                         }`}
                 />
-                {errores.descripcion && <p className="text-xs text-danger mt-1">{errores.descripcion}</p>}
+                {errores.descripcion ? (
+                    <p className="text-xs text-danger mt-1">{errores.descripcion}</p>
+                ) : (
+                    // RF-06: con menos caracteres, la moderación automática la deja observada.
+                    <p
+                        className={`text-xs mt-1 ${datos.descripcion.trim().length < LARGO_MINIMO_DESCRIPCION ? 'text-warning' : 'text-muted'}`}
+                    >
+                        {datos.descripcion.trim().length} / {LARGO_MINIMO_DESCRIPCION} caracteres como mínimo. No incluyas
+                        teléfonos, correos ni enlaces: el contacto se hace por el chat interno.
+                    </p>
+                )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

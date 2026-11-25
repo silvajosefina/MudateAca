@@ -9,6 +9,7 @@ import { ModalDetalleReclamo } from './AdminReclamos'
 import { listarPublicacionesEnRevision, listarReclamos, listarUsuarios } from '../servicios/administracion'
 import { mensajeDeError } from '../servicios/errores'
 import { useConsulta } from '../hooks/useConsulta'
+import { etiquetaNotaModeracion } from '../utils/moderacion'
 import { ETIQUETAS_ESTADO_PUBLICACION, type Publicacion } from '../types/publicacion'
 import { ETIQUETAS_ESTADO_RECLAMO, ETIQUETAS_MOTIVO_RECLAMO, type Reclamo } from '../types/reclamo'
 
@@ -106,7 +107,7 @@ function PanelAdministracion() {
                                         <p className="text-sm font-semibold text-foreground truncate">{publicacion.descripcion}</p>
                                         {publicacion.notaModeracion && (
                                             <p className="text-xs text-foreground bg-surface-hover rounded-lg px-2 py-1 mt-1">
-                                                Nota: {publicacion.notaModeracion}
+                                                {etiquetaNotaModeracion(publicacion)}: {publicacion.notaModeracion}
                                             </p>
                                         )}
                                     </div>
