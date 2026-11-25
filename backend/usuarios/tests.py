@@ -199,3 +199,27 @@ class GestionDeUsuariosTests(PruebaSinLimites):
         self.assertEqual(self.client.get(reverse('usuario-administracion')).status_code, 403)
         self.assertEqual(self.suspender(self.inmobiliaria).status_code, 403)
         self.assertFalse(Suspension.objects.exists())
+
+
+class EnvioDeCorreosTests(APITestCase):
+    # El backend de pruebas (locmem) no arma el mensaje como lo hace SMTP: estas pruebas
+    # llaman a message() igual que el backend SMTP de Django 6.1, que es el de producción.
+    def test_acepta_la_politica_que_pide_el_backend_smtp(self):
+        import email.policy
+
+        from .utils import _CorreoSinCortesDeLinea
+
+        enlace = 'https://mudateaca.duckdns.org/restablecer-contrasena?uid=MTE&token=' + 'a' * 120
+        correo = _CorreoSinCortesDeLinea('Asunto', f'Abrí este enlace: {enlace}', 'remitente@ejemplo.com', ['a@b.com'])
+
+        crudo = correo.message(policy=email.policy.SMTP).as_bytes()
+
+        self.assertIn(enlace.encode(), crudo)
+        self.assertIn(b'\r\n', crudo)
+
+    def test_sin_politica_tambien_arma_el_mensaje(self):
+        from .utils import _CorreoSinCortesDeLinea
+
+        correo = _CorreoSinCortesDeLinea('Asunto', 'Cuerpo', 'remitente@ejemplo.com', ['a@b.com'])
+
+        self.assertIn(b'Cuerpo', correo.message().as_bytes())
