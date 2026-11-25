@@ -31,6 +31,18 @@ export default defineConfig({
         // Sin conexión abre la aplicación, pero los datos siempre se piden al servidor.
         // La API y el panel de Django nunca deben recibir el index.html del frontend.
         navigateFallbackDenylist: [/^\/api\//, /^\/admin\//, /^\/static\//],
+        // Las tipografías de Google se guardan la primera vez para que la app se vea igual sin conexión.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tipografias',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

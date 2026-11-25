@@ -1,30 +1,32 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router'
-import Registro from './pages/Registro'
 import Login from './pages/Login'
-import RecuperarContrasena from './pages/RecuperarContrasena'
-import RestablecerContrasena from './pages/RestablecerContrasena'
-import MisPublicaciones from './pages/MisPublicaciones'
-import PublicacionNueva from './pages/PublicacionNueva'
-import PublicacionEditar from './pages/PublicacionEditar'
 import Explorar from './pages/Explorar'
-import PublicacionDetalle from './pages/PublicacionDetalle'
-import MisBusquedas from './pages/MisBusquedas'
-import MisFavoritos from './pages/MisFavoritos'
-import Mensajes from './pages/Mensajes'
-import PanelDemanda from './pages/PanelDemanda'
-import MiCuenta from './pages/MiCuenta'
-import MisReclamos from './pages/MisReclamos'
-import HistorialNotificaciones from './pages/HistorialNotificaciones'
-import PanelAdministracion from './pages/PanelAdministracion'
-import AdminUsuarios from './pages/AdminUsuarios'
-import AdminPublicaciones from './pages/AdminPublicaciones'
-import AdminReclamos from './pages/AdminReclamos'
 import RutaPrivada from './components/RutaPrivada'
 import ToastViewport from './components/ToastViewport'
 import ScrollAlTope from './components/ScrollAlTope'
 import BotonAyuda from './components/BotonAyuda'
 import { useSesion, validarSesion } from './servicios/sesion'
+
+// Cada pantalla se descarga recién cuando se abre; Login y Explorar, las de entrada, van en el paquete inicial.
+const Registro = lazy(() => import('./pages/Registro'))
+const RecuperarContrasena = lazy(() => import('./pages/RecuperarContrasena'))
+const RestablecerContrasena = lazy(() => import('./pages/RestablecerContrasena'))
+const MisPublicaciones = lazy(() => import('./pages/MisPublicaciones'))
+const PublicacionNueva = lazy(() => import('./pages/PublicacionNueva'))
+const PublicacionEditar = lazy(() => import('./pages/PublicacionEditar'))
+const PublicacionDetalle = lazy(() => import('./pages/PublicacionDetalle'))
+const MisBusquedas = lazy(() => import('./pages/MisBusquedas'))
+const MisFavoritos = lazy(() => import('./pages/MisFavoritos'))
+const Mensajes = lazy(() => import('./pages/Mensajes'))
+const PanelDemanda = lazy(() => import('./pages/PanelDemanda'))
+const MiCuenta = lazy(() => import('./pages/MiCuenta'))
+const MisReclamos = lazy(() => import('./pages/MisReclamos'))
+const HistorialNotificaciones = lazy(() => import('./pages/HistorialNotificaciones'))
+const PanelAdministracion = lazy(() => import('./pages/PanelAdministracion'))
+const AdminUsuarios = lazy(() => import('./pages/AdminUsuarios'))
+const AdminPublicaciones = lazy(() => import('./pages/AdminPublicaciones'))
+const AdminReclamos = lazy(() => import('./pages/AdminReclamos'))
 
 const ROLES_ANUNCIANTE = ['propietario', 'inmobiliaria'] as const
 
@@ -39,6 +41,7 @@ function App() {
   return (
     <>
       <ScrollAlTope />
+      <Suspense fallback={<p className="text-sm text-muted text-center py-16">Cargando…</p>}>
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
@@ -161,6 +164,7 @@ function App() {
           }
         />
       </Routes>
+      </Suspense>
       <ToastViewport />
       <BotonAyuda />
     </>

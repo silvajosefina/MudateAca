@@ -7,7 +7,6 @@ import { obtenerDemanda, type Demanda } from '../servicios/demanda'
 import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
 import { useConsulta } from '../hooks/useConsulta'
-import { generarReporteDemandaPDF } from '../utils/pdf'
 import { ETIQUETAS_TIPO_INMUEBLE, type TipoInmueble } from '../types/publicacion'
 
 type PeriodoPreset = 'todos' | '30d' | '3m' | '1a' | 'personalizado'
@@ -94,7 +93,9 @@ function PanelDemanda() {
         ? [...demanda.zonasDisponibles, zonaFiltro]
         : demanda.zonasDisponibles
 
-    function handleDescargarReporte() {
+    async function handleDescargarReporte() {
+        // jsPDF es pesado: se descarga recién cuando se pide el reporte.
+        const { generarReporteDemandaPDF } = await import('../utils/pdf')
         generarReporteDemandaPDF({
             fecha: new Date().toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' }),
             periodo: OPCIONES_PERIODO.find((o) => o.valor === periodo)?.etiqueta ?? 'Todo el historial',
