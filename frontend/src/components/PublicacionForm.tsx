@@ -7,7 +7,7 @@ import Mapa from './Mapa'
 import { actualizarPublicacion, crearPublicacion } from '../servicios/publicaciones'
 import { erroresDeCampos, mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
-import { mostrarToast } from '../mocks/toast'
+import { mostrarToast } from '../utils/toast'
 import { formatearMiles, quitarFormatoMiles } from '../utils/formato'
 import type {
     ModalidadAlquiler,

@@ -8,13 +8,13 @@ import {
     ETIQUETAS_TIPO_INMUEBLE,
     type Publicacion,
 } from '../types/publicacion'
-import { ETIQUETAS_ROL, type Usuario } from '../types/usuario'
+import { ETIQUETAS_ROL, type SesionUsuario } from '../types/usuario'
 
 interface PublicacionPreviewModalProps {
     publicacion: Publicacion
     onClose: () => void
     permitirEditar?: boolean
-    propietario?: Usuario
+    propietario?: SesionUsuario
     onVerPropietario?: () => void
 }
 

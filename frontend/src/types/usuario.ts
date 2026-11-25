@@ -19,7 +19,6 @@ export interface Usuario {
     apellido: string
     celular: string
     correo: string
-    contrasena: string
     rol: Rol
     // Solo las inmobiliarias: sus publicaciones se muestran con este nombre (RF-21).
     razonSocial?: string
@@ -27,4 +26,5 @@ export interface Usuario {
     motivoSuspension?: string
 }
 
-export type SesionUsuario = Omit<Usuario, 'contrasena'>
+// Los datos del usuario que se guardan para dibujar la interfaz; nunca la contraseña ni los tokens.
+export type SesionUsuario = Usuario

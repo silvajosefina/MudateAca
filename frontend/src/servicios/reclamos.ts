@@ -1,18 +1,25 @@
 import { api } from './api'
 import type { EstadoReclamo, MotivoReclamo, Reclamo, TipoObjetivoReclamo } from '../types/reclamo'
+import type { Anunciante } from '../types/publicacion'
+import type { Rol } from '../types/usuario'
 
 interface PersonaApi {
     id: number
     nombre: string
     apellido: string
     razon_social: string | null
+    rol: Rol
+}
+
+function adaptarPersona(p: PersonaApi): Anunciante {
+    return { id: String(p.id), nombre: p.nombre, apellido: p.apellido, razonSocial: p.razon_social ?? undefined, rol: p.rol }
 }
 
 export interface ReclamoApi {
     id: number
     objetivo: TipoObjetivoReclamo
     reclamante: PersonaApi
-    publicacion: { id: number; descripcion: string } | null
+    publicacion: { id: number; descripcion: string; ubicacion: string; foto: string | null } | null
     usuario_reportado: PersonaApi | null
     motivo: MotivoReclamo
     descripcion: string
@@ -37,6 +44,16 @@ export function adaptarReclamo(r: ReclamoApi): Reclamo {
         nombreObjetivo: esPublicacion
             ? resumir(r.publicacion?.descripcion ?? 'Publicación')
             : `${r.usuario_reportado?.nombre ?? ''} ${r.usuario_reportado?.apellido ?? ''}`.trim(),
+        reclamante: adaptarPersona(r.reclamante),
+        usuarioReportado: r.usuario_reportado ? adaptarPersona(r.usuario_reportado) : undefined,
+        publicacionResumen: r.publicacion
+            ? {
+                id: String(r.publicacion.id),
+                descripcion: r.publicacion.descripcion,
+                ubicacion: r.publicacion.ubicacion,
+                foto: r.publicacion.foto ?? undefined,
+            }
+            : undefined,
         motivo: r.motivo,
         descripcion: r.descripcion,
         estado: r.estado,

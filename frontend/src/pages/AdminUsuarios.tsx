@@ -1,12 +1,17 @@
 import { useState } from 'react'
-import { Ban, RotateCcw, Users } from 'lucide-react'
+import { Ban, RotateCcw, Search, Users } from 'lucide-react'
 import PanelLayout from '../layouts/PanelLayout'
 import DialogoConMotivo from '../components/DialogoConMotivo'
 import ModalDetalleUsuario from '../components/ModalDetalleUsuario'
+import Paginacion from '../components/Paginacion'
 import type { SolicitudConMotivo } from '../types/accionAdmin'
-import { obtenerTodosLosUsuarios, reactivarUsuario, suspenderUsuario } from '../mocks/usuarios'
-import { mostrarToast } from '../mocks/toast'
-import { ETIQUETAS_ESTADO_CUENTA, ETIQUETAS_ROL, type EstadoCuenta, type Usuario } from '../types/usuario'
+import { listarUsuarios, reactivarUsuario, suspenderUsuario, type UsuarioAdministrado } from '../servicios/administracion'
+import { mensajeDeError } from '../servicios/errores'
+import { useConsulta } from '../hooks/useConsulta'
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { mostrarToast } from '../utils/toast'
+import { nombreDelAnunciante } from '../utils/formato'
+import { ETIQUETAS_ESTADO_CUENTA, ETIQUETAS_ROL, type EstadoCuenta } from '../types/usuario'
 
 type FiltroUsuarios = 'todos' | EstadoCuenta
 
@@ -16,37 +21,53 @@ const PESTANAS_USUARIOS: { valor: FiltroUsuarios; etiqueta: string }[] = [
     { valor: 'todos', etiqueta: 'Todos' },
 ]
 
+const USUARIOS_POR_PAGINA = 10
+
 function AdminUsuarios() {
-    const [usuarios, setUsuarios] = useState<Usuario[]>(() => obtenerTodosLosUsuarios())
     const [filtroUsuarios, setFiltroUsuarios] = useState<FiltroUsuarios>('activo')
+    const [busqueda, setBusqueda] = useState('')
+    const [paginaActual, setPaginaActual] = useState(1)
     const [solicitud, setSolicitud] = useState<SolicitudConMotivo | null>(null)
-    const [usuarioAVer, setUsuarioAVer] = useState<Usuario | null>(null)
+    const [usuarioAVer, setUsuarioAVer] = useState<UsuarioAdministrado | null>(null)
+    const busquedaDebounced = useDebouncedValue(busqueda.trim(), 300)
 
-    function refrescar() {
-        setUsuarios(obtenerTodosLosUsuarios())
+    const estado = filtroUsuarios === 'todos' ? null : filtroUsuarios
+    const consulta = useConsulta(`${estado}-${busquedaDebounced}-${paginaActual}`, () =>
+        listarUsuarios(estado, paginaActual, busquedaDebounced),
+    )
+    const usuarios = consulta.datos?.results ?? []
+    const totales = consulta.datos?.totales ?? {}
+    const refrescar = consulta.recargar
+
+    function cantidadDe(valor: FiltroUsuarios) {
+        if (valor === 'todos') return (totales.activo ?? 0) + (totales.suspendido ?? 0)
+        return totales[valor] ?? 0
     }
 
-    const usuariosGestionables = usuarios.filter((u) => u.rol !== 'administrador')
-    const usuariosFiltrados =
-        filtroUsuarios === 'todos'
-            ? usuariosGestionables
-            : usuariosGestionables.filter((u) => u.estadoCuenta === filtroUsuarios)
-
-    function handleReactivarUsuario(usuario: Usuario) {
-        reactivarUsuario(usuario.id)
-        mostrarToast(`${usuario.nombre} ${usuario.apellido} fue reactivado.`)
-        refrescar()
-    }
-
-    function confirmarSolicitud(motivo: string) {
-        if (!solicitud) return
-        if (solicitud.accion === 'suspender_usuario') {
-            suspenderUsuario(solicitud.id, motivo)
-            mostrarToast('Usuario suspendido.', 'error')
+    async function handleReactivarUsuario(usuario: UsuarioAdministrado) {
+        try {
+            await reactivarUsuario(usuario.id)
+            mostrarToast(`${nombreDelAnunciante(usuario)} fue reactivado. Le avisamos por correo.`)
+            refrescar()
+        } catch (error) {
+            mostrarToast(mensajeDeError(error), 'error')
         }
-        setSolicitud(null)
-        refrescar()
     }
+
+    async function confirmarSolicitud(motivo: string) {
+        if (!solicitud || solicitud.accion !== 'suspender_usuario') return
+        const id = solicitud.id
+        setSolicitud(null)
+        try {
+            await suspenderUsuario(id, motivo)
+            mostrarToast('Usuario suspendido. Le avisamos el motivo por correo.', 'error')
+            refrescar()
+        } catch (error) {
+            mostrarToast(mensajeDeError(error), 'error')
+        }
+    }
+
+    const totalPaginas = Math.max(1, Math.ceil((consulta.datos?.count ?? 0) / USUARIOS_POR_PAGINA))
 
     return (
         <PanelLayout>
@@ -61,33 +82,49 @@ function AdminUsuarios() {
                     Gestión de usuarios
                 </h2>
 
-                <div className="flex flex-wrap gap-2 mb-4">
-                    {PESTANAS_USUARIOS.map((pestana) => {
-                        const cantidad =
-                            pestana.valor === 'todos'
-                                ? usuariosGestionables.length
-                                : usuariosGestionables.filter((u) => u.estadoCuenta === pestana.valor).length
-                        return (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                    <div className="flex flex-wrap gap-2">
+                        {PESTANAS_USUARIOS.map((pestana) => (
                             <button
                                 key={pestana.valor}
                                 type="button"
-                                onClick={() => setFiltroUsuarios(pestana.valor)}
+                                onClick={() => {
+                                    setFiltroUsuarios(pestana.valor)
+                                    setPaginaActual(1)
+                                }}
                                 className={`text-sm font-semibold rounded-full px-3 py-1.5 transition-colors cursor-pointer ${filtroUsuarios === pestana.valor
                                     ? 'bg-primary text-surface'
                                     : 'bg-surface text-foreground border border-border hover:bg-primary-subtle'
                                     }`}
                             >
-                                {pestana.etiqueta} <span className="opacity-80">{cantidad}</span>
+                                {pestana.etiqueta} <span className="opacity-80">{cantidadDe(pestana.valor)}</span>
                             </button>
-                        )
-                    })}
+                        ))}
+                    </div>
+                    <div className="relative sm:ml-auto sm:w-64">
+                        <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
+                        <input
+                            type="search"
+                            placeholder="Buscar por nombre o correo"
+                            value={busqueda}
+                            onChange={(e) => {
+                                setBusqueda(e.target.value)
+                                setPaginaActual(1)
+                            }}
+                            className="w-full border border-border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                    </div>
                 </div>
 
-                {usuariosFiltrados.length === 0 ? (
+                {consulta.cargando && usuarios.length === 0 ? (
+                    <p className="text-sm text-muted">Cargando usuarios…</p>
+                ) : consulta.error ? (
+                    <p className="text-sm text-danger">{mensajeDeError(consulta.error, 'No se pudieron cargar los usuarios.')}</p>
+                ) : usuarios.length === 0 ? (
                     <p className="text-sm text-muted">No hay usuarios en este estado.</p>
                 ) : (
                     <div className="flex flex-col gap-3">
-                        {usuariosFiltrados.map((usuario) => {
+                        {usuarios.map((usuario) => {
                             const etiquetaEstado = ETIQUETAS_ESTADO_CUENTA[usuario.estadoCuenta]
                             return (
                                 <div
@@ -104,12 +141,11 @@ function AdminUsuarios() {
                                         </div>
                                         <p className="text-sm font-semibold text-foreground">
                                             {usuario.nombre} {usuario.apellido}
+                                            {usuario.razonSocial && <span className="text-muted font-normal"> · {usuario.razonSocial}</span>}
                                         </p>
                                         <p className="text-xs text-muted">{usuario.correo}</p>
                                         {usuario.estadoCuenta === 'suspendido' && usuario.motivoSuspension && (
-                                            <p className="text-xs text-danger mt-1">
-                                                Motivo: {usuario.motivoSuspension}
-                                            </p>
+                                            <p className="text-xs text-danger mt-1">Motivo: {usuario.motivoSuspension}</p>
                                         )}
                                     </div>
                                     <div className="flex gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -144,6 +180,8 @@ function AdminUsuarios() {
                         })}
                     </div>
                 )}
+
+                <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
             </div>
 
             {solicitud && (

@@ -17,7 +17,7 @@ import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
 import { useConsulta } from '../hooks/useConsulta'
 import { actualizarContadores } from '../hooks/useContador'
-import { mostrarToast } from '../mocks/toast'
+import { mostrarToast } from '../utils/toast'
 import { formatearPrecio, nombreDelAnunciante } from '../utils/formato'
 import type { Publicacion } from '../types/publicacion'
 

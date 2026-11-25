@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router'
 import Explorar from './Explorar'
 import { listarMisPublicaciones, listarPublicaciones } from '../servicios/publicaciones'
 import { obtenerSesion } from '../servicios/sesion'
-import { obtenerVistaListado } from '../mocks/preferenciasVista'
+import { obtenerVistaListado } from '../utils/preferenciasVista'
 import type { Publicacion } from '../types/publicacion'
 import type { Filtros } from '../utils/filtrosExplorar'
 
@@ -19,11 +19,11 @@ jest.mock('../servicios/publicaciones', () => ({
 }))
 jest.mock('../servicios/sesion', () => ({ obtenerSesion: jest.fn() }))
 jest.mock('../servicios/busquedas', () => ({ crearBusqueda: jest.fn() }))
-jest.mock('../mocks/preferenciasVista', () => ({
+jest.mock('../utils/preferenciasVista', () => ({
     obtenerVistaListado: jest.fn(),
     guardarVistaListado: jest.fn(),
 }))
-jest.mock('../mocks/toast', () => ({ mostrarToast: jest.fn() }))
+jest.mock('../utils/toast', () => ({ mostrarToast: jest.fn() }))
 
 function crearPublicacion(overrides: Partial<Publicacion>): Publicacion {
     return {

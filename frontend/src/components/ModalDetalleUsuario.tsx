@@ -1,8 +1,10 @@
-import { Mail, Phone, X } from 'lucide-react'
-import { ETIQUETAS_ESTADO_CUENTA, ETIQUETAS_ROL, type Usuario } from '../types/usuario'
+import { Building2, CalendarDays, FileText, Flag, Mail, Phone, X } from 'lucide-react'
+import { ETIQUETAS_ESTADO_CUENTA, ETIQUETAS_ROL, type SesionUsuario } from '../types/usuario'
+import { formatearFechaHora } from '../utils/formato'
 
 interface ModalDetalleUsuarioProps {
-    usuario: Usuario
+    // Los datos extra solo llegan en la vista del administrador.
+    usuario: SesionUsuario & { fechaRegistro?: string; cantidadPublicaciones?: number; reclamosRecibidos?: number }
     onClose: () => void
 }
 
@@ -55,7 +57,35 @@ function ModalDetalleUsuario({ usuario, onClose }: ModalDetalleUsuarioProps) {
                             </span>
                             {usuario.celular}
                         </p>
+                        {usuario.razonSocial && (
+                            <p className="flex items-center gap-2.5">
+                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-subtle text-primary shrink-0">
+                                    <Building2 className="w-4 h-4" aria-hidden="true" />
+                                </span>
+                                {usuario.razonSocial}
+                            </p>
+                        )}
                     </div>
+
+                    {usuario.fechaRegistro && (
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="rounded-lg bg-surface-hover p-2">
+                                <CalendarDays className="w-4 h-4 text-primary mx-auto" aria-hidden="true" />
+                                <p className="text-[11px] text-muted mt-1">Registro</p>
+                                <p className="text-xs font-semibold text-foreground">{formatearFechaHora(usuario.fechaRegistro).split(',')[0]}</p>
+                            </div>
+                            <div className="rounded-lg bg-surface-hover p-2">
+                                <FileText className="w-4 h-4 text-primary mx-auto" aria-hidden="true" />
+                                <p className="text-[11px] text-muted mt-1">Publicaciones</p>
+                                <p className="text-xs font-semibold text-foreground">{usuario.cantidadPublicaciones ?? 0}</p>
+                            </div>
+                            <div className="rounded-lg bg-surface-hover p-2">
+                                <Flag className="w-4 h-4 text-primary mx-auto" aria-hidden="true" />
+                                <p className="text-[11px] text-muted mt-1">Reclamos</p>
+                                <p className="text-xs font-semibold text-foreground">{usuario.reclamosRecibidos ?? 0}</p>
+                            </div>
+                        </div>
+                    )}
 
                     {usuario.estadoCuenta === 'suspendido' && usuario.motivoSuspension && (
                         <p className="text-xs text-danger bg-danger-subtle rounded-lg px-3 py-2">

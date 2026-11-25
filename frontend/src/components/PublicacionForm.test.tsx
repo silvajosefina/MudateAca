@@ -10,7 +10,7 @@ jest.mock('../servicios/publicaciones', () => ({
     crearPublicacion: jest.fn(),
 }))
 jest.mock('../servicios/sesion', () => ({ obtenerSesion: () => ({ id: 'u2', rol: 'propietario' }) }))
-jest.mock('../mocks/toast', () => ({ mostrarToast: jest.fn() }))
+jest.mock('../utils/toast', () => ({ mostrarToast: jest.fn() }))
 jest.mock('./Mapa', () => ({
     __esModule: true,
     default: ({ lat, onCambiarPosicion }: { lat?: number; onCambiarPosicion: (lat: number, lng: number) => void }) => (

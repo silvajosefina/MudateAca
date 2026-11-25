@@ -7,8 +7,8 @@ import { listarFavoritos, quitarFavorito } from '../servicios/favoritos'
 import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
 import { useConsulta } from '../hooks/useConsulta'
-import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
-import { mostrarToast } from '../mocks/toast'
+import { guardarVistaListado, obtenerVistaListado } from '../utils/preferenciasVista'
+import { mostrarToast } from '../utils/toast'
 import { ETIQUETAS_ESTADO_PUBLICACION } from '../types/publicacion'
 
 const RESULTADOS_POR_PAGINA = 9

@@ -1,19 +1,14 @@
 import { useState } from 'react'
-import { Check, Download, FileSearch, FileText, X } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import PanelLayout from '../layouts/PanelLayout'
-import DialogoConMotivo from '../components/DialogoConMotivo'
+import AccionesModeracion from '../components/AccionesModeracion'
 import PublicacionPreviewModal from '../components/PublicacionPreviewModal'
 import ModalDetalleUsuario from '../components/ModalDetalleUsuario'
-import type { SolicitudConMotivo } from '../types/accionAdmin'
-import {
-    aprobarVerificacionPublicacion,
-    obtenerTodasLasPublicaciones,
-    rechazarVerificacionPublicacion,
-    solicitarModificacionesPublicacion,
-} from '../mocks/publicaciones'
-import { obtenerUsuarioPorId } from '../mocks/usuarios'
-import { mostrarToast } from '../mocks/toast'
-import { formatearPrecio } from '../utils/formato'
+import Paginacion from '../components/Paginacion'
+import { listarPublicacionesAdministracion } from '../servicios/administracion'
+import { mensajeDeError } from '../servicios/errores'
+import { useConsulta } from '../hooks/useConsulta'
+import { formatearPrecio, nombreDelAnunciante } from '../utils/formato'
 import {
     ETIQUETAS_DOCUMENTO_VERIFICACION,
     ETIQUETAS_ESTADO_PUBLICACION,
@@ -27,50 +22,34 @@ type FiltroPublicaciones = 'todas' | EstadoPublicacion
 const PESTANAS_PUBLICACIONES: { valor: FiltroPublicaciones; etiqueta: string }[] = [
     { valor: 'todas', etiqueta: 'Todas' },
     { valor: 'pendiente_moderacion', etiqueta: 'En revisión' },
+    { valor: 'observada', etiqueta: 'Observadas' },
     { valor: 'activa', etiqueta: 'Activas' },
     { valor: 'pausada', etiqueta: 'Pausadas' },
-    { valor: 'observada', etiqueta: 'Observadas' },
+    { valor: 'reservada', etiqueta: 'Reservadas' },
     { valor: 'rechazada', etiqueta: 'Rechazadas' },
     { valor: 'alquilada', etiqueta: 'Alquiladas' },
     { valor: 'archivada', etiqueta: 'Archivadas' },
+    { valor: 'oculta', etiqueta: 'Ocultas' },
     { valor: 'eliminada', etiqueta: 'Eliminadas' },
 ]
 
-function esAccionable(publicacion: Publicacion): boolean {
-    return publicacion.estado === 'pendiente_moderacion' || publicacion.estado === 'observada'
-}
+const PUBLICACIONES_POR_PAGINA = 10
 
 function AdminPublicaciones() {
-    const [publicaciones, setPublicaciones] = useState<Publicacion[]>(() => obtenerTodasLasPublicaciones())
     const [filtro, setFiltro] = useState<FiltroPublicaciones>('todas')
-    const [solicitud, setSolicitud] = useState<SolicitudConMotivo | null>(null)
+    const [paginaActual, setPaginaActual] = useState(1)
     const [publicacionAVer, setPublicacionAVer] = useState<Publicacion | null>(null)
     const [verPerfilPropietario, setVerPerfilPropietario] = useState(false)
 
-    function refrescar() {
-        setPublicaciones(obtenerTodasLasPublicaciones())
-    }
+    const estado = filtro === 'todas' ? null : filtro
+    const consulta = useConsulta(`${estado}-${paginaActual}`, () => listarPublicacionesAdministracion(estado, paginaActual))
+    const publicaciones = consulta.datos?.results ?? []
+    const totales = consulta.datos?.totales ?? {}
+    const totalPaginas = Math.max(1, Math.ceil((consulta.datos?.count ?? 0) / PUBLICACIONES_POR_PAGINA))
 
-    const publicacionesFiltradas =
-        filtro === 'todas' ? publicaciones : publicaciones.filter((p) => p.estado === filtro)
-
-    function handleAprobar(publicacion: Publicacion) {
-        aprobarVerificacionPublicacion(publicacion.id)
-        mostrarToast('Publicación verificada y activada.')
-        refrescar()
-    }
-
-    function confirmarSolicitud(motivo: string) {
-        if (!solicitud) return
-        if (solicitud.accion === 'rechazar_publicacion') {
-            rechazarVerificacionPublicacion(solicitud.id, motivo)
-            mostrarToast('Rechazo registrado.', 'error')
-        } else if (solicitud.accion === 'solicitar_modificaciones') {
-            solicitarModificacionesPublicacion(solicitud.id, motivo)
-            mostrarToast('Se solicitaron modificaciones al propietario.')
-        }
-        setSolicitud(null)
-        refrescar()
+    function cantidadDe(valor: FiltroPublicaciones) {
+        if (valor === 'todas') return Object.values(totales).reduce((suma, n) => suma + (n ?? 0), 0)
+        return totales[valor] ?? 0
     }
 
     return (
@@ -80,46 +59,47 @@ function AdminPublicaciones() {
                 Publicaciones
             </h1>
             <p className="text-sm text-muted mb-6">
-                Todas las publicaciones enviadas por propietarios e inmobiliarias. Las que están en
-                revisión u observadas pueden aprobarse, rechazarse o devolverse para modificar directamente desde acá.
+                Todas las publicaciones de propietarios e inmobiliarias. Las que están en revisión u observadas
+                pueden aprobarse, rechazarse o devolverse para modificar, y cualquier publicación visible puede
+                ocultarse indicando el motivo.
             </p>
 
             <div className="bg-surface rounded-2xl shadow-card p-5">
                 <div className="flex flex-wrap gap-2 mb-4">
-                    {PESTANAS_PUBLICACIONES.map((pestana) => {
-                        const cantidad =
-                            pestana.valor === 'todas'
-                                ? publicaciones.length
-                                : publicaciones.filter((p) => p.estado === pestana.valor).length
-                        return (
-                            <button
-                                key={pestana.valor}
-                                type="button"
-                                onClick={() => setFiltro(pestana.valor)}
-                                className={`text-sm font-semibold rounded-full px-3 py-1.5 transition-colors cursor-pointer ${filtro === pestana.valor
-                                    ? 'bg-primary text-surface'
-                                    : 'bg-surface text-foreground border border-border hover:bg-primary-subtle'
-                                    }`}
-                            >
-                                {pestana.etiqueta} <span className="opacity-80">{cantidad}</span>
-                            </button>
-                        )
-                    })}
+                    {PESTANAS_PUBLICACIONES.map((pestana) => (
+                        <button
+                            key={pestana.valor}
+                            type="button"
+                            onClick={() => {
+                                setFiltro(pestana.valor)
+                                setPaginaActual(1)
+                            }}
+                            className={`text-sm font-semibold rounded-full px-3 py-1.5 transition-colors cursor-pointer ${filtro === pestana.valor
+                                ? 'bg-primary text-surface'
+                                : 'bg-surface text-foreground border border-border hover:bg-primary-subtle'
+                                }`}
+                        >
+                            {pestana.etiqueta} <span className="opacity-80">{cantidadDe(pestana.valor)}</span>
+                        </button>
+                    ))}
                 </div>
 
-                {publicacionesFiltradas.length === 0 ? (
+                {consulta.cargando && publicaciones.length === 0 ? (
+                    <p className="text-sm text-muted">Cargando publicaciones…</p>
+                ) : consulta.error ? (
+                    <p className="text-sm text-danger">{mensajeDeError(consulta.error, 'No se pudieron cargar las publicaciones.')}</p>
+                ) : publicaciones.length === 0 ? (
                     <p className="text-sm text-muted">No hay publicaciones en este estado.</p>
                 ) : (
                     <div className="flex flex-col gap-3">
-                        {publicacionesFiltradas.map((publicacion) => {
-                            const propietario = obtenerUsuarioPorId(publicacion.propietarioId)
+                        {publicaciones.map((publicacion) => {
                             const etiquetaEstado = ETIQUETAS_ESTADO_PUBLICACION[publicacion.estado]
-                            const accionable = esAccionable(publicacion)
+                            const enRevision = publicacion.estado === 'pendiente_moderacion' || publicacion.estado === 'observada'
                             return (
                                 <div
                                     key={publicacion.id}
                                     onClick={() => setPublicacionAVer(publicacion)}
-                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-primary hover:bg-surface-hover transition-colors"
+                                    className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-lg border border-border p-3 cursor-pointer hover:border-primary hover:bg-surface-hover transition-colors"
                                 >
                                     <div className="min-w-0">
                                         <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -128,19 +108,14 @@ function AdminPublicaciones() {
                                             </span>
                                             <span className="text-xs text-muted">{ETIQUETAS_TIPO_INMUEBLE[publicacion.tipoInmueble]}</span>
                                         </div>
-                                        <p className="text-sm font-semibold text-foreground truncate">
-                                            {publicacion.descripcion}
-                                        </p>
+                                        <p className="text-sm font-semibold text-foreground truncate">{publicacion.descripcion}</p>
                                         <p className="text-xs text-muted">
-                                            {propietario ? `${propietario.nombre} ${propietario.apellido}` : 'Propietario'} ·{' '}
+                                            {publicacion.anunciante ? nombreDelAnunciante(publicacion.anunciante) : 'Propietario'} ·{' '}
                                             {publicacion.ubicacion} · {formatearPrecio(publicacion.precio)}
                                         </p>
-                                        {accionable && (
+                                        {enRevision && publicacion.tipoDocumentoVerificacion && (
                                             <p className="text-xs text-muted mt-1">
-                                                {publicacion.tipoDocumentoVerificacion
-                                                    ? ETIQUETAS_DOCUMENTO_VERIFICACION[publicacion.tipoDocumentoVerificacion]
-                                                    : 'Sin tipo de documento'}
-                                                {publicacion.nombreArchivoVerificacion && ` · ${publicacion.nombreArchivoVerificacion}`}
+                                                {ETIQUETAS_DOCUMENTO_VERIFICACION[publicacion.tipoDocumentoVerificacion]}
                                             </p>
                                         )}
                                         {publicacion.notaModeracion && (
@@ -149,87 +124,30 @@ function AdminPublicaciones() {
                                             </p>
                                         )}
                                         {publicacion.estado === 'rechazada' && publicacion.motivoRechazoVerificacion && (
-                                            <p className="text-xs text-danger mt-1">
-                                                Motivo del rechazo: {publicacion.motivoRechazoVerificacion}
-                                            </p>
+                                            <p className="text-xs text-danger mt-1">Motivo del rechazo: {publicacion.motivoRechazoVerificacion}</p>
+                                        )}
+                                        {publicacion.estado === 'oculta' && publicacion.motivoOcultamiento && (
+                                            <p className="text-xs text-danger mt-1">Motivo del ocultamiento: {publicacion.motivoOcultamiento}</p>
                                         )}
                                     </div>
-                                    <div className="flex gap-2 shrink-0 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                                        {publicacion.urlArchivoVerificacion && (
-                                            <a
-                                                href={publicacion.urlArchivoVerificacion}
-                                                download={publicacion.nombreArchivoVerificacion}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
-                                            >
-                                                <Download className="w-4 h-4" aria-hidden="true" />
-                                                Descargar
-                                            </a>
-                                        )}
-                                        {accionable && (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleAprobar(publicacion)}
-                                                    className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 bg-accent text-on-accent hover:opacity-90 transition-colors cursor-pointer"
-                                                >
-                                                    <Check className="w-4 h-4" aria-hidden="true" />
-                                                    Aprobar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setSolicitud({
-                                                            accion: 'solicitar_modificaciones',
-                                                            id: publicacion.id,
-                                                            nombre: 'publicación',
-                                                        })
-                                                    }
-                                                    className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
-                                                >
-                                                    <FileSearch className="w-4 h-4" aria-hidden="true" />
-                                                    Solicitar modificaciones
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setSolicitud({
-                                                            accion: 'rechazar_publicacion',
-                                                            id: publicacion.id,
-                                                            nombre: 'publicación',
-                                                        })
-                                                    }
-                                                    className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-danger text-danger hover:bg-danger hover:text-white transition-colors cursor-pointer"
-                                                >
-                                                    <X className="w-4 h-4" aria-hidden="true" />
-                                                    Rechazar
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
+                                    <AccionesModeracion publicacion={publicacion} onCambio={consulta.recargar} />
                                 </div>
                             )
                         })}
                     </div>
                 )}
+
+                <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} onCambiarPagina={setPaginaActual} />
             </div>
 
-            {solicitud && (
-                <DialogoConMotivo solicitud={solicitud} onCancelar={() => setSolicitud(null)} onConfirmar={confirmarSolicitud} />
-            )}
-
-            {publicacionAVer && verPerfilPropietario && obtenerUsuarioPorId(publicacionAVer.propietarioId) && (
-                <ModalDetalleUsuario
-                    usuario={obtenerUsuarioPorId(publicacionAVer.propietarioId)!}
-                    onClose={() => setVerPerfilPropietario(false)}
-                />
+            {publicacionAVer && verPerfilPropietario && publicacionAVer.propietarioDetalle && (
+                <ModalDetalleUsuario usuario={publicacionAVer.propietarioDetalle} onClose={() => setVerPerfilPropietario(false)} />
             )}
             {publicacionAVer && !verPerfilPropietario && (
                 <PublicacionPreviewModal
                     publicacion={publicacionAVer}
                     permitirEditar={false}
-                    propietario={obtenerUsuarioPorId(publicacionAVer.propietarioId)}
+                    propietario={publicacionAVer.propietarioDetalle}
                     onVerPropietario={() => setVerPerfilPropietario(true)}
                     onClose={() => setPublicacionAVer(null)}
                 />

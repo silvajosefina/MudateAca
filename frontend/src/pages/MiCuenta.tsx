@@ -5,7 +5,7 @@ import PanelLayout from '../layouts/PanelLayout'
 import { obtenerSesion, iniciarSesion } from '../servicios/sesion'
 import { actualizarPerfil } from '../servicios/usuarios'
 import { erroresDeCampos, mensajeDeError } from '../servicios/errores'
-import { mostrarToast } from '../mocks/toast'
+import { mostrarToast } from '../utils/toast'
 
 const CELULAR_REGEX = /^[0-9+\s-]{8,20}$/
 

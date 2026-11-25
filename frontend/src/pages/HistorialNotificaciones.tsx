@@ -14,7 +14,7 @@ import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
 import { useConsulta } from '../hooks/useConsulta'
 import { actualizarContadores } from '../hooks/useContador'
-import { mostrarToast } from '../mocks/toast'
+import { mostrarToast } from '../utils/toast'
 import { formatearFechaHora } from '../utils/formato'
 
 const RESULTADOS_POR_PAGINA = 10

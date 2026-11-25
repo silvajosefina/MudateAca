@@ -1,3 +1,5 @@
+import type { Anunciante } from './publicacion'
+
 export type TipoObjetivoReclamo = 'publicacion' | 'usuario'
 export type EstadoReclamo = 'pendiente' | 'en_revision' | 'resuelto' | 'descartado'
 
@@ -45,6 +47,9 @@ export interface Reclamo {
     notaAdmin?: string
     // Lo arma la API: descripción breve de la publicación o nombre del usuario reportado.
     nombreObjetivo?: string
+    reclamante?: Anunciante
+    usuarioReportado?: Anunciante
+    publicacionResumen?: { id: string; descripcion: string; ubicacion: string; foto?: string }
     creadoEn: string
     actualizadoEn: string
 }

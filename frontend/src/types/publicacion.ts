@@ -1,3 +1,5 @@
+import type { SesionUsuario } from './usuario'
+
 export type TipoInmueble = 'casa' | 'departamento' | 'habitacion' | 'residencia'
 export type ModalidadAlquiler = 'residencial' | 'temporario'
 
@@ -111,6 +113,8 @@ export interface Publicacion {
     duracionMinimaDias?: number
     estado: EstadoPublicacion
     anunciante?: Anunciante
+    // Solo para el administrador: datos de contacto y estado de la cuenta del dueño.
+    propietarioDetalle?: SesionUsuario
     tipoDocumentoVerificacion?: TipoDocumentoVerificacionPublicacion
     nombreArchivoVerificacion?: string
     urlArchivoVerificacion?: string
@@ -133,6 +137,7 @@ export type PublicacionFormData = Omit<
     | 'actualizadaEn'
     | 'motivoRechazoVerificacion'
     | 'anunciante'
+    | 'propietarioDetalle'
     | 'eventosModeracion'
     | 'acciones'
 > & {

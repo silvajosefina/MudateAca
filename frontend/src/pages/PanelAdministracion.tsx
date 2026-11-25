@@ -1,81 +1,43 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Check, FileText, Flag, ShieldCheck, Users, X } from 'lucide-react'
+import { FileText, Flag, ShieldCheck, Users } from 'lucide-react'
 import PanelLayout from '../layouts/PanelLayout'
-import DialogoConMotivo from '../components/DialogoConMotivo'
+import AccionesModeracion from '../components/AccionesModeracion'
 import PublicacionPreviewModal from '../components/PublicacionPreviewModal'
 import ModalDetalleUsuario from '../components/ModalDetalleUsuario'
-import type { SolicitudConMotivo } from '../types/accionAdmin'
 import { ModalDetalleReclamo } from './AdminReclamos'
-import {
-    aprobarVerificacionPublicacion,
-    obtenerPublicacionesEnRevision,
-    rechazarVerificacionPublicacion,
-    solicitarModificacionesPublicacion,
-} from '../mocks/publicaciones'
-import { obtenerTodosLosUsuarios, obtenerUsuarioPorId } from '../mocks/usuarios'
-import { descartarReclamo, obtenerNombreObjetivoReclamo, obtenerReclamosPendientes, resolverReclamo } from '../mocks/reclamos'
-import { mostrarToast } from '../mocks/toast'
+import { listarPublicacionesEnRevision, listarReclamos, listarUsuarios } from '../servicios/administracion'
+import { mensajeDeError } from '../servicios/errores'
+import { useConsulta } from '../hooks/useConsulta'
 import { ETIQUETAS_ESTADO_PUBLICACION, type Publicacion } from '../types/publicacion'
 import { ETIQUETAS_ESTADO_RECLAMO, ETIQUETAS_MOTIVO_RECLAMO, type Reclamo } from '../types/reclamo'
-import type { Usuario } from '../types/usuario'
 
 const LIMITE_CONDENSADO = 5
 
+function TarjetaResumen({ icono, valor, texto, clase }: { icono: React.ReactNode; valor: number | string; texto: string; clase: string }) {
+    return (
+        <div className="bg-surface rounded-2xl shadow-card p-5 flex items-center gap-3">
+            <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full shrink-0 ${clase}`}>{icono}</span>
+            <div>
+                <p className="text-2xl font-heading font-semibold text-foreground">{valor}</p>
+                <p className="text-xs text-muted">{texto}</p>
+            </div>
+        </div>
+    )
+}
+
 function PanelAdministracion() {
-    const [publicacionesEnRevision, setPublicacionesEnRevision] = useState<Publicacion[]>(() => obtenerPublicacionesEnRevision())
-    const [reclamosPendientes, setReclamosPendientes] = useState<Reclamo[]>(() => obtenerReclamosPendientes())
-    const [usuarios, setUsuarios] = useState<Usuario[]>(() => obtenerTodosLosUsuarios())
-    const [solicitud, setSolicitud] = useState<SolicitudConMotivo | null>(null)
     const [reclamoActivo, setReclamoActivo] = useState<Reclamo | null>(null)
     const [publicacionAVer, setPublicacionAVer] = useState<Publicacion | null>(null)
     const [verPerfilPropietario, setVerPerfilPropietario] = useState(false)
 
-    function refrescar() {
-        setPublicacionesEnRevision(obtenerPublicacionesEnRevision())
-        setReclamosPendientes(obtenerReclamosPendientes())
-        setUsuarios(obtenerTodosLosUsuarios())
-    }
+    const enRevision = useConsulta('en-revision', listarPublicacionesEnRevision)
+    const reclamos = useConsulta('reclamos', listarReclamos)
+    const suspendidos = useConsulta('suspendidos', () => listarUsuarios('suspendido', 1))
 
-    const usuariosSuspendidos = usuarios.filter((u) => u.rol !== 'administrador' && u.estadoCuenta === 'suspendido')
-
-    function handleAprobarPublicacion(publicacion: Publicacion) {
-        aprobarVerificacionPublicacion(publicacion.id)
-        mostrarToast('Publicación verificada y activada.')
-        refrescar()
-    }
-
-    function confirmarSolicitud(motivo: string) {
-        if (!solicitud) return
-        switch (solicitud.accion) {
-            case 'rechazar_publicacion':
-                rechazarVerificacionPublicacion(solicitud.id, motivo)
-                mostrarToast('Rechazo registrado.', 'error')
-                break
-            case 'solicitar_modificaciones':
-                solicitarModificacionesPublicacion(solicitud.id, motivo)
-                mostrarToast('Se solicitaron modificaciones al propietario.')
-                break
-        }
-        setSolicitud(null)
-        refrescar()
-    }
-
-    function handleResolverReclamo(nota: string) {
-        if (!reclamoActivo) return
-        resolverReclamo(reclamoActivo.id, nota)
-        mostrarToast('Reclamo marcado como resuelto.')
-        setReclamoActivo(null)
-        refrescar()
-    }
-
-    function handleDescartarReclamo(nota: string) {
-        if (!reclamoActivo) return
-        descartarReclamo(reclamoActivo.id, nota)
-        mostrarToast('Reclamo descartado.')
-        setReclamoActivo(null)
-        refrescar()
-    }
+    const publicacionesEnRevision = enRevision.datos ?? []
+    const reclamosPendientes = (reclamos.datos ?? []).filter((r) => r.estado === 'pendiente' || r.estado === 'en_revision')
+    const cantidadSuspendidos = suspendidos.datos?.count
 
     return (
         <PanelLayout>
@@ -85,33 +47,24 @@ function PanelAdministracion() {
             </h1>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-surface rounded-2xl shadow-card p-5 flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-warning-subtle text-warning shrink-0">
-                        <FileText className="w-5 h-5" aria-hidden="true" />
-                    </span>
-                    <div>
-                        <p className="text-2xl font-heading font-semibold text-foreground">{publicacionesEnRevision.length}</p>
-                        <p className="text-xs text-muted">Publicaciones en revisión</p>
-                    </div>
-                </div>
-                <div className="bg-surface rounded-2xl shadow-card p-5 flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-warning-subtle text-warning shrink-0">
-                        <Flag className="w-5 h-5" aria-hidden="true" />
-                    </span>
-                    <div>
-                        <p className="text-2xl font-heading font-semibold text-foreground">{reclamosPendientes.length}</p>
-                        <p className="text-xs text-muted">Reclamos pendientes</p>
-                    </div>
-                </div>
-                <div className="bg-surface rounded-2xl shadow-card p-5 flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-danger-subtle text-danger shrink-0">
-                        <Users className="w-5 h-5" aria-hidden="true" />
-                    </span>
-                    <div>
-                        <p className="text-2xl font-heading font-semibold text-foreground">{usuariosSuspendidos.length}</p>
-                        <p className="text-xs text-muted">Usuarios suspendidos</p>
-                    </div>
-                </div>
+                <TarjetaResumen
+                    icono={<FileText className="w-5 h-5" aria-hidden="true" />}
+                    valor={enRevision.datos ? publicacionesEnRevision.length : '…'}
+                    texto="Publicaciones en revisión"
+                    clase="bg-warning-subtle text-warning"
+                />
+                <TarjetaResumen
+                    icono={<Flag className="w-5 h-5" aria-hidden="true" />}
+                    valor={reclamos.datos ? reclamosPendientes.length : '…'}
+                    texto="Reclamos pendientes"
+                    clase="bg-warning-subtle text-warning"
+                />
+                <TarjetaResumen
+                    icono={<Users className="w-5 h-5" aria-hidden="true" />}
+                    valor={cantidadSuspendidos ?? '…'}
+                    texto="Usuarios suspendidos"
+                    clase="bg-danger-subtle text-danger"
+                />
             </div>
 
             <div className="bg-surface rounded-2xl shadow-card p-5 mb-6">
@@ -128,7 +81,11 @@ function PanelAdministracion() {
                     Pendientes de moderación inicial, o marcadas como observadas automáticamente. Tocá una
                     para ver el detalle completo, el perfil del propietario y la documentación adjunta.
                 </p>
-                {publicacionesEnRevision.length === 0 ? (
+                {enRevision.cargando && publicacionesEnRevision.length === 0 ? (
+                    <p className="text-sm text-muted">Cargando…</p>
+                ) : enRevision.error ? (
+                    <p className="text-sm text-danger">{mensajeDeError(enRevision.error)}</p>
+                ) : publicacionesEnRevision.length === 0 ? (
                     <p className="text-sm text-muted">No hay publicaciones esperando verificación.</p>
                 ) : (
                     <div className="flex flex-col gap-3">
@@ -146,52 +103,14 @@ function PanelAdministracion() {
                                                 {etiquetaEstado.texto}
                                             </span>
                                         </div>
-                                        <p className="text-sm font-semibold text-foreground truncate">
-                                            {publicacion.descripcion}
-                                        </p>
+                                        <p className="text-sm font-semibold text-foreground truncate">{publicacion.descripcion}</p>
                                         {publicacion.notaModeracion && (
                                             <p className="text-xs text-foreground bg-surface-hover rounded-lg px-2 py-1 mt-1">
                                                 Nota: {publicacion.notaModeracion}
                                             </p>
                                         )}
                                     </div>
-                                    <div className="flex gap-2 shrink-0 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleAprobarPublicacion(publicacion)}
-                                            className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 bg-accent text-on-accent hover:opacity-90 transition-colors cursor-pointer"
-                                        >
-                                            <Check className="w-4 h-4" aria-hidden="true" />
-                                            Aprobar
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setSolicitud({
-                                                    accion: 'solicitar_modificaciones',
-                                                    id: publicacion.id,
-                                                    nombre: 'publicación',
-                                                })
-                                            }
-                                            className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-border text-foreground hover:border-primary hover:text-primary transition-colors cursor-pointer"
-                                        >
-                                            Solicitar modif.
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setSolicitud({
-                                                    accion: 'rechazar_publicacion',
-                                                    id: publicacion.id,
-                                                    nombre: 'publicación',
-                                                })
-                                            }
-                                            className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 border border-danger text-danger hover:bg-danger hover:text-white transition-colors cursor-pointer"
-                                        >
-                                            <X className="w-4 h-4" aria-hidden="true" />
-                                            Rechazar
-                                        </button>
-                                    </div>
+                                    <AccionesModeracion publicacion={publicacion} onCambio={enRevision.recargar} soloRevision />
                                 </div>
                             )
                         })}
@@ -209,10 +128,12 @@ function PanelAdministracion() {
                         Ver todo
                     </Link>
                 </div>
-                <p className="text-sm text-muted mb-4">
-                    Reportes enviados por usuarios sobre publicaciones o sobre otros usuarios.
-                </p>
-                {reclamosPendientes.length === 0 ? (
+                <p className="text-sm text-muted mb-4">Reportes enviados por usuarios sobre publicaciones o sobre otros usuarios.</p>
+                {reclamos.cargando && reclamosPendientes.length === 0 ? (
+                    <p className="text-sm text-muted">Cargando…</p>
+                ) : reclamos.error ? (
+                    <p className="text-sm text-danger">{mensajeDeError(reclamos.error)}</p>
+                ) : reclamosPendientes.length === 0 ? (
                     <p className="text-sm text-muted">No hay reclamos pendientes.</p>
                 ) : (
                     <div className="flex flex-col gap-2">
@@ -225,7 +146,7 @@ function PanelAdministracion() {
                             >
                                 <div className="min-w-0 flex-1">
                                     <p className="text-sm font-semibold text-foreground truncate">
-                                        {ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]} · {obtenerNombreObjetivoReclamo(reclamo)}
+                                        {ETIQUETAS_MOTIVO_RECLAMO[reclamo.motivo]} · {reclamo.nombreObjetivo}
                                     </p>
                                     <p className="text-xs text-muted truncate">{reclamo.descripcion}</p>
                                 </div>
@@ -238,30 +159,18 @@ function PanelAdministracion() {
                 )}
             </div>
 
-            {solicitud && (
-                <DialogoConMotivo solicitud={solicitud} onCancelar={() => setSolicitud(null)} onConfirmar={confirmarSolicitud} />
-            )}
-
             {reclamoActivo && (
-                <ModalDetalleReclamo
-                    reclamo={reclamoActivo}
-                    onClose={() => setReclamoActivo(null)}
-                    onResolver={handleResolverReclamo}
-                    onDescartar={handleDescartarReclamo}
-                />
+                <ModalDetalleReclamo reclamo={reclamoActivo} onClose={() => setReclamoActivo(null)} onCambio={reclamos.recargar} />
             )}
 
-            {publicacionAVer && verPerfilPropietario && obtenerUsuarioPorId(publicacionAVer.propietarioId) && (
-                <ModalDetalleUsuario
-                    usuario={obtenerUsuarioPorId(publicacionAVer.propietarioId)!}
-                    onClose={() => setVerPerfilPropietario(false)}
-                />
+            {publicacionAVer && verPerfilPropietario && publicacionAVer.propietarioDetalle && (
+                <ModalDetalleUsuario usuario={publicacionAVer.propietarioDetalle} onClose={() => setVerPerfilPropietario(false)} />
             )}
             {publicacionAVer && !verPerfilPropietario && (
                 <PublicacionPreviewModal
                     publicacion={publicacionAVer}
                     permitirEditar={false}
-                    propietario={obtenerUsuarioPorId(publicacionAVer.propietarioId)}
+                    propietario={publicacionAVer.propietarioDetalle}
                     onVerPropietario={() => setVerPerfilPropietario(true)}
                     onClose={() => setPublicacionAVer(null)}
                 />

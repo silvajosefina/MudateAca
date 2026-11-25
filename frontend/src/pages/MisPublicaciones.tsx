@@ -8,9 +8,9 @@ import Paginacion from '../components/Paginacion'
 import { aplicarAccion, eliminarPublicacion, listarMisPublicaciones } from '../servicios/publicaciones'
 import { mensajeDeError } from '../servicios/errores'
 import { useConsulta } from '../hooks/useConsulta'
-import { guardarVistaListado, obtenerVistaListado } from '../mocks/preferenciasVista'
+import { guardarVistaListado, obtenerVistaListado } from '../utils/preferenciasVista'
 import { obtenerSesion } from '../servicios/sesion'
-import { mostrarToast } from '../mocks/toast'
+import { mostrarToast } from '../utils/toast'
 import { formatearPrecio } from '../utils/formato'
 import {
     ETIQUETAS_ESTADO_PUBLICACION,

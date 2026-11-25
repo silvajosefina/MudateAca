@@ -29,7 +29,7 @@ import {
 import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
 import { useConsulta } from '../hooks/useConsulta'
-import { mostrarToast } from '../mocks/toast'
+import { mostrarToast } from '../utils/toast'
 import { formatearMiles, formatearPrecio, quitarFormatoMiles } from '../utils/formato'
 import type { BusquedaActiva, BusquedaFormData } from '../types/busqueda'
 import { ETIQUETAS_TIPO_INMUEBLE, type ModalidadAlquiler, type TipoInmueble } from '../types/publicacion'

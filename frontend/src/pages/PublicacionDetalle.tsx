@@ -30,7 +30,7 @@ import { obtenerSesion } from '../servicios/sesion'
 import { agregarFavorito, quitarFavorito, useFavoritos } from '../servicios/favoritos'
 import { iniciarConversacion } from '../servicios/mensajes'
 import { mensajeDeError } from '../servicios/errores'
-import { mostrarToast } from '../mocks/toast'
+import { mostrarToast } from '../utils/toast'
 import { formatearFecha, formatearPrecio, nombreDelAnunciante } from '../utils/formato'
 import { ETIQUETAS_ESTADO_PUBLICACION, ETIQUETAS_TIPO_INMUEBLE, type Publicacion } from '../types/publicacion'
 

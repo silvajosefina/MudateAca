@@ -3,7 +3,7 @@ import { Flag, X } from 'lucide-react'
 import { crearReclamo } from '../servicios/reclamos'
 import { mensajeDeError } from '../servicios/errores'
 import { obtenerSesion } from '../servicios/sesion'
-import { mostrarToast } from '../mocks/toast'
+import { mostrarToast } from '../utils/toast'
 import type { MotivoReclamo, TipoObjetivoReclamo } from '../types/reclamo'
 
 interface ModalReclamoProps {

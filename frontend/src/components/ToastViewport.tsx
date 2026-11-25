@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, XCircle } from 'lucide-react'
-import { suscribirseAToast, type ToastState } from '../mocks/toast'
+import { suscribirseAToast, type ToastState } from '../utils/toast'
 
 function ToastViewport() {
     const [toast, setToast] = useState<ToastState | null>(null)

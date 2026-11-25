@@ -1,4 +1,5 @@
 import { api } from './api'
+import { adaptarUsuario, type UsuarioApi } from './usuarios'
 import type { Filtros } from '../utils/filtrosExplorar'
 import type {
     AccionPublicacion,
@@ -38,7 +39,8 @@ interface AnuncianteApi {
 
 export interface PublicacionApi {
     id: number
-    propietario: AnuncianteApi
+    // Para el administrador llega el usuario completo (con correo y celular).
+    propietario: AnuncianteApi | UsuarioApi
     tipo_inmueble: TipoInmueble
     modalidad: ModalidadAlquiler
     descripcion: string
@@ -100,6 +102,7 @@ export function adaptarPublicacion(p: PublicacionApi): Publicacion {
             razonSocial: textoOpcional(p.propietario.razon_social),
             rol: p.propietario.rol,
         },
+        propietarioDetalle: 'correo' in p.propietario ? adaptarUsuario(p.propietario) : undefined,
         tipoInmueble: p.tipo_inmueble,
         modalidad: p.modalidad,
         descripcion: p.descripcion,
