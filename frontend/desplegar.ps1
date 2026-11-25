@@ -29,7 +29,9 @@ Confirmar-Paso 'No se pudo conectar con el servidor.'
 scp -i $clave -r dist "${servidor}:$destino/dist.nuevo"
 Confirmar-Paso 'No se pudo copiar el frontend al servidor.'
 
-ssh -i $clave $servidor "cd $destino && rm -rf dist.anterior && mv dist dist.anterior && mv dist.nuevo dist"
+# scp desde Windows deja los archivos solo legibles por su dueño; Nginx (www-data)
+# necesita poder leerlos, así que se les da permiso de lectura antes de publicarlos.
+ssh -i $clave $servidor "cd $destino && chmod -R a+rX dist.nuevo && rm -rf dist.anterior && mv dist dist.anterior && mv dist.nuevo dist"
 Confirmar-Paso 'No se pudo reemplazar la versión publicada.'
 
 Write-Host 'Frontend publicado en https://mudateaca.duckdns.org' -ForegroundColor Green
