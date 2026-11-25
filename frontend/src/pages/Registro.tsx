@@ -5,6 +5,7 @@ import InputContrasena from '../components/InputContrasena'
 import { iniciarSesion } from '../servicios/sesion'
 import { ingresar, registrar } from '../servicios/usuarios'
 import { erroresDeCampos, mensajeDeError } from '../servicios/errores'
+import { rutaDeInicio } from '../utils/rutas'
 
 type Rol = 'interesado' | 'propietario' | 'inmobiliaria'
 
@@ -83,7 +84,7 @@ function Registro() {
             // Con la cuenta creada, inicia sesión directamente para no pedir los datos otra vez.
             const usuario = await ingresar(correo.trim(), contrasena)
             iniciarSesion(usuario)
-            navigate(rol === 'interesado' ? '/explorar' : '/mis-publicaciones')
+            navigate(rutaDeInicio(rol))
         } catch (error) {
             const campos = erroresDeCampos(error)
             const errorDelServidor: Errores = {

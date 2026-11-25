@@ -7,6 +7,7 @@ import ToastViewport from './components/ToastViewport'
 import ScrollAlTope from './components/ScrollAlTope'
 import BotonAyuda from './components/BotonAyuda'
 import { useSesion, validarSesion } from './servicios/sesion'
+import { rutaDeInicio } from './utils/rutas'
 
 // Cada pantalla se descarga recién cuando se abre; Login y Explorar, las de entrada, van en el paquete inicial.
 const Registro = lazy(() => import('./pages/Registro'))
@@ -32,7 +33,8 @@ const ROLES_ANUNCIANTE = ['propietario', 'inmobiliaria'] as const
 
 function App() {
   // Redibuja la aplicación cuando la sesión se inicia, se cierra o vence.
-  useSesion()
+  // Con la sesión abierta, la raíz, el login y el registro llevan a la pantalla de inicio del rol.
+  const sesion = useSesion()
 
   useEffect(() => {
     validarSesion()
@@ -43,9 +45,9 @@ function App() {
       <ScrollAlTope />
       <Suspense fallback={<p className="text-sm text-muted text-center py-16">Cargando…</p>}>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/registro" element={<Registro />} />
+        <Route path="/" element={<Navigate to={rutaDeInicio(sesion?.rol)} replace />} />
+        <Route path="/login" element={sesion ? <Navigate to={rutaDeInicio(sesion.rol)} replace /> : <Login />} />
+        <Route path="/registro" element={sesion ? <Navigate to={rutaDeInicio(sesion.rol)} replace /> : <Registro />} />
         <Route path="/recuperar-contrasena" element={<RecuperarContrasena />} />
         <Route path="/restablecer-contrasena" element={<RestablecerContrasena />} />
         <Route path="/explorar" element={<Explorar />} />

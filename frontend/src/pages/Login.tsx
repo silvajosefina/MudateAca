@@ -6,6 +6,7 @@ import { isAxiosError } from 'axios'
 import { iniciarSesion } from '../servicios/sesion'
 import { ingresar } from '../servicios/usuarios'
 import { mensajeDeError } from '../servicios/errores'
+import { rutaDeInicio } from '../utils/rutas'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -21,7 +22,6 @@ function Login() {
     const [correo, setCorreo] = useState('')
     const [contrasena, setContrasena] = useState('')
     const [errores, setErrores] = useState<Errores>({})
-    const [rolSinPanel, setRolSinPanel] = useState(false)
     const [enviando, setEnviando] = useState(false)
 
     async function handleSubmit(e: SubmitEvent) {
@@ -45,16 +45,7 @@ function Login() {
         try {
             const usuario = await ingresar(correo.trim(), contrasena)
             iniciarSesion(usuario)
-
-            if (usuario.rol === 'propietario' || usuario.rol === 'inmobiliaria') {
-                navigate('/mis-publicaciones')
-            } else if (usuario.rol === 'interesado') {
-                navigate('/explorar')
-            } else if (usuario.rol === 'administrador') {
-                navigate('/panel-administracion')
-            } else {
-                setRolSinPanel(true)
-            }
+            navigate(rutaDeInicio(usuario.rol))
         } catch (error) {
             // 401: correo o contraseña incorrectos. Otros casos (cuenta suspendida, demasiados
             // intentos, servidor caído) llegan con su propio mensaje.
@@ -99,13 +90,6 @@ function Login() {
                     )}
                     {errores.general && <p className="text-xs text-danger mt-1">{errores.general}</p>}
                 </div>
-
-                {rolSinPanel && (
-                    <p className="text-xs text-foreground bg-surface-hover border border-border rounded-lg px-3 py-2">
-                        Iniciaste sesión correctamente. El panel para tu tipo de cuenta todavía no está
-                        disponible en esta versión.
-                    </p>
-                )}
 
                 <p className="text-right text-sm">
                     <Link to="/recuperar-contrasena" className="text-primary">
