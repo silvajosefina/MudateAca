@@ -28,8 +28,9 @@ function PublicacionPreviewModal({
     const iniciales = propietario
         ? `${propietario.nombre.charAt(0)}${propietario.apellido.charAt(0)}`.toUpperCase()
         : ''
-    // El historial de moderación solo llega de la API para el dueño y los administradores.
-    const historial = !permitirEditar ? (publicacion.eventosModeracion ?? []) : []
+    // El historial de moderación solo llega de la API para el dueño y los administradores,
+    // así que se muestra siempre que venga: el dueño lo necesita para saber qué corregir.
+    const historial = publicacion.eventosModeracion ?? []
     return (
         <div
             className="fixed inset-0 z-[75] flex items-center justify-center bg-overlay/70 backdrop-blur-sm p-4"
