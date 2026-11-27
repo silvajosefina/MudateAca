@@ -1,6 +1,6 @@
 # Mudate Acá: backend
 
-API REST en Django REST Framework con PostgreSQL y PostGIS. El frontend todavía trabaja con datos simulados, por lo que el backend se prueba mediante la API o las pruebas automáticas.
+API REST en Django REST Framework con PostgreSQL y PostGIS. La consume el [frontend](../frontend/README.md), que en desarrollo la encuentra en `http://localhost:8000`.
 
 ## Requisitos
 
